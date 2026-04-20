@@ -123,6 +123,12 @@ export default function RugbyVoiceTaggingMVP() {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [transcriptImportText, setTranscriptImportText] = useState("");
   const [cleanedTranscriptText, setCleanedTranscriptText] = useState("");
+  const [cleanedTranscriptItems, setCleanedTranscriptItems] = useState<
+    Array<
+      | { type: "event"; event: EventItem; cleanedLine: string }
+      | { type: "review"; reviewItem: ReviewItem; cleanedLine: string }
+    >
+  >([]);
   const [transcriptCleanSummary, setTranscriptCleanSummary] = useState<{
     originalLines: number;
     cleanedLines: number;
@@ -880,6 +886,7 @@ export default function RugbyVoiceTaggingMVP() {
     setTeamSheetPaste("");
     setTranscriptImportText("");
     setCleanedTranscriptText("");
+    setCleanedTranscriptItems([]);
     setTranscriptCleanSummary(null);
     setShowTeamSheetModal(true);
     setShowReportSetupModal(false);
@@ -1779,13 +1786,20 @@ export default function RugbyVoiceTaggingMVP() {
   const detectTranscriptAction = (text: string): PlayerAction | "" => {
     const normalized = normalizeForMatch(text);
 
-    if (normalized.includes("missed tackle") || normalized.includes("miss tackle")) {
+    if (
+      normalized.includes("missed tackle") ||
+      normalized.includes("miss tackle")
+    ) {
       return "missed tackle";
     }
     if (normalized.includes("turnover")) {
       return "turnover";
     }
-    if (normalized.includes("carry")) {
+    if (
+      normalized.includes("carry") ||
+      normalized.includes("carries") ||
+      normalized.includes("carried")
+    ) {
       return "carry";
     }
     if (normalized.includes("tackle")) {
@@ -1795,8 +1809,231 @@ export default function RugbyVoiceTaggingMVP() {
     return "";
   };
 
-  const buildTranscriptImportLine = (timestamp: number, text: string) => {
-    return `[${formatTime(timestamp)}] ${cleanTranscriptText(text)}`;
+  const findTranscriptPlayerMatch = (text: string) => {
+    const direct = findMatchingPlayer(players, text);
+    if (direct) return direct;
+
+    const normalizedText = normalizeForMatch(text);
+
+    for (const player of players) {
+      const normalizedPlayer = normalizeForMatch(player);
+      if (!normalizedPlayer) continue;
+
+      if (normalizedText.includes(normalizedPlayer)) {
+        return player;
+      }
+
+      const firstName = normalizedPlayer.split(" ")[0];
+      if (firstName && firstName.length >= 3 && normalizedText.includes(firstName)) {
+        return player;
+      }
+    }
+
+    return "";
+  };
+
+  const parseTranscriptLineToEvent = (
+    line: string,
+    index: number
+  ):
+    | {
+        type: "event";
+        event: EventItem;
+        cleanedLine: string;
+      }
+    | {
+        type: "review";
+        reviewItem: ReviewItem;
+        cleanedLine: string;
+      } => {
+    const { timestamp, text } = parseTranscriptTimestampFromLine(line);
+    const cleanedText = cleanTranscriptText(text);
+    const normalized = normalizeForMatch(cleanedText);
+    const action = detectTranscriptAction(cleanedText);
+    const matchedPlayer = findTranscriptPlayerMatch(cleanedText);
+    const eventId = Date.now() + index;
+
+    if (matchedPlayer && action) {
+      const finalText = `${matchedPlayer} ${action}`;
+      return {
+        type: "event",
+        cleanedLine: `[${formatTime(timestamp)}] ${finalText}`,
+        event: {
+          id: eventId,
+          timestamp,
+          text: cleanTranscriptText(finalText),
+          rawText: cleanedText,
+          category: "player",
+          playerName: matchedPlayer,
+          playerAction: action,
+        },
+      };
+    }
+
+    if (
+      normalized.includes("scrum") &&
+      (normalized.includes("won") ||
+        normalized.includes("lost") ||
+        normalized.includes("penalty for") ||
+        normalized.includes("penalty against") ||
+        normalized.includes("penalty to"))
+    ) {
+      const setPieceSide: SetPieceSide =
+        normalized.includes("opposition") ? "Opposition" : "Easts";
+
+      let scrumDetectedResult: ScrumResult = "Won";
+      if (normalized.includes("penalty for")) {
+        scrumDetectedResult = "Penalty For";
+      } else if (
+        normalized.includes("penalty against") ||
+        normalized.includes("penalty to opposition") ||
+        normalized.includes("opposition penalty")
+      ) {
+        scrumDetectedResult = "Penalty Against";
+      } else if (normalized.includes("lost")) {
+        scrumDetectedResult = "Lost";
+      }
+
+      const finalText = buildSetPieceText({
+        setPieceType: "scrum",
+        setPieceSide,
+        scrumResult: scrumDetectedResult,
+      });
+
+      return {
+        type: "event",
+        cleanedLine: `[${formatTime(timestamp)}] ${finalText}`,
+        event: {
+          id: eventId,
+          timestamp,
+          text: finalText,
+          rawText: cleanedText,
+          category: "set-piece",
+          setPieceType: "scrum",
+          setPieceSide,
+          scrumResult: scrumDetectedResult,
+        },
+      };
+    }
+
+    if (
+      normalized.includes("lineout") &&
+      (normalized.includes("won") ||
+        normalized.includes("lost") ||
+        normalized.includes("not straight"))
+    ) {
+      const setPieceSide: SetPieceSide =
+        normalized.includes("opposition") ? "Opposition" : "Easts";
+
+      let detectedLineoutResult: LineoutResult = "Won";
+      if (normalized.includes("not straight")) {
+        detectedLineoutResult = "Not Straight";
+      } else if (normalized.includes("lost")) {
+        detectedLineoutResult = "Lost";
+      }
+
+      const notes = normalized.includes("front")
+        ? "Front"
+        : normalized.includes("middle")
+        ? "Middle"
+        : normalized.includes("back")
+        ? "Back"
+        : "";
+
+      const finalText = buildSetPieceText({
+        setPieceType: "lineout",
+        setPieceSide,
+        lineoutResult: detectedLineoutResult,
+        notes,
+      });
+
+      return {
+        type: "event",
+        cleanedLine: `[${formatTime(timestamp)}] ${finalText}`,
+        event: {
+          id: eventId,
+          timestamp,
+          text: finalText,
+          rawText: cleanedText,
+          category: "set-piece",
+          setPieceType: "lineout",
+          setPieceSide,
+          lineoutResult: detectedLineoutResult,
+          notes: notes || undefined,
+        },
+      };
+    }
+
+    if (
+      normalized.includes("penalty") &&
+      !normalized.includes("scrum") &&
+      !normalized.includes("lineout")
+    ) {
+      const finalText = buildTeamEventText("penalty conceded");
+
+      return {
+        type: "event",
+        cleanedLine: `[${formatTime(timestamp)}] ${finalText}`,
+        event: {
+          id: eventId,
+          timestamp,
+          text: finalText,
+          rawText: cleanedText,
+          category: "team",
+          teamEventType: "penalty conceded",
+        },
+      };
+    }
+
+    if (normalized.includes("try scored")) {
+      const finalText = buildTeamEventText("try scored");
+
+      return {
+        type: "event",
+        cleanedLine: `[${formatTime(timestamp)}] ${finalText}`,
+        event: {
+          id: eventId,
+          timestamp,
+          text: finalText,
+          rawText: cleanedText,
+          category: "team",
+          teamEventType: "try scored",
+        },
+      };
+    }
+
+    if (
+      normalized.includes("try conceded") ||
+      normalized.includes("opposition try")
+    ) {
+      const finalText = buildTeamEventText("try conceded");
+
+      return {
+        type: "event",
+        cleanedLine: `[${formatTime(timestamp)}] ${finalText}`,
+        event: {
+          id: eventId,
+          timestamp,
+          text: finalText,
+          rawText: cleanedText,
+          category: "team",
+          teamEventType: "try conceded",
+        },
+      };
+    }
+
+    return {
+      type: "review",
+      cleanedLine: `[${formatTime(timestamp)}] ${cleanedText}`,
+      reviewItem: {
+        id: Date.now() + 100000 + index,
+        rawText: cleanedText,
+        guessedText: cleanedText,
+        timestamp,
+        selectedPlayer: matchedPlayer || "",
+        selectedAction: action,
+      },
+    };
   };
 
   const cleanTranscriptForImport = () => {
@@ -1823,21 +2060,21 @@ export default function RugbyVoiceTaggingMVP() {
     let matchedLines = 0;
     let reviewLikelyLines = 0;
 
-    const cleanedLines = lines.map((line) => {
-      const { timestamp, text } = parseTranscriptTimestampFromLine(line);
-      const cleanedText = cleanTranscriptText(text);
-      const action = detectTranscriptAction(cleanedText);
-      const matchedPlayer = findMatchingPlayer(players, cleanedText);
+    const parsedItems = lines.map((line, index) => {
+      const parsed = parseTranscriptLineToEvent(line, index);
 
-      if (matchedPlayer && action) {
+      if (parsed.type === "event") {
         matchedLines += 1;
-        return buildTranscriptImportLine(timestamp, `${matchedPlayer} ${action}`);
+      } else {
+        reviewLikelyLines += 1;
       }
 
-      reviewLikelyLines += 1;
-      return buildTranscriptImportLine(timestamp, cleanedText);
+      return parsed;
     });
 
+    const cleanedLines = parsedItems.map((item) => item.cleanedLine);
+
+    setCleanedTranscriptItems(parsedItems);
     setCleanedTranscriptText(cleanedLines.join("\n"));
     setTranscriptCleanSummary({
       originalLines: lines.length,
@@ -1849,7 +2086,7 @@ export default function RugbyVoiceTaggingMVP() {
   };
 
   const importTranscriptText = (input: string) => {
-    if (!input.trim()) {
+    if (!input.trim() && cleanedTranscriptItems.length === 0) {
       setStatusMessage("Paste or upload a transcript first");
       return;
     }
@@ -1859,86 +2096,38 @@ export default function RugbyVoiceTaggingMVP() {
       return;
     }
 
-    const lines = input
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean);
-
-    if (lines.length === 0) {
-      setStatusMessage("No transcript lines found");
-      return;
-    }
-
     const nextEvents: EventItem[] = [];
     const nextReviewItems: ReviewItem[] = [];
 
-    const parseTimestampFromLine = (line: string) => {
-      const match = line.match(/^\[?(\d{1,2}):(\d{2})(?::(\d{2}))?\]?\s*-?\s*/);
-      if (!match) {
-        return { timestamp: 0, text: line, hadTimestamp: false };
-      }
+    if (cleanedTranscriptItems.length > 0) {
+      cleanedTranscriptItems.forEach((item) => {
+        if (item.type === "event") {
+          nextEvents.push(item.event);
+        } else {
+          nextReviewItems.push(item.reviewItem);
+        }
+      });
+    } else {
+      const lines = input
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
 
-      const first = Number(match[1]);
-      const second = Number(match[2]);
-      const third = match[3] ? Number(match[3]) : null;
-
-      const timestamp =
-        third === null ? first * 60 + second : first * 3600 + second * 60 + third;
-
-      return {
-        timestamp,
-        text: line.slice(match[0].length).trim(),
-        hadTimestamp: true,
-      };
-    };
-
-    const detectAction = (text: string): PlayerAction | "" => {
-      const normalized = normalizeForMatch(text);
-
-      if (normalized.includes("missed tackle") || normalized.includes("miss tackle")) {
-        return "missed tackle";
-      }
-      if (normalized.includes("turnover")) {
-        return "turnover";
-      }
-      if (normalized.includes("carry")) {
-        return "carry";
-      }
-      if (normalized.includes("tackle")) {
-        return "tackle";
-      }
-
-      return "";
-    };
-
-    lines.forEach((line, index) => {
-      const { timestamp, text } = parseTimestampFromLine(line);
-      const cleanedText = cleanTranscriptText(text);
-      const action = detectAction(cleanedText);
-      const matchedPlayer = findMatchingPlayer(players, cleanedText);
-
-      if (matchedPlayer && action) {
-        nextEvents.push({
-          id: Date.now() + index,
-          timestamp,
-          text: cleanTranscriptText(`${matchedPlayer} ${action}`),
-          rawText: cleanedText,
-          category: "player",
-          playerName: matchedPlayer,
-          playerAction: action,
-        });
+      if (lines.length === 0) {
+        setStatusMessage("No transcript lines found");
         return;
       }
 
-      nextReviewItems.push({
-        id: Date.now() + 100000 + index,
-        rawText: cleanedText,
-        guessedText: cleanedText,
-        timestamp,
-        selectedPlayer: matchedPlayer || "",
-        selectedAction: action,
+      lines.forEach((line, index) => {
+        const parsed = parseTranscriptLineToEvent(line, index);
+
+        if (parsed.type === "event") {
+          nextEvents.push(parsed.event);
+        } else {
+          nextReviewItems.push(parsed.reviewItem);
+        }
       });
-    });
+    }
 
     setEvents((prev) => [...prev, ...nextEvents]);
     setReviewQueue((prev) => [...prev, ...nextReviewItems]);
@@ -2537,7 +2726,7 @@ export default function RugbyVoiceTaggingMVP() {
                     Import transcript
                   </h3>
                   <p className="mt-1 text-sm text-muted">
-                    Paste transcript text or upload a .txt file. Timed lines will keep their timestamp. Untimed lines will import at 0:00 and still count for stats.
+                    Paste transcript text or upload a .txt file. Then press Clean Transcript so the app can sort player actions, team events, and set-piece moments before import. Timed lines keep their timestamp. Untimed lines import at 0:00 for now.
                   </p>
                 </div>
 
@@ -2554,6 +2743,7 @@ export default function RugbyVoiceTaggingMVP() {
                         const text = await file.text();
                         setTranscriptImportText(text);
                         setCleanedTranscriptText("");
+                        setCleanedTranscriptItems([]);
                         setTranscriptCleanSummary(null);
                         setStatusMessage(`Transcript file loaded: ${file.name}`);
                       } catch (error) {
@@ -2579,6 +2769,7 @@ export default function RugbyVoiceTaggingMVP() {
                         onChange={(e) => {
                           setTranscriptImportText(e.target.value);
                           setCleanedTranscriptText("");
+                          setCleanedTranscriptItems([]);
                           setTranscriptCleanSummary(null);
                         }}
                         className="min-h-[220px] w-full rounded-xl border border-border bg-panel px-3 py-3 text-sm text-foreground"
@@ -2671,6 +2862,7 @@ Ellie missed tackle"
                       onClick={() => {
                         setTranscriptImportText("");
                         setCleanedTranscriptText("");
+                        setCleanedTranscriptItems([]);
                         setTranscriptCleanSummary(null);
                       }}
                       className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground"
@@ -2680,7 +2872,7 @@ Ellie missed tackle"
                   </div>
 
                   <p className="text-sm text-muted">
-                    Best flow: paste transcript, press <span className="font-medium text-foreground">Clean Transcript</span>, check the cleaned preview, then press <span className="font-medium text-foreground">Import Cleaned Transcript</span>.
+                    Best flow: paste transcript, press <span className="font-medium text-foreground">Clean Transcript</span>, check the cleaned preview, then press <span className="font-medium text-foreground">Import Cleaned Transcript</span>. The cleaner now tries to sort player stats, scrum/lineout events, and team events before anything falls into Needs Review.
                   </p>
                 </div>
               </div>
