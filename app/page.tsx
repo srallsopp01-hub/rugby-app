@@ -1169,30 +1169,69 @@ export default function RugbyVoiceTaggingMVP() {
     );
   };
 
-  const saveReviewItem = (item: ReviewItem) => {
-    if (!item.selectedAction) {
+  const saveReviewItem = (
+    item: ReviewItem,
+    options?: { applyToAllMatching?: boolean }
+  ) => {
+    const selectedAction = item.selectedAction;
+    const selectedPlayer = item.selectedPlayer || "";
+    const normalizedRawText = (item.rawText || "").trim();
+
+    if (!selectedAction) {
       setStatusMessage("Choose an action before saving the review item");
       return;
     }
 
-    if (item.selectedPlayer) {
-      rememberCorrection(
-        item.rawText,
-        `${item.selectedPlayer} ${item.selectedAction}`
-      );
-      addStructuredPlayerEvent(
-        item.selectedPlayer,
-        item.selectedAction,
-        item.timestamp,
-        item.rawText
-      );
-    } else {
-      rememberCorrection(item.rawText, item.selectedAction);
-      addEvent(item.selectedAction, item.timestamp, item.rawText);
+    const matchingItems =
+      options?.applyToAllMatching && normalizedRawText
+        ? reviewQueue.filter(
+            (reviewItem) =>
+              (reviewItem.rawText || "").trim() === normalizedRawText
+          )
+        : [item];
+
+    const finalText = selectedPlayer
+      ? `${selectedPlayer} ${selectedAction}`
+      : selectedAction;
+
+    if (normalizedRawText) {
+      rememberCorrection(normalizedRawText, finalText);
     }
 
-    setReviewQueue((prev) => prev.filter((x) => x.id !== item.id));
-    setStatusMessage("Review item saved");
+    matchingItems.forEach((reviewItem) => {
+      const reviewRawText = (reviewItem.rawText || "").trim();
+
+      if (selectedPlayer) {
+        addStructuredPlayerEvent(
+          selectedPlayer,
+          selectedAction,
+          reviewItem.timestamp,
+          reviewRawText || undefined
+        );
+      } else {
+        addEvent(
+          selectedAction,
+          reviewItem.timestamp,
+          reviewRawText || undefined
+        );
+      }
+    });
+
+    const matchingIds = new Set(
+      matchingItems.map((reviewItem) => reviewItem.id)
+    );
+
+    setReviewQueue((prev) =>
+      prev.filter((reviewItem) => !matchingIds.has(reviewItem.id))
+    );
+
+    setStatusMessage(
+      options?.applyToAllMatching
+        ? `Saved ${matchingItems.length} matching review item${
+            matchingItems.length === 1 ? "" : "s"
+          }`
+        : "Review item saved"
+    );
   };
 
   const skipReviewItem = (id: number) => {
@@ -2132,6 +2171,9 @@ export default function RugbyVoiceTaggingMVP() {
     setEvents((prev) => [...prev, ...nextEvents]);
     setReviewQueue((prev) => [...prev, ...nextReviewItems]);
     setStats(null);
+    setCleanedTranscriptItems([]);
+    setCleanedTranscriptText("");
+    setTranscriptCleanSummary(null);
 
     setStatusMessage(
       `Transcript imported: ${nextEvents.length} event${
