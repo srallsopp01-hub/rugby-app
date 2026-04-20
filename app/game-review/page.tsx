@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import AppTopNav from "../rugby-tagging/components/AppTopNav";
 import GameReviewTimelinePanel from "../rugby-tagging/components/GameReviewTimelinePanel";
@@ -232,12 +231,12 @@ export default function GameReviewPage() {
       <div className="mx-auto max-w-[1900px] space-y-5">
         <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div>
+            <div className="max-w-3xl">
               <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
                 Team Review
               </h1>
               <p className="mt-2 text-sm text-muted">
-                Film review, transcript review, and coaching notes separated from live tagging.
+                Use this screen for film review, timestamped coaching notes, and transcript-based match review away from the live tagging workspace.
               </p>
             </div>
 
@@ -245,18 +244,49 @@ export default function GameReviewPage() {
           </div>
         </div>
 
+        <div className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="rounded-xl border border-border bg-panel-2 p-4">
+              <div className="text-sm font-medium text-foreground">1. Watch and pause</div>
+              <div className="mt-1 text-sm text-muted">
+                Review the match footage here with skip and speed controls.
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border bg-panel-2 p-4">
+              <div className="text-sm font-medium text-foreground">2. Add coaching notes</div>
+              <div className="mt-1 text-sm text-muted">
+                Capture timestamped observations for team meetings and review sessions.
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border bg-panel-2 p-4">
+              <div className="text-sm font-medium text-foreground">3. Use the timeline</div>
+              <div className="mt-1 text-sm text-muted">
+                Click transcript timestamps on the right to jump straight to that moment in the video.
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
           <section className="space-y-5 xl:col-span-8">
             <div className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
-              <div className="mb-4">
-                <h2 className="text-lg font-semibold text-foreground-strong">
-                  Match review video
-                </h2>
-                <p className="mt-1 text-sm text-muted">
-                  {[matchTitle || "Match", opponent ? `vs ${opponent}` : "", matchDate]
-                    .filter(Boolean)
-                    .join(" • ")}
-                </p>
+              <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground-strong">
+                    Match review video
+                  </h2>
+                  <p className="mt-1 text-sm text-muted">
+                    {[matchTitle || "Match", opponent ? `vs ${opponent}` : "", matchDate]
+                      .filter(Boolean)
+                      .join(" • ")}
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
+                  Click timeline timestamps to jump video
+                </div>
               </div>
 
               {videoSrc ? (
@@ -317,10 +347,24 @@ export default function GameReviewPage() {
                 </>
               ) : (
                 <div className="rounded-xl border border-border bg-panel-2 px-4 py-4 text-sm text-muted">
-                  No video is available in this session yet. Load a match video in the workspace first.
+                  <div className="font-medium text-foreground">No video available yet</div>
+                  <p className="mt-2">
+                    Load a match video in the Workspace first, then reopen Team Review. This page uses the current browser session video rather than cloud storage.
+                  </p>
                 </div>
               )}
             </div>
+
+            {coachNotes.length === 0 && (
+              <div className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
+                <h2 className="text-base font-semibold text-foreground-strong">
+                  No coaching notes yet
+                </h2>
+                <p className="mt-2 text-sm text-muted">
+                  Start adding timestamped review notes while you watch the video. These notes are useful for team meetings, feedback sessions, and post-match review.
+                </p>
+              </div>
+            )}
 
             <CoachReviewPanel
               currentTime={currentTime}
@@ -348,6 +392,15 @@ export default function GameReviewPage() {
           </section>
 
           <aside className="space-y-5 xl:col-span-4 xl:sticky xl:top-5 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto xl:pr-1">
+            <div className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
+              <h2 className="text-base font-semibold text-foreground-strong">
+                Review timeline
+              </h2>
+              <p className="mt-2 text-sm text-muted">
+                Use the transcript timeline to revisit match moments quickly. In this beta, Team Review works from the current saved session and current browser video.
+              </p>
+            </div>
+
             <GameReviewTimelinePanel
               events={events}
               showRawTranscript={showRawTranscript}
