@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import AppTopNav from "../rugby-tagging/components/AppTopNav";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getMatchVideoUrl } from "../rugby-tagging/lib/matchVideoSession";
@@ -38,6 +38,29 @@ type SavedSession = {
 };
 
 export default function PlayerDashboardPage() {
+  return (
+    <Suspense fallback={<PlayerDashboardLoading />}>
+      <PlayerDashboardContent />
+    </Suspense>
+  );
+}
+
+function PlayerDashboardLoading() {
+  return (
+    <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1900px] space-y-5">
+        <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+          <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
+            Player Dashboard
+          </h1>
+          <p className="mt-2 text-sm text-muted">Loading player dashboard...</p>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function PlayerDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const videoRef = useRef<HTMLVideoElement | null>(null);
