@@ -122,6 +122,13 @@ export default function RugbyVoiceTaggingMVP() {
   const [showReportSetupModal, setShowReportSetupModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [transcriptImportText, setTranscriptImportText] = useState("");
+  const [cleanedTranscriptText, setCleanedTranscriptText] = useState("");
+  const [transcriptCleanSummary, setTranscriptCleanSummary] = useState<{
+    originalLines: number;
+    cleanedLines: number;
+    matchedLines: number;
+    reviewLikelyLines: number;
+  } | null>(null);
 
   const [events, setEvents] = useState<EventItem[]>([]);
   const [voiceModeEnabled, setVoiceModeEnabled] = useState(false);
@@ -872,6 +879,8 @@ export default function RugbyVoiceTaggingMVP() {
     setSelectedPlayer("");
     setTeamSheetPaste("");
     setTranscriptImportText("");
+    setCleanedTranscriptText("");
+    setTranscriptCleanSummary(null);
     setShowTeamSheetModal(true);
     setShowReportSetupModal(false);
     setEvents([]);
@@ -1747,6 +1756,98 @@ export default function RugbyVoiceTaggingMVP() {
     setStatusMessage("Coach notes downloaded");
   };
 
+  const parseTranscriptTimestampFromLine = (line: string) => {
+    const match = line.match(/^\[?(\d{1,2}):(\d{2})(?::(\d{2}))?\]?\s*-?\s*/);
+    if (!match) {
+      return { timestamp: 0, text: line, hadTimestamp: false };
+    }
+
+    const first = Number(match[1]);
+    const second = Number(match[2]);
+    const third = match[3] ? Number(match[3]) : null;
+
+    const timestamp =
+      third === null ? first * 60 + second : first * 3600 + second * 60 + third;
+
+    return {
+      timestamp,
+      text: line.slice(match[0].length).trim(),
+      hadTimestamp: true,
+    };
+  };
+
+  const detectTranscriptAction = (text: string): PlayerAction | "" => {
+    const normalized = normalizeForMatch(text);
+
+    if (normalized.includes("missed tackle") || normalized.includes("miss tackle")) {
+      return "missed tackle";
+    }
+    if (normalized.includes("turnover")) {
+      return "turnover";
+    }
+    if (normalized.includes("carry")) {
+      return "carry";
+    }
+    if (normalized.includes("tackle")) {
+      return "tackle";
+    }
+
+    return "";
+  };
+
+  const buildTranscriptImportLine = (timestamp: number, text: string) => {
+    return `[${formatTime(timestamp)}] ${cleanTranscriptText(text)}`;
+  };
+
+  const cleanTranscriptForImport = () => {
+    if (!transcriptImportText.trim()) {
+      setStatusMessage("Paste or upload a transcript first");
+      return;
+    }
+
+    if (!playersReady) {
+      setStatusMessage("Load the team sheet before cleaning a transcript");
+      return;
+    }
+
+    const lines = transcriptImportText
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    if (lines.length === 0) {
+      setStatusMessage("No transcript lines found");
+      return;
+    }
+
+    let matchedLines = 0;
+    let reviewLikelyLines = 0;
+
+    const cleanedLines = lines.map((line) => {
+      const { timestamp, text } = parseTranscriptTimestampFromLine(line);
+      const cleanedText = cleanTranscriptText(text);
+      const action = detectTranscriptAction(cleanedText);
+      const matchedPlayer = findMatchingPlayer(players, cleanedText);
+
+      if (matchedPlayer && action) {
+        matchedLines += 1;
+        return buildTranscriptImportLine(timestamp, `${matchedPlayer} ${action}`);
+      }
+
+      reviewLikelyLines += 1;
+      return buildTranscriptImportLine(timestamp, cleanedText);
+    });
+
+    setCleanedTranscriptText(cleanedLines.join("\n"));
+    setTranscriptCleanSummary({
+      originalLines: lines.length,
+      cleanedLines: cleanedLines.length,
+      matchedLines,
+      reviewLikelyLines,
+    });
+    setStatusMessage("Transcript cleaned and ready to import");
+  };
+
   const importTranscriptText = (input: string) => {
     if (!input.trim()) {
       setStatusMessage("Paste or upload a transcript first");
@@ -2440,7 +2541,7 @@ export default function RugbyVoiceTaggingMVP() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-4">
                   <input
                     type="file"
                     accept=".txt,text/plain"
@@ -2452,6 +2553,8 @@ export default function RugbyVoiceTaggingMVP() {
                       try {
                         const text = await file.text();
                         setTranscriptImportText(text);
+                        setCleanedTranscriptText("");
+                        setTranscriptCleanSummary(null);
                         setStatusMessage(`Transcript file loaded: ${file.name}`);
                       } catch (error) {
                         console.error(error);
@@ -2460,31 +2563,125 @@ export default function RugbyVoiceTaggingMVP() {
                     }}
                   />
 
-                  <textarea
-                    value={transcriptImportText}
-                    onChange={(e) => setTranscriptImportText(e.target.value)}
-                    className="min-h-[180px] w-full rounded-xl border border-border bg-panel px-3 py-3 text-sm text-foreground"
-                    placeholder="Paste transcript here. Example:
+                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                    <div>
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <label className="text-sm font-medium text-foreground">
+                          Raw transcript
+                        </label>
+                        <span className="text-xs text-muted">
+                          Paste or upload first
+                        </span>
+                      </div>
+
+                      <textarea
+                        value={transcriptImportText}
+                        onChange={(e) => {
+                          setTranscriptImportText(e.target.value);
+                          setCleanedTranscriptText("");
+                          setTranscriptCleanSummary(null);
+                        }}
+                        className="min-h-[220px] w-full rounded-xl border border-border bg-panel px-3 py-3 text-sm text-foreground"
+                        placeholder="Paste transcript here. Example:
 [00:14] Ruby tackle
 [00:21] Marion carry
 Ellie missed tackle"
-                  />
+                      />
+                    </div>
+
+                    <div>
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <label className="text-sm font-medium text-foreground">
+                          Cleaned transcript preview
+                        </label>
+                        <span className="text-xs text-muted">
+                          Built for easier import
+                        </span>
+                      </div>
+
+                      <textarea
+                        value={cleanedTranscriptText}
+                        readOnly
+                        className="min-h-[220px] w-full rounded-xl border border-border bg-panel-2 px-3 py-3 text-sm text-foreground"
+                        placeholder="Press Clean Transcript to preview a cleaned version here"
+                      />
+                    </div>
+                  </div>
+
+                  {transcriptCleanSummary && (
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                      <div className="rounded-xl border border-border bg-panel px-3 py-3">
+                        <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
+                          Raw lines
+                        </div>
+                        <div className="mt-1 text-sm font-medium text-foreground">
+                          {transcriptCleanSummary.originalLines}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-border bg-panel px-3 py-3">
+                        <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
+                          Cleaned lines
+                        </div>
+                        <div className="mt-1 text-sm font-medium text-foreground">
+                          {transcriptCleanSummary.cleanedLines}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-border bg-panel px-3 py-3">
+                        <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
+                          Matched
+                        </div>
+                        <div className="mt-1 text-sm font-medium text-foreground">
+                          {transcriptCleanSummary.matchedLines}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-border bg-panel px-3 py-3">
+                        <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
+                          Review likely
+                        </div>
+                        <div className="mt-1 text-sm font-medium text-foreground">
+                          {transcriptCleanSummary.reviewLikelyLines}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex flex-wrap gap-2">
                     <button
-                      onClick={() => importTranscriptText(transcriptImportText)}
+                      onClick={cleanTranscriptForImport}
                       className="rounded-xl border border-border-light bg-panel-3 px-4 py-2.5 text-sm font-medium text-foreground"
                     >
-                      Import Transcript
+                      Clean Transcript
                     </button>
 
                     <button
-                      onClick={() => setTranscriptImportText("")}
+                      onClick={() =>
+                        importTranscriptText(
+                          cleanedTranscriptText || transcriptImportText
+                        )
+                      }
+                      className="rounded-xl border border-border-light bg-panel-3 px-4 py-2.5 text-sm font-medium text-foreground"
+                    >
+                      Import Cleaned Transcript
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setTranscriptImportText("");
+                        setCleanedTranscriptText("");
+                        setTranscriptCleanSummary(null);
+                      }}
                       className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground"
                     >
                       Clear
                     </button>
                   </div>
+
+                  <p className="text-sm text-muted">
+                    Best flow: paste transcript, press <span className="font-medium text-foreground">Clean Transcript</span>, check the cleaned preview, then press <span className="font-medium text-foreground">Import Cleaned Transcript</span>.
+                  </p>
                 </div>
               </div>
             </div>
