@@ -93,6 +93,8 @@ type CoachReviewNote = {
   rawText?: string;
 };
 
+const HELP_DISMISSED_KEY = "rugby-tagging-help-dismissed";
+
 export default function RugbyVoiceTaggingMVP() {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -118,6 +120,7 @@ export default function RugbyVoiceTaggingMVP() {
   const [showTeamSheetModal, setShowTeamSheetModal] = useState(true);
   const [teamSheetPaste, setTeamSheetPaste] = useState("");
   const [showReportSetupModal, setShowReportSetupModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const [transcriptImportText, setTranscriptImportText] = useState("");
 
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -682,14 +685,21 @@ export default function RugbyVoiceTaggingMVP() {
       const raw = localStorage.getItem(CORRECTION_MEMORY_KEY);
       if (!raw) {
         setLearnedCorrections(DEFAULT_LEARNED_CORRECTIONS);
-        return;
+      } else {
+        const saved = JSON.parse(raw);
+        setLearnedCorrections(saved || DEFAULT_LEARNED_CORRECTIONS);
       }
-
-      const saved = JSON.parse(raw);
-      setLearnedCorrections(saved || DEFAULT_LEARNED_CORRECTIONS);
     } catch (error) {
       console.error("Failed to load correction memory", error);
       setLearnedCorrections(DEFAULT_LEARNED_CORRECTIONS);
+    }
+
+    try {
+      const helpDismissed = localStorage.getItem(HELP_DISMISSED_KEY);
+      setShowHelpModal(helpDismissed !== "true");
+    } catch (error) {
+      console.error("Failed to load help modal state", error);
+      setShowHelpModal(true);
     }
   }, []);
 
@@ -814,6 +824,20 @@ export default function RugbyVoiceTaggingMVP() {
     setShowReportBuilder(false);
     blurActiveElement();
     setStatusMessage("Team sheet loaded");
+  };
+
+  const closeHelpModal = () => {
+    setShowHelpModal(false);
+
+    try {
+      localStorage.setItem(HELP_DISMISSED_KEY, "true");
+    } catch (error) {
+      console.error("Failed to save help modal state", error);
+    }
+  };
+
+  const reopenHelpModal = () => {
+    setShowHelpModal(true);
   };
 
   const startNewMatch = () => {
@@ -2079,6 +2103,120 @@ export default function RugbyVoiceTaggingMVP() {
         }}
       />
 
+      {showHelpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-border bg-panel p-6 shadow-[var(--shadow-soft)]">
+            <div className="mb-4">
+              <h2 className="text-2xl font-semibold text-foreground-strong">
+                Welcome to the Rugby Analysis beta
+              </h2>
+              <p className="mt-2 text-sm text-muted">
+                This is an early coach beta built for desktop and laptop use. It is designed to help coaches tag matches, review video, and build player and team analysis faster.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-border bg-panel-2 p-4">
+                <h3 className="text-base font-semibold text-foreground-strong">
+                  What this app currently does
+                </h3>
+                <ul className="mt-3 space-y-2 text-sm text-muted">
+                  <li>• Upload a match video and review it inside the app</li>
+                  <li>• Build a team sheet and match-day roster</li>
+                  <li>• Tag player events such as tackles, missed tackles, carries, and turnovers</li>
+                  <li>• Import transcript text from pasted notes or a .txt file</li>
+                  <li>• Log lineouts, scrums, penalties, and tries</li>
+                  <li>• Open separate Team Review, Team Analytics, and Player Dashboard screens</li>
+                  <li>• Save and reopen matches on the same browser and device</li>
+                </ul>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-panel-2 p-4">
+                <h3 className="text-base font-semibold text-foreground-strong">
+                  Best workflow
+                </h3>
+                <ul className="mt-3 space-y-2 text-sm text-muted">
+                  <li>• Start by loading your team sheet</li>
+                  <li>• Add match title, opponent, and date</li>
+                  <li>• Upload the match video</li>
+                  <li>• Use Stat Mode for tagging player and team events</li>
+                  <li>• Use Game Review Mode for coaching notes and phase review</li>
+                  <li>• Resolve anything in Needs Review before submitting the report</li>
+                  <li>• Then open Team Review or Team Analytics</li>
+                </ul>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-panel-2 p-4">
+                <h3 className="text-base font-semibold text-foreground-strong">
+                  Important beta limitations
+                </h3>
+                <ul className="mt-3 space-y-2 text-sm text-muted">
+                  <li>• Saved matches are currently stored in the browser on the same device only</li>
+                  <li>• This is not yet cloud storage or a full coach account system</li>
+                  <li>• Player share links and multi-user team access are not live yet</li>
+                  <li>• Transcript import works, but untimed lines currently import at 0:00</li>
+                  <li>• Voice tagging is still a beta workflow and works best with a clear microphone and reduced background noise</li>
+                </ul>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-panel-2 p-4">
+                <h3 className="text-base font-semibold text-foreground-strong">
+                  Best practices
+                </h3>
+                <ul className="mt-3 space-y-2 text-sm text-muted">
+                  <li>• Use on desktop or laptop rather than mobile</li>
+                  <li>• Keep match names clear so saved matches are easy to find</li>
+                  <li>• Check player minutes before opening the next screen</li>
+                  <li>• Review transcript lines and correction items before final analysis</li>
+                  <li>• Use this as a working beta tool, not yet as a final shared player platform</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-border bg-panel-2 p-4">
+              <h3 className="text-base font-semibold text-foreground-strong">
+                What each screen is for
+              </h3>
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
+                <div className="rounded-xl border border-border bg-panel p-3">
+                  <div className="font-medium text-foreground">Workspace</div>
+                  <div className="mt-1 text-sm text-muted">
+                    Main tagging screen for video, transcript, roster, and live event logging.
+                  </div>
+                </div>
+                <div className="rounded-xl border border-border bg-panel p-3">
+                  <div className="font-medium text-foreground">Team Review</div>
+                  <div className="mt-1 text-sm text-muted">
+                    Separate review screen for video-based team review and coaching notes.
+                  </div>
+                </div>
+                <div className="rounded-xl border border-border bg-panel p-3">
+                  <div className="font-medium text-foreground">Team Analytics</div>
+                  <div className="mt-1 text-sm text-muted">
+                    Cleaner team analysis screen without video, built for reviewing team and player output.
+                  </div>
+                </div>
+                <div className="rounded-xl border border-border bg-panel p-3">
+                  <div className="font-medium text-foreground">Saved Matches</div>
+                  <div className="mt-1 text-sm text-muted">
+                    Reopen or delete matches that were saved on this browser and device.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <button
+                onClick={closeHelpModal}
+                className="rounded-xl border border-border-light bg-panel-3 px-5 py-2.5 text-sm font-medium text-foreground"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <PlayerDrilldownModal
         show={showPlayerDrilldownModal}
         playerName={drilldownPlayerName}
@@ -2184,10 +2322,19 @@ export default function RugbyVoiceTaggingMVP() {
                 </p>
               </div>
 
-              <AppTopNav
-                current="workspace"
-                onStartNewMatch={startNewMatch}
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={reopenHelpModal}
+                  className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground"
+                >
+                  Help
+                </button>
+
+                <AppTopNav
+                  current="workspace"
+                  onStartNewMatch={startNewMatch}
+                />
+              </div>
             </div>
 
             <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-6">
