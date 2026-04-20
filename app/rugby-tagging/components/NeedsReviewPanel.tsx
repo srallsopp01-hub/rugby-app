@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { formatTime, getClosestPlayers } from "../helpers";
 import type { ReviewItem } from "../types";
 
@@ -7,7 +8,10 @@ type NeedsReviewPanelProps = {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   onJumpToTimestamp: (timestamp: number) => void;
   onUpdateReviewItem: (id: number, updates: Partial<ReviewItem>) => void;
-  onSaveReviewItem: (item: ReviewItem) => void;
+  onSaveReviewItem: (
+    item: ReviewItem,
+    options?: { applyToAllMatching?: boolean }
+  ) => void;
   onSkipReviewItem: (id: number) => void;
 };
 
@@ -19,6 +23,8 @@ export default function NeedsReviewPanel({
   onSaveReviewItem,
   onSkipReviewItem,
 }: NeedsReviewPanelProps) {
+  const [applyToAllMap, setApplyToAllMap] = useState<Record<number, boolean>>({});
+
   return (
     <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-panel)]">
       <div className="mb-3 flex items-center justify-between">
@@ -114,19 +120,40 @@ export default function NeedsReviewPanel({
                 </select>
               </div>
 
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  onClick={() => onSaveReviewItem(item)}
-                  className="rounded-xl border border-border-light bg-panel-3 px-4 py-2.5 text-sm font-medium text-foreground"
-                >
-                  Save tag
-                </button>
-                <button
-                  onClick={() => onSkipReviewItem(item.id)}
-                  className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground"
-                >
-                  Skip
-                </button>
+              <div className="mt-3 space-y-3">
+                <label className="flex items-center gap-2 text-sm text-muted">
+                  <input
+                    type="checkbox"
+                    checked={!!applyToAllMap[item.id]}
+                    onChange={(e) =>
+                      setApplyToAllMap((prev) => ({
+                        ...prev,
+                        [item.id]: e.target.checked,
+                      }))
+                    }
+                    className="h-4 w-4 rounded border-border bg-panel"
+                  />
+                  Apply to all matching raw text
+                </label>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() =>
+                      onSaveReviewItem(item, {
+                        applyToAllMatching: !!applyToAllMap[item.id],
+                      })
+                    }
+                    className="rounded-xl border border-border-light bg-panel-3 px-4 py-2.5 text-sm font-medium text-foreground"
+                  >
+                    Save tag
+                  </button>
+                  <button
+                    onClick={() => onSkipReviewItem(item.id)}
+                    className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground"
+                  >
+                    Skip
+                  </button>
+                </div>
               </div>
             </div>
           );
