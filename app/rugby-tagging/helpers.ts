@@ -10,6 +10,7 @@ import type {
   SetPieceSide,
   SetPieceType,
   TeamEventType,
+  UnitSummaryRow,
 } from "./types";
 
 export function formatTime(sec: number) {
@@ -526,4 +527,218 @@ export function buildSetPieceText(event: {
 
 export function buildTeamEventText(type: TeamEventType) {
   return titleCase(type);
+}
+
+// ── Shared match-level computations ────────────────────────────────────────
+// These helpers take an events array + roster and produce the same
+// derived values that team-dashboard/page.tsx used to compute inline.
+// Used by the Team Analytics page and by the .xlsx export so the numbers
+// always match.
+
+export type MatchTotals = {
+  minutes: number;
+  tackles: number;
+  missed: number;
+  carries: number;
+  turnovers: number;
+  involvements: number;
+};
+
+export type SetPieceSummary = {
+  ownLineouts: EventItem[];
+  ownScrums: EventItem[];
+  ownLineoutSuccessPct: number;
+  ownScrumSuccessPct: number;
+};
+
+export type TeamEventSummary = {
+  penaltiesConceded: number;
+  triesScored: number;
+  triesConceded: number;
+};
+
+export function buildReportRowsFromMatch(
+  rosterRows: RosterRow[],
+  events: EventItem[]
+): ReportRow[] {
+  const players = rosterRows.map((row) => row.name.trim()).filter(Boolean);
+  const baseStats = buildBasicStats(players, events);
+
+  return rosterRows
+    .filter((row) => row.name.trim())
+    .map((row) => {
+      const name = row.name.trim();
+      const playerStats = baseStats[name] || {
+        tackles: 0,
+        missed: 0,
+        carries: 0,
+        turnovers: 0,
+      };
+
+      const minutes = typeof row.minutes === "number" ? row.minutes : 0;
+      const involvements =
+        playerStats.tackles +
+        playerStats.missed +
+        playerStats.carries +
+        playerStats.turnovers;
+
+      const tacklePct =
+        playerStats.tackles + playerStats.missed > 0
+          ? (playerStats.tackles /
+              (playerStats.tackles + playerStats.missed)) *
+            100
+          : 0;
+
+      const tacklesPerMin = minutes > 0 ? playerStats.tackles / minutes : 0;
+      const carriesPerMin = minutes > 0 ? playerStats.carries / minutes : 0;
+      const involvementsPerMin = minutes > 0 ? involvements / minutes : 0;
+
+      const tacklePctGrade = gradeTacklePct(tacklePct);
+      const tacklesPerMinGrade = gradeTacklesPerMin(tacklesPerMin);
+      const carriesPerMinGrade = gradeCarriesPerMin(carriesPerMin);
+      const workRateGrade = gradeInvPerMin(involvementsPerMin);
+      const turnoverGrade = gradeTurnovers(playerStats.turnovers);
+
+      const overallScore =
+        (gradeToScore(tacklePctGrade) +
+          gradeToScore(tacklesPerMinGrade) +
+          gradeToScore(carriesPerMinGrade) +
+          gradeToScore(workRateGrade) +
+          gradeToScore(turnoverGrade)) /
+        5;
+
+      const overallGrade = scoreToGrade(overallScore);
+
+      const reportRow: ReportRow = {
+        number: row.number,
+        name,
+        position: row.position,
+        unit: getUnitFromPosition(row.position),
+        minutes,
+        tackles: playerStats.tackles,
+        missed: playerStats.missed,
+        carries: playerStats.carries,
+        turnovers: playerStats.turnovers,
+        involvements,
+        tacklePct,
+        tacklesPerMin,
+        carriesPerMin,
+        involvementsPerMin,
+        tacklePctGrade,
+        tacklesPerMinGrade,
+        carriesPerMinGrade,
+        workRateGrade,
+        overallGrade,
+        coachComment: "",
+      };
+
+      reportRow.coachComment = buildCoachComment(reportRow);
+      return reportRow;
+    });
+}
+
+export function buildTeamTotals(reportRows: ReportRow[]): MatchTotals {
+  return reportRows.reduce<MatchTotals>(
+    (acc, row) => {
+      acc.minutes += row.minutes;
+      acc.tackles += row.tackles;
+      acc.missed += row.missed;
+      acc.carries += row.carries;
+      acc.turnovers += row.turnovers;
+      acc.involvements += row.involvements;
+      return acc;
+    },
+    { minutes: 0, tackles: 0, missed: 0, carries: 0, turnovers: 0, involvements: 0 }
+  );
+}
+
+export function buildUnitSummaryRows(reportRows: ReportRow[]): UnitSummaryRow[] {
+  const unitOrder = [
+    "Front Row",
+    "Locks",
+    "Back Row",
+    "Half Backs",
+    "Inside Backs",
+    "Outside Backs",
+    "Bench",
+  ];
+
+  return unitOrder
+    .map((unit) => {
+      const rows = reportRows.filter((row) => row.unit === unit);
+      if (rows.length === 0) return null;
+
+      return {
+        unit,
+        players: rows.length,
+        avgTacklesPerMin:
+          rows.reduce((acc, row) => acc + row.tacklesPerMin, 0) / rows.length,
+        avgCarriesPerMin:
+          rows.reduce((acc, row) => acc + row.carriesPerMin, 0) / rows.length,
+        avgInvolvementsPerMin:
+          rows.reduce((acc, row) => acc + row.involvementsPerMin, 0) / rows.length,
+      } as UnitSummaryRow;
+    })
+    .filter(Boolean) as UnitSummaryRow[];
+}
+
+export function buildSetPieceSummary(events: EventItem[]): SetPieceSummary {
+  const lineouts = events.filter(
+    (event) =>
+      !event.isPending &&
+      event.category === "set-piece" &&
+      event.setPieceType === "lineout"
+  );
+
+  const scrums = events.filter(
+    (event) =>
+      !event.isPending &&
+      event.category === "set-piece" &&
+      event.setPieceType === "scrum"
+  );
+
+  const ownLineouts = lineouts.filter((event) => event.setPieceSide !== undefined);
+  const ownScrums = scrums.filter((event) => event.setPieceSide !== undefined);
+
+  const ownLineoutWon = ownLineouts.filter(
+    (event) => event.lineoutResult === "Won"
+  ).length;
+
+  const ownScrumWon = ownScrums.filter(
+    (event) =>
+      event.scrumResult === "Won" || event.scrumResult === "Penalty For"
+  ).length;
+
+  return {
+    ownLineouts,
+    ownScrums,
+    ownLineoutSuccessPct:
+      ownLineouts.length > 0 ? (ownLineoutWon / ownLineouts.length) * 100 : 0,
+    ownScrumSuccessPct:
+      ownScrums.length > 0 ? (ownScrumWon / ownScrums.length) * 100 : 0,
+  };
+}
+
+export function buildTeamEventSummary(events: EventItem[]): TeamEventSummary {
+  const teamEvents = events.filter(
+    (event) => !event.isPending && event.category === "team"
+  );
+
+  return {
+    penaltiesConceded: teamEvents.filter(
+      (event) => event.teamEventType === "penalty conceded"
+    ).length,
+    triesScored: teamEvents.filter(
+      (event) => event.teamEventType === "try scored"
+    ).length,
+    triesConceded: teamEvents.filter(
+      (event) => event.teamEventType === "try conceded"
+    ).length,
+  };
+}
+
+export function teamTacklePctFromTotals(totals: MatchTotals): number {
+  return totals.tackles + totals.missed > 0
+    ? (totals.tackles / (totals.tackles + totals.missed)) * 100
+    : 0;
 }

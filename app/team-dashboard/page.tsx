@@ -9,25 +9,22 @@ import {
   getSavedMatchById,
 } from "../rugby-tagging/lib/savedMatches";
 import { STORAGE_KEY } from "../rugby-tagging/constants";
+import { generateTeamAnalyticsWorkbook } from "../rugby-tagging/lib/exports/teamAnalyticsExport";
+import { downloadWorkbook } from "../rugby-tagging/lib/exports/downloadWorkbook";
 import {
-  buildBasicStats,
-  buildCoachComment,
-  getUnitFromPosition,
-  gradeCarriesPerMin,
-  gradeInvPerMin,
-  gradeTacklePct,
-  gradeTacklesPerMin,
-  gradeToScore,
-  gradeTurnovers,
+  buildReportRowsFromMatch,
+  buildSetPieceSummary,
+  buildTeamEventSummary,
+  buildTeamTotals,
+  buildUnitSummaryRows,
   hydrateRosterRows,
   isForwardPosition,
-  scoreToGrade,
+  teamTacklePctFromTotals,
 } from "../rugby-tagging/helpers";
 import type {
   EventItem,
   ReportRow,
   RosterRow,
-  UnitSummaryRow,
 } from "../rugby-tagging/types";
 
 export default function TeamDashboardPage() {
@@ -44,205 +41,28 @@ export default function TeamDashboardPage() {
     [rosterRows]
   );
 
-  const reportRows = useMemo(() => {
-    const baseStats = buildBasicStats(players, events);
-
-    return rosterRows
-      .filter((row) => row.name.trim())
-      .map((row) => {
-        const name = row.name.trim();
-        const playerStats = baseStats[name] || {
-          tackles: 0,
-          missed: 0,
-          carries: 0,
-          turnovers: 0,
-        };
-
-        const minutes = typeof row.minutes === "number" ? row.minutes : 0;
-        const involvements =
-          playerStats.tackles +
-          playerStats.missed +
-          playerStats.carries +
-          playerStats.turnovers;
-
-        const tacklePct =
-          playerStats.tackles + playerStats.missed > 0
-            ? (playerStats.tackles /
-                (playerStats.tackles + playerStats.missed)) *
-              100
-            : 0;
-
-        const tacklesPerMin = minutes > 0 ? playerStats.tackles / minutes : 0;
-        const carriesPerMin = minutes > 0 ? playerStats.carries / minutes : 0;
-        const involvementsPerMin = minutes > 0 ? involvements / minutes : 0;
-
-        const tacklePctGrade = gradeTacklePct(tacklePct);
-        const tacklesPerMinGrade = gradeTacklesPerMin(tacklesPerMin);
-        const carriesPerMinGrade = gradeCarriesPerMin(carriesPerMin);
-        const workRateGrade = gradeInvPerMin(involvementsPerMin);
-        const turnoverGrade = gradeTurnovers(playerStats.turnovers);
-
-        const overallScore =
-          (gradeToScore(tacklePctGrade) +
-            gradeToScore(tacklesPerMinGrade) +
-            gradeToScore(carriesPerMinGrade) +
-            gradeToScore(workRateGrade) +
-            gradeToScore(turnoverGrade)) /
-          5;
-
-        const overallGrade = scoreToGrade(overallScore);
-
-        const reportRow: ReportRow = {
-          number: row.number,
-          name,
-          position: row.position,
-          unit: getUnitFromPosition(row.position),
-          minutes,
-          tackles: playerStats.tackles,
-          missed: playerStats.missed,
-          carries: playerStats.carries,
-          turnovers: playerStats.turnovers,
-          involvements,
-          tacklePct,
-          tacklesPerMin,
-          carriesPerMin,
-          involvementsPerMin,
-          tacklePctGrade,
-          tacklesPerMinGrade,
-          carriesPerMinGrade,
-          workRateGrade,
-          overallGrade,
-          coachComment: "",
-        };
-
-        reportRow.coachComment = buildCoachComment(reportRow);
-        return reportRow;
-      });
-  }, [rosterRows, events, players]);
+  const reportRows = useMemo(
+    () => buildReportRowsFromMatch(rosterRows, events),
+    [rosterRows, events]
+  );
 
   const forwardsRows = useMemo(
     () => reportRows.filter((row) => isForwardPosition(row.position)),
     [reportRows]
   );
 
-  const unitSummaryRows = useMemo(() => {
-    const unitOrder = [
-      "Front Row",
-      "Locks",
-      "Back Row",
-      "Half Backs",
-      "Inside Backs",
-      "Outside Backs",
-      "Bench",
-    ];
+  const unitSummaryRows = useMemo(
+    () => buildUnitSummaryRows(reportRows),
+    [reportRows]
+  );
 
-    return unitOrder
-      .map((unit) => {
-        const rows = reportRows.filter((row) => row.unit === unit);
-        if (rows.length === 0) return null;
+  const teamTotals = useMemo(() => buildTeamTotals(reportRows), [reportRows]);
 
-        return {
-          unit,
-          players: rows.length,
-          avgTacklesPerMin:
-            rows.reduce((acc, row) => acc + row.tacklesPerMin, 0) / rows.length,
-          avgCarriesPerMin:
-            rows.reduce((acc, row) => acc + row.carriesPerMin, 0) / rows.length,
-          avgInvolvementsPerMin:
-            rows.reduce((acc, row) => acc + row.involvementsPerMin, 0) /
-            rows.length,
-        } as UnitSummaryRow;
-      })
-      .filter(Boolean) as UnitSummaryRow[];
-  }, [reportRows]);
+  const setPieceSummary = useMemo(() => buildSetPieceSummary(events), [events]);
 
-  const teamTotals = useMemo(() => {
-    return reportRows.reduce(
-      (acc, row) => {
-        acc.minutes += row.minutes;
-        acc.tackles += row.tackles;
-        acc.missed += row.missed;
-        acc.carries += row.carries;
-        acc.turnovers += row.turnovers;
-        acc.involvements += row.involvements;
-        return acc;
-      },
-      {
-        minutes: 0,
-        tackles: 0,
-        missed: 0,
-        carries: 0,
-        turnovers: 0,
-        involvements: 0,
-      }
-    );
-  }, [reportRows]);
+  const teamEventSummary = useMemo(() => buildTeamEventSummary(events), [events]);
 
-  const setPieceSummary = useMemo(() => {
-    const lineouts = events.filter(
-      (event) =>
-        !event.isPending &&
-        event.category === "set-piece" &&
-        event.setPieceType === "lineout"
-    );
-
-    const scrums = events.filter(
-      (event) =>
-        !event.isPending &&
-        event.category === "set-piece" &&
-        event.setPieceType === "scrum"
-    );
-
-    const ownLineouts = lineouts.filter(
-      (event) => event.setPieceSide !== undefined
-    );
-    const ownScrums = scrums.filter(
-      (event) => event.setPieceSide !== undefined
-    );
-
-    const ownLineoutWon = ownLineouts.filter(
-      (event) => event.lineoutResult === "Won"
-    ).length;
-
-    const ownScrumWon = ownScrums.filter(
-      (event) =>
-        event.scrumResult === "Won" || event.scrumResult === "Penalty For"
-    ).length;
-
-    return {
-      ownLineouts,
-      ownScrums,
-      ownLineoutSuccessPct:
-        ownLineouts.length > 0
-          ? (ownLineoutWon / ownLineouts.length) * 100
-          : 0,
-      ownScrumSuccessPct:
-        ownScrums.length > 0 ? (ownScrumWon / ownScrums.length) * 100 : 0,
-    };
-  }, [events]);
-
-  const teamEventSummary = useMemo(() => {
-    const teamEvents = events.filter(
-      (event) => !event.isPending && event.category === "team"
-    );
-
-    return {
-      penaltiesConceded: teamEvents.filter(
-        (event) => event.teamEventType === "penalty conceded"
-      ).length,
-      triesScored: teamEvents.filter(
-        (event) => event.teamEventType === "try scored"
-      ).length,
-      triesConceded: teamEvents.filter(
-        (event) => event.teamEventType === "try conceded"
-      ).length,
-    };
-  }, [events]);
-
-  const teamTacklePct =
-    teamTotals.tackles + teamTotals.missed > 0
-      ? (teamTotals.tackles / (teamTotals.tackles + teamTotals.missed)) * 100
-      : 0;
+  const teamTacklePct = teamTacklePctFromTotals(teamTotals);
 
   const bestDefender = useMemo(() => {
     if (reportRows.length === 0) return null;
@@ -635,6 +455,39 @@ export default function TeamDashboardPage() {
                 className="rounded-xl border border-border bg-panel-2 px-4 py-2 text-sm font-medium text-foreground transition hover:bg-panel disabled:cursor-not-allowed disabled:opacity-40"
               >
                 ↓ Download Player Stats (.csv)
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const blob = await generateTeamAnalyticsWorkbook({
+                      matchTitle,
+                      opponent,
+                      matchDate,
+                      reportRows,
+                      forwardsRows,
+                      unitSummaryRows,
+                      teamTotals,
+                      teamTacklePct,
+                      setPieceSummary,
+                      teamEventSummary,
+                      bestDefender,
+                      bestCarrier,
+                      mostInvolved,
+                      gameCoachingComment,
+                      gameFlowSummary,
+                      headlineInsights,
+                    });
+                    const safeTitle =
+                      (matchTitle || "match-report").replace(/[^a-z0-9-_]+/gi, "_");
+                    downloadWorkbook(blob, `${safeTitle}_TeamReport.xlsx`);
+                  } catch (error) {
+                    console.error("Failed to generate workbook", error);
+                  }
+                }}
+                disabled={reportRows.length === 0}
+                className="rounded-xl border border-border bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                ↓ Download Full Report (.xlsx)
               </button>
             </div>
           </div>
