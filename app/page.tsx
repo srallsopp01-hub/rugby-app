@@ -169,6 +169,7 @@ export default function RugbyVoiceTaggingMVP() {
   const [coachNoteDraft, setCoachNoteDraft] = useState("");
   const [coachRawDraft, setCoachRawDraft] = useState("");
   const [showCoachRawInput, setShowCoachRawInput] = useState(false);
+const [showTranscriptImport, setShowTranscriptImport] = useState(false);
 
   const players = rosterRows.map((row) => row.name.trim()).filter(Boolean);
   const playersText = players.join("\n");
@@ -2762,162 +2763,138 @@ export default function RugbyVoiceTaggingMVP() {
                 />
               </div>
 
-              <div className="mt-5 rounded-2xl border border-border bg-panel-2 p-4">
-                <div className="mb-3">
-                  <h3 className="text-base font-semibold text-foreground-strong">
-                    Import transcript
-                  </h3>
-                  <p className="mt-1 text-sm text-muted">
-                    Paste transcript text or upload a .txt file. Then press Clean Transcript so the app can sort player actions, team events, and set-piece moments before import. Timed lines keep their timestamp. Untimed lines import at 0:00 for now.
-                  </p>
-                </div>
+             <div className="mt-5">
+  <button
+    onClick={() => setShowTranscriptImport((prev) => !prev)}
+    className="flex w-full items-center justify-between rounded-2xl border border-border bg-panel-2 px-4 py-3 text-left"
+  >
+    <div>
+      <span className="text-sm font-semibold text-foreground">Import transcript</span>
+      <span className="ml-3 text-xs text-muted">
+        {showTranscriptImport ? "Hide" : "Paste or upload a .txt file to import match events"}
+      </span>
+    </div>
+    <span className="text-sm text-muted">{showTranscriptImport ? "▲" : "▼"}</span>
+  </button>
 
-                <div className="grid grid-cols-1 gap-4">
-                  <input
-                    type="file"
-                    accept=".txt,text/plain"
-                    className="block w-full cursor-pointer text-sm text-muted file:mr-4 file:rounded-lg file:border file:border-border-light file:bg-panel-3 file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
+  {showTranscriptImport && (
+    <div className="mt-2 rounded-2xl border border-border bg-panel-2 p-4">
+      <p className="mb-4 text-sm text-muted">
+        Paste transcript text or upload a .txt file. Then press Clean Transcript so the app can sort player actions, team events, and set-piece moments before import. Timed lines keep their timestamp. Untimed lines import at 0:00 for now.
+      </p>
 
-                      try {
-                        const text = await file.text();
-                        setTranscriptImportText(text);
-                        setCleanedTranscriptText("");
-                        setCleanedTranscriptItems([]);
-                        setTranscriptCleanSummary(null);
-                        setStatusMessage(`Transcript file loaded: ${file.name}`);
-                      } catch (error) {
-                        console.error(error);
-                        setStatusMessage("Could not read transcript file");
-                      }
-                    }}
-                  />
+      <div className="grid grid-cols-1 gap-4">
+        <input
+          type="file"
+          accept=".txt,text/plain"
+          className="block w-full cursor-pointer text-sm text-muted file:mr-4 file:rounded-lg file:border file:border-border-light file:bg-panel-3 file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            try {
+              const text = await file.text();
+              setTranscriptImportText(text);
+              setCleanedTranscriptText("");
+              setCleanedTranscriptItems([]);
+              setTranscriptCleanSummary(null);
+              setStatusMessage(`Transcript file loaded: ${file.name}`);
+            } catch (error) {
+              console.error(error);
+              setStatusMessage("Could not read transcript file");
+            }
+          }}
+        />
 
-                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                    <div>
-                      <div className="mb-2 flex items-center justify-between gap-2">
-                        <label className="text-sm font-medium text-foreground">
-                          Raw transcript
-                        </label>
-                        <span className="text-xs text-muted">
-                          Paste or upload first
-                        </span>
-                      </div>
-
-                      <textarea
-                        value={transcriptImportText}
-                        onChange={(e) => {
-                          setTranscriptImportText(e.target.value);
-                          setCleanedTranscriptText("");
-                          setCleanedTranscriptItems([]);
-                          setTranscriptCleanSummary(null);
-                        }}
-                        className="min-h-[220px] w-full rounded-xl border border-border bg-panel px-3 py-3 text-sm text-foreground"
-                        placeholder="Paste transcript here. Example:
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <div>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <label className="text-sm font-medium text-foreground">Raw transcript</label>
+              <span className="text-xs text-muted">Paste or upload first</span>
+            </div>
+            <textarea
+              value={transcriptImportText}
+              onChange={(e) => {
+                setTranscriptImportText(e.target.value);
+                setCleanedTranscriptText("");
+                setCleanedTranscriptItems([]);
+                setTranscriptCleanSummary(null);
+              }}
+              className="min-h-[220px] w-full rounded-xl border border-border bg-panel px-3 py-3 text-sm text-foreground"
+              placeholder="Paste transcript here. Example:
 [00:14] Ruby tackle
 [00:21] Marion carry
 Ellie missed tackle"
-                      />
-                    </div>
+            />
+          </div>
 
-                    <div>
-                      <div className="mb-2 flex items-center justify-between gap-2">
-                        <label className="text-sm font-medium text-foreground">
-                          Cleaned transcript preview
-                        </label>
-                        <span className="text-xs text-muted">
-                          Built for easier import
-                        </span>
-                      </div>
+          <div>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <label className="text-sm font-medium text-foreground">Cleaned transcript preview</label>
+              <span className="text-xs text-muted">Built for easier import</span>
+            </div>
+            <textarea
+              value={cleanedTranscriptText}
+              readOnly
+              className="min-h-[220px] w-full rounded-xl border border-border bg-panel-2 px-3 py-3 text-sm text-foreground"
+              placeholder="Press Clean Transcript to preview a cleaned version here"
+            />
+          </div>
+        </div>
 
-                      <textarea
-                        value={cleanedTranscriptText}
-                        readOnly
-                        className="min-h-[220px] w-full rounded-xl border border-border bg-panel-2 px-3 py-3 text-sm text-foreground"
-                        placeholder="Press Clean Transcript to preview a cleaned version here"
-                      />
-                    </div>
-                  </div>
+        {transcriptCleanSummary && (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="rounded-xl border border-border bg-panel px-3 py-3">
+              <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">Raw lines</div>
+              <div className="mt-1 text-sm font-medium text-foreground">{transcriptCleanSummary.originalLines}</div>
+            </div>
+            <div className="rounded-xl border border-border bg-panel px-3 py-3">
+              <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">Cleaned lines</div>
+              <div className="mt-1 text-sm font-medium text-foreground">{transcriptCleanSummary.cleanedLines}</div>
+            </div>
+            <div className="rounded-xl border border-border bg-panel px-3 py-3">
+              <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">Matched</div>
+              <div className="mt-1 text-sm font-medium text-foreground">{transcriptCleanSummary.matchedLines}</div>
+            </div>
+            <div className="rounded-xl border border-border bg-panel px-3 py-3">
+              <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">Review likely</div>
+              <div className="mt-1 text-sm font-medium text-foreground">{transcriptCleanSummary.reviewLikelyLines}</div>
+            </div>
+          </div>
+        )}
 
-                  {transcriptCleanSummary && (
-                    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                      <div className="rounded-xl border border-border bg-panel px-3 py-3">
-                        <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
-                          Raw lines
-                        </div>
-                        <div className="mt-1 text-sm font-medium text-foreground">
-                          {transcriptCleanSummary.originalLines}
-                        </div>
-                      </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={cleanTranscriptForImport}
+            className="rounded-xl border border-border-light bg-panel-3 px-4 py-2.5 text-sm font-medium text-foreground"
+          >
+            Clean Transcript
+          </button>
+          <button
+            onClick={() => importTranscriptText(cleanedTranscriptText || transcriptImportText)}
+            className="rounded-xl border border-border-light bg-panel-3 px-4 py-2.5 text-sm font-medium text-foreground"
+          >
+            Import Cleaned Transcript
+          </button>
+          <button
+            onClick={() => {
+              setTranscriptImportText("");
+              setCleanedTranscriptText("");
+              setCleanedTranscriptItems([]);
+              setTranscriptCleanSummary(null);
+            }}
+            className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground"
+          >
+            Clear
+          </button>
+        </div>
 
-                      <div className="rounded-xl border border-border bg-panel px-3 py-3">
-                        <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
-                          Cleaned lines
-                        </div>
-                        <div className="mt-1 text-sm font-medium text-foreground">
-                          {transcriptCleanSummary.cleanedLines}
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl border border-border bg-panel px-3 py-3">
-                        <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
-                          Matched
-                        </div>
-                        <div className="mt-1 text-sm font-medium text-foreground">
-                          {transcriptCleanSummary.matchedLines}
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl border border-border bg-panel px-3 py-3">
-                        <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
-                          Review likely
-                        </div>
-                        <div className="mt-1 text-sm font-medium text-foreground">
-                          {transcriptCleanSummary.reviewLikelyLines}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={cleanTranscriptForImport}
-                      className="rounded-xl border border-border-light bg-panel-3 px-4 py-2.5 text-sm font-medium text-foreground"
-                    >
-                      Clean Transcript
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        importTranscriptText(
-                          cleanedTranscriptText || transcriptImportText
-                        )
-                      }
-                      className="rounded-xl border border-border-light bg-panel-3 px-4 py-2.5 text-sm font-medium text-foreground"
-                    >
-                      Import Cleaned Transcript
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setTranscriptImportText("");
-                        setCleanedTranscriptText("");
-                        setCleanedTranscriptItems([]);
-                        setTranscriptCleanSummary(null);
-                      }}
-                      className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground"
-                    >
-                      Clear
-                    </button>
-                  </div>
-
-                  <p className="text-sm text-muted">
-                    Best flow: paste transcript, press <span className="font-medium text-foreground">Clean Transcript</span>, check the cleaned preview, then press <span className="font-medium text-foreground">Import Cleaned Transcript</span>. The cleaner now tries to sort player stats, scrum/lineout events, and team events before anything falls into Needs Review.
-                  </p>
-                </div>
-              </div>
+        <p className="text-sm text-muted">
+          Best flow: paste transcript, press <span className="font-medium text-foreground">Clean Transcript</span>, check the cleaned preview, then press <span className="font-medium text-foreground">Import Cleaned Transcript</span>.
+        </p>
+      </div>
+    </div>
+  )}
+</div>
             </div>
 
             <div className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
