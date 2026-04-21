@@ -10,14 +10,47 @@ import {
   setCurrentMatchId,
   type SavedMatchRecord,
 } from "../rugby-tagging/lib/savedMatches";
+import { generateMultiMatchWorkbook } from "../rugby-tagging/lib/exports/multiMatchExport";
+import { downloadWorkbook } from "../rugby-tagging/lib/exports/downloadWorkbook";
 
 export default function SavedMatchesPage() {
   const router = useRouter();
   const [savedMatches, setSavedMatches] = useState<SavedMatchRecord[]>([]);
+  const [selectedMatchIds, setSelectedMatchIds] = useState<string[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     setSavedMatches(getSavedMatches());
   }, []);
+
+  const toggleSelected = (matchId: string) => {
+    setSelectedMatchIds((prev) =>
+      prev.includes(matchId)
+        ? prev.filter((id) => id !== matchId)
+        : [...prev, matchId]
+    );
+  };
+
+  const clearSelection = () => setSelectedMatchIds([]);
+
+  const downloadComparison = async () => {
+    if (selectedMatchIds.length < 2) return;
+    setIsGenerating(true);
+    try {
+      const selected = savedMatches.filter((m) =>
+        selectedMatchIds.includes(m.id)
+      );
+      const blob = await generateMultiMatchWorkbook(selected);
+      const filename = `Comparison_${selected.length}_rounds_${new Date()
+        .toISOString()
+        .slice(0, 10)}.xlsx`;
+      downloadWorkbook(blob, filename);
+    } catch (error) {
+      console.error("Failed to generate comparison workbook", error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const sortedMatches = useMemo(() => {
     return [...savedMatches].sort((a, b) => {
@@ -133,6 +166,40 @@ export default function SavedMatchesPage() {
           </div>
         ) : (
           <div className="space-y-4">
+            {selectedMatchIds.length > 0 && (
+              <div className="sticky top-4 z-10 rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-foreground-strong">
+                      {selectedMatchIds.length} match
+                      {selectedMatchIds.length === 1 ? "" : "es"} selected
+                    </div>
+                    <div className="mt-1 text-xs text-muted">
+                      {selectedMatchIds.length < 2
+                        ? "Select at least one more match to enable comparison."
+                        : "Download a comparison report across selected rounds."}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={clearSelection}
+                      className="rounded-xl border border-border bg-panel-2 px-4 py-2 text-sm font-medium text-foreground transition hover:bg-panel"
+                    >
+                      Clear selection
+                    </button>
+                    <button
+                      onClick={downloadComparison}
+                      disabled={selectedMatchIds.length < 2 || isGenerating}
+                      className="rounded-xl border border-border bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {isGenerating
+                        ? "Generating…"
+                        : `↓ Compare Selected (.xlsx)`}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             {sortedMatches.map((match: SavedMatchRecord) => {
               const title =
                 typeof match.matchTitle === "string" && match.matchTitle.trim()
@@ -162,14 +229,27 @@ export default function SavedMatchesPage() {
                 ? match.coachNotes.length
                 : 0;
 
+              const isSelected = selectedMatchIds.includes(match.id);
+
               return (
                 <div
                   key={match.id}
-                  className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]"
+                  className={`rounded-2xl border bg-panel p-5 shadow-[var(--shadow-soft)] transition ${
+                    isSelected ? "border-accent" : "border-border"
+                  }`}
                 >
                   <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
+                        <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-panel-2 px-2.5 py-1 text-xs text-muted transition hover:bg-panel">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelected(match.id)}
+                            className="h-3.5 w-3.5 cursor-pointer accent-current"
+                          />
+                          <span>Compare</span>
+                        </label>
                         <h2 className="text-lg font-semibold text-foreground-strong">
                           {title}
                         </h2>
