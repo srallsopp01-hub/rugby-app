@@ -48,8 +48,17 @@ export default function TranscriptPanel({
           </div>
         )}
 
-        {events.map((event, index) => {
-          const isLatestEvent = index === events.length - 1;
+        {(() => {
+          const sortedEvents = [...events].sort(
+            (a, b) => a.timestamp - b.timestamp
+          );
+          const latestTimestamp =
+            sortedEvents.length > 0
+              ? sortedEvents[sortedEvents.length - 1].timestamp
+              : -1;
+
+          return sortedEvents.map((event) => {
+            const isLatestEvent = event.timestamp === latestTimestamp;
 
           return (
             <div
@@ -138,7 +147,8 @@ export default function TranscriptPanel({
                 )}
             </div>
           );
-        })}
+        });
+        })()}
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-2">

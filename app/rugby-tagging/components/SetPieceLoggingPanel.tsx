@@ -58,9 +58,7 @@ export default function SetPieceLoggingPanel({
           >
             <option value="Won">Won</option>
             <option value="Lost">Lost</option>
-            <option value="Penalty">Penalty</option>
             <option value="Not Straight">Not Straight</option>
-            <option value="Steal">Steal</option>
           </select>
 
           <input

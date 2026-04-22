@@ -172,6 +172,11 @@ export default function RugbyVoiceTaggingMVP() {
 const [showTranscriptImport, setShowTranscriptImport] = useState(false);
 
   const players = rosterRows.map((row) => row.name.trim()).filter(Boolean);
+  // Remove focus from any element after it's clicked, so spacebar
+  // can never re-trigger it later.
+  const blurAfterClick = (event: React.MouseEvent<HTMLElement>) => {
+    (event.currentTarget as HTMLElement).blur();
+  };
   const playersText = players.join("\n");
   const playersReady = players.length > 0;
 
@@ -2340,37 +2345,74 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
   };
 
   useEffect(() => {
-    const shouldBlockSpacebarScroll = (event: KeyboardEvent) => {
-      if (event.code !== "Space") return false;
-      if (showTeamSheetModal || showReportSetupModal) return false;
-      if (isInteractiveElement(event.target)) return false;
-      return true;
+    const isSpacebar = (event: KeyboardEvent) =>
+      event.code === "Space" || event.key === " ";
+
+    // Only treat real text-entry fields as "typing" — NOT buttons, selects, etc.
+    const isTypingField = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return false;
+
+      const tag = target.tagName;
+
+      if (tag === "TEXTAREA") return true;
+
+      if (tag === "INPUT") {
+        const inputType = (target as HTMLInputElement).type?.toLowerCase();
+        // Text-like inputs where spacebar should type a space
+        const textLikeTypes = [
+          "text",
+          "search",
+          "email",
+          "url",
+          "tel",
+          "password",
+          "number",
+        ];
+        return textLikeTypes.includes(inputType || "text");
+      }
+
+      // Contenteditable divs / rich text
+      if (target.isContentEditable) return true;
+
+      return false;
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (shouldBlockSpacebarScroll(event)) {
-        event.preventDefault();
-        event.stopPropagation();
-      } else {
-        return;
-      }
+      if (!isSpacebar(event)) return;
 
+      // If the user is typing in a text field, let spacebar work normally.
+      if (isTypingField(event)) return;
+
+      // If a setup modal is open, let spacebar work normally.
+      if (showTeamSheetModal || showReportSetupModal) return;
+
+      // From here on, spacebar is OUR key. Kill the browser's default
+      // behaviour (page scroll + button re-click on focused elements)
+      // BEFORE any other logic.
+      event.preventDefault();
+      event.stopPropagation();
+      blurActiveElement();
+
+      // Voice recording logic runs only if voice mode is armed.
       if (activeMode !== "stat") return;
       if (!voiceModeEnabled) return;
       if (event.repeat) return;
       if (spacebarHeldRef.current) return;
 
-      blurActiveElement();
       pageShellRef.current?.focus();
       spacebarHeldRef.current = true;
       startPushToTalkRecording();
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
-      if (!shouldBlockSpacebarScroll(event)) return;
+      if (!isSpacebar(event)) return;
+      if (isTypingField(event)) return;
+      if (showTeamSheetModal || showReportSetupModal) return;
 
       event.preventDefault();
       event.stopPropagation();
+      blurActiveElement();
 
       if (activeMode !== "stat") return;
       if (!voiceModeEnabled) return;
@@ -3181,6 +3223,7 @@ Ellie missed tackle"
                 </div>
 
                 <TeamEventsPanel
+                  onAddPenaltyFor={() => addTeamEvent("penalty for")}
                   onAddPenaltyConceded={() => addTeamEvent("penalty conceded")}
                   onAddTryScored={() => addTeamEvent("try scored")}
                   onAddTryConceded={() => addTeamEvent("try conceded")}
