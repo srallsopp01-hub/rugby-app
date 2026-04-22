@@ -15,6 +15,14 @@ type NeedsReviewPanelProps = {
   onSkipReviewItem: (id: number) => void;
 };
 
+const runAndBlur = (
+  handler: () => void,
+  event: React.MouseEvent<HTMLButtonElement>
+) => {
+  handler();
+  event.currentTarget.blur();
+};
+
 export default function NeedsReviewPanel({
   reviewQueue,
   players,
@@ -63,7 +71,8 @@ export default function NeedsReviewPanel({
               </div>
 
               <button
-                onClick={() => onJumpToTimestamp(item.timestamp)}
+                type="button"
+                onClick={(e) => runAndBlur(() => onJumpToTimestamp(item.timestamp), e)}
                 className="text-sm font-medium text-muted underline underline-offset-2"
                 title="Jump to timestamp"
               >
@@ -138,17 +147,22 @@ export default function NeedsReviewPanel({
 
                 <div className="flex flex-wrap gap-2">
                   <button
-                    onClick={() =>
-                      onSaveReviewItem(item, {
-                        applyToAllMatching: !!applyToAllMap[item.id],
-                      })
+                    type="button"
+                    onClick={(e) =>
+                      runAndBlur(
+                        () => onSaveReviewItem(item, {
+                          applyToAllMatching: !!applyToAllMap[item.id],
+                        }),
+                        e
+                      )
                     }
                     className="rounded-xl border border-border-light bg-panel-3 px-4 py-2.5 text-sm font-medium text-foreground"
                   >
                     Save tag
                   </button>
                   <button
-                    onClick={() => onSkipReviewItem(item.id)}
+                    type="button"
+                    onClick={(e) => runAndBlur(() => onSkipReviewItem(item.id), e)}
                     className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground"
                   >
                     Skip

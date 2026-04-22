@@ -19,6 +19,14 @@ type SetPieceLoggingPanelProps = {
   onAddScrum: () => void;
 };
 
+const runAndBlur = (
+  handler: () => void,
+  event: React.MouseEvent<HTMLButtonElement>
+) => {
+  handler();
+  event.currentTarget.blur();
+};
+
 export default function SetPieceLoggingPanel({
   lineoutSide,
   lineoutResult,
@@ -70,7 +78,8 @@ export default function SetPieceLoggingPanel({
         </div>
 
         <button
-          onClick={onAddLineout}
+          type="button"
+          onClick={(e) => runAndBlur(onAddLineout, e)}
           className="mt-3 rounded-xl border border-border-light bg-panel-3 px-4 py-2.5 text-sm font-medium text-foreground"
         >
           Add lineout
@@ -105,7 +114,8 @@ export default function SetPieceLoggingPanel({
         </div>
 
         <button
-          onClick={onAddScrum}
+          type="button"
+          onClick={(e) => runAndBlur(onAddScrum, e)}
           className="mt-3 rounded-xl border border-border-light bg-panel-3 px-4 py-2.5 text-sm font-medium text-foreground"
         >
           Add scrum

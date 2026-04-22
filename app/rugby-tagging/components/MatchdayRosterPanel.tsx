@@ -16,6 +16,14 @@ type MatchdayRosterPanelProps = {
   onQuickTag: (action: PlayerAction) => void;
 };
 
+const runAndBlur = (
+  handler: () => void,
+  event: React.MouseEvent<HTMLButtonElement>
+) => {
+  handler();
+  event.currentTarget.blur();
+};
+
 export default function MatchdayRosterPanel({
   rosterRows,
   playersCount,
@@ -56,25 +64,29 @@ export default function MatchdayRosterPanel({
 
         <div className="grid grid-cols-2 gap-2">
           <button
-            onClick={() => onQuickTag("tackle")}
+            type="button"
+            onClick={(e) => runAndBlur(() => onQuickTag("tackle"), e)}
             className="rounded-xl border border-border px-3 py-2.5 text-sm font-medium text-foreground"
           >
             + Tackle
           </button>
           <button
-            onClick={() => onQuickTag("missed tackle")}
+            type="button"
+            onClick={(e) => runAndBlur(() => onQuickTag("missed tackle"), e)}
             className="rounded-xl border border-border px-3 py-2.5 text-sm font-medium text-foreground"
           >
             + Missed Tackle
           </button>
           <button
-            onClick={() => onQuickTag("carry")}
+            type="button"
+            onClick={(e) => runAndBlur(() => onQuickTag("carry"), e)}
             className="rounded-xl border border-border px-3 py-2.5 text-sm font-medium text-foreground"
           >
             + Carry
           </button>
           <button
-            onClick={() => onQuickTag("turnover")}
+            type="button"
+            onClick={(e) => runAndBlur(() => onQuickTag("turnover"), e)}
             className="rounded-xl border border-border px-3 py-2.5 text-sm font-medium text-foreground"
           >
             + Turnover
