@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after Squad Profile Step 2 (management UI)  
+**Last updated:** April 2026 — after Squad Profile Step 3 (voice matching)  
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -285,9 +285,19 @@ All previous CSV downloads have been removed. There is now one polished report.
 
 ---
 
-## What's next — Squad Profile Step 3
+## What was completed — Squad Profile Step 3 (April 2026)
 
-- Wire squad profile into voice matching pipeline (preferred name + nickname lookup, surname matching)
+- ✅ `resolvePlayerName()` added to `lib/squadProfile.ts` — resolves against fullName, preferredName, nicknames, and surname (last word of fullName)
+- ✅ Squad profile loaded on Workspace mount; resolution runs before `parsedPlayerIsValid` check in transcription callback
+- ✅ Auto-matched events use canonical fullName and reconstructed text when a preferred name/nickname/surname was spoken
+- ✅ Falls back gracefully to existing Levenshtein/Pending Resolution/Needs Review if player not in squad
+
+---
+
+## What's next — Squad Profile Step 4
+
+- Squad-aware candidate list for Pending Resolution (replace Levenshtein-only with squad preferred names + nicknames)
+- Token scanning: try each word of rawText against squad when GPT returns `player: null`
 
 ## What's next — Batch C part 2 (medium complexity)
 
