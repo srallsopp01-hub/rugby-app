@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after Batch B completion  
+**Last updated:** April 2026 — after Batch C part 1  
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -47,10 +47,11 @@ These screens are **separate and should stay separate**.
 
 ## Key files
 app/
-page.tsx                          ← Main Workspace (large file, ~2500 lines)
+page.tsx                          ← Main Workspace (large file, ~2600 lines)
 rugby-tagging/
 components/
 TeamEventsPanel.tsx           ← Penalty For, Penalty Conceded, Try Scored, Try Conceded
+MatchMilestonesPanel.tsx      ← Kick Off, Half Time, Second Half KO, Full Time buttons
 TeamSheetModal.tsx            ← First-load team sheet entry
 MatchdayRosterPanel.tsx       ← Quick tag buttons + roster table
 TranscriptPanel.tsx           ← Event timeline (right sidebar)
@@ -90,6 +91,8 @@ downloadWorkbook.ts         ← Blob download helper
 - Team event logging (Penalty For, Penalty Conceded, Try Scored, Try Conceded)
 - Quick player tags (Tackle, Missed Tackle, Carry, Turnover)
 - Matchday roster panel with player minutes
+- Match milestone buttons (Kick Off, Half Time, Second Half KO, Full Time) — log at current timestamp
+- Bench bring-on flow — bench player selects position coming on at, logs substitution event, updates roster position
 - Submit report flow → Save Match and Open Next Screen modal
 - Saved match flow (save/restore via localStorage)
 - First-load Help modal + Help button
@@ -145,6 +148,12 @@ All previous CSV downloads have been removed. There is now one polished report.
 
 **TeamEventType** (types.ts): `"penalty for"` | `"penalty conceded"` | `"try scored"` | `"try conceded"`
 
+**MilestoneType** (types.ts): `"kick off"` | `"half time"` | `"second half kick off"` | `"full time"`
+
+**EventCategory** (types.ts): `"player"` | `"set-piece"` | `"team"` | `"milestone"` | `"substitution"`
+
+**Substitution fields on EventItem**: `substitutionPlayerOn?`, `substitutionPlayerOff?`, `substitutionPosition?`
+
 **LineoutResult** (types.ts): `"Won"` | `"Lost"` | `"Not Straight"`
 
 **ScrumResult** (types.ts): `"Won"` | `"Lost"` | `"Penalty For"` | `"Penalty Against"` | `"Free Kick"`
@@ -190,6 +199,9 @@ All previous CSV downloads have been removed. There is now one polished report.
 - ✅ `NeedsReviewPanel.tsx`
 
 **If new event-logging buttons are added anywhere**, apply this same pattern immediately.
+
+**This fix has also been applied to:**
+- ✅ `MatchMilestonesPanel.tsx` (new in Batch C)
 
 ---
 
@@ -242,12 +254,17 @@ All previous CSV downloads have been removed. There is now one polished report.
 
 ---
 
-## What's next — Batch C (medium complexity)
+## What was completed — Batch C part 1 (April 2026)
+
+- ✅ Match milestone buttons — Kick Off, Half Time, Second Half KO, Full Time logged at current video timestamp (sky-blue styling in transcript)
+- ✅ Bench bring-on flow — bench rows 16–23 get a "Bring On" button; coach selects position, confirms, logs substitution event and updates player's roster position (orange styling in transcript)
+
+---
+
+## What's next — Batch C part 2 (medium complexity)
 
 1. **Double tackle support** — two players on the same tackle event
-2. **Substitutions** — ability to record subs during a match
-3. **Bench position selection** — bench players should select what position they came on at
-4. **Split correction memory** — split into name corrections and action corrections separately
+2. **Split correction memory** — split into name corrections and action corrections separately
 
 ---
 
