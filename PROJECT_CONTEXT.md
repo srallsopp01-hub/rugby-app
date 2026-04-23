@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after Squad Profile Step 3 (voice matching)  
+**Last updated:** April 2026 — after Squad Profile Step 4 (token scanning)  
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -294,10 +294,25 @@ All previous CSV downloads have been removed. There is now one polished report.
 
 ---
 
-## What's next — Squad Profile Step 4
+## What was completed — Squad Profile Step 4 (April 2026)
 
-- Squad-aware candidate list for Pending Resolution (replace Levenshtein-only with squad preferred names + nicknames)
-- Token scanning: try each word of rawText against squad when GPT returns `player: null`
+- ✅ Token scanning: every rawText word checked against squad profile on each voice tag
+- ✅ Squad candidates prepend `mergedCandidates` — Pending Resolution pre-selects the correct player
+- ✅ When GPT returns `player: null` but exactly one squad token match exists, promotes to `tokenResolvedName` (auto-matches at high/medium confidence, or Pending Resolution pre-selected)
+- ✅ Guard: only surfaces players already on the matchday roster (`players.includes`)
+
+---
+
+## Voice matching pipeline — current state
+
+1. Learned correction memory (per-session) — fires first, bypasses everything else
+2. Squad resolution of GPT's `parsed.player` — preferred name, nickname, surname (Step 3)
+3. Token scan of rawText against squad — squad candidates built (Step 4)
+4. `tokenResolvedName` promoted if unique token match and no parsed player (Step 4)
+5. `parsedPlayerIsValid` = resolved OR token-resolved OR exact roster match
+6. Auto-match: `hasKnownAction && parsedPlayerIsValid && highEnoughConfidence`
+7. Pending Resolution: `hasKnownAction && mergedCandidates.length > 0` (squad candidates first)
+8. Needs Review: everything else
 
 ## What's next — Batch C part 2 (medium complexity)
 
