@@ -8,7 +8,8 @@ type AppTopNavProps = {
     | "team-review"
     | "team-analytics"
     | "player-dashboard"
-    | "saved-matches";
+    | "saved-matches"
+    | "squad";
   onStartNewMatch?: () => void;
 };
 
@@ -49,6 +50,10 @@ export default function AppTopNav({
         className={getButtonClass(current === "saved-matches")}
       >
         Saved Matches
+      </Link>
+
+      <Link href="/squad" className={getButtonClass(current === "squad")}>
+        Squad
       </Link>
 
       {onStartNewMatch ? (
