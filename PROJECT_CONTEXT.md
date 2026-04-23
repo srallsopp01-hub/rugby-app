@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026  
+**Last updated:** April 2026 — after Batch B completion  
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -27,6 +27,7 @@ It is currently a **coach-first MVP / early private beta**, best used on desktop
 - Tailwind CSS (custom design tokens via CSS variables)
 - localStorage for match persistence (no backend/cloud yet)
 - Anthropic API for voice transcription (`/api/transcribe`)
+- ExcelJS for `.xlsx` report generation
 
 ---
 
@@ -59,8 +60,8 @@ app/
       SetPieceLoggingPanel.tsx      ← Lineout + scrum logging
       CoachReviewPanel.tsx          ← Coach notes (Game Review mode)
       TeamSnapshotPanel.tsx         ← Live team stats summary
-      StatsPanel.tsx                ← Stats generation + CSV download
-      MatchReportModal.tsx          ← Full report modal
+      StatsPanel.tsx                ← Live stats table (no download button)
+      MatchReportModal.tsx          ← Full report modal (includes Lineout Call Summary)
       PlayerDrilldownModal.tsx      ← Player breakdown modal
       GameReviewTimelinePanel.tsx   ← Timeline for Game Review mode
       PendingResolutionPanel.tsx    ← Player confirmation prompt after voice tag
@@ -71,6 +72,9 @@ app/
     lib/
       matchVideoSession.ts          ← Video blob session management
       savedMatches.ts               ← localStorage match persistence
+      exports/
+        teamAnalyticsExport.ts      ← .xlsx workbook builder (5 sheets)
+        downloadWorkbook.ts         ← Blob download helper
 ```
 
 ---
@@ -94,7 +98,6 @@ app/
 - First-load Help modal + Help button
 - Download transcript (.txt)
 - Download coach notes (.txt)
-- Download CSV report (includes game flow + coaching comment)
 - Correction memory (learned corrections saved to localStorage)
 
 ### Team Review
@@ -104,6 +107,13 @@ app/
 ### Team Analytics
 - Separate page, no video
 - Team snapshot, unit summary, player report table, game flow summary, coaching comment
+- **One download button: "Download Match Report" (.xlsx)**
+  - 5 sheets: Grading Reference, Team Stats, Lineout Calls, Forwards, Player Progression
+
+### Match Report Modal (Workspace)
+- Accessible from Workspace
+- Sections: Game coaching comment, Game flow summary, Unit summary, Lineout call summary, Player report
+- Lineout call summary shows: call name, times used, won, lost, win rate (colour coded), timestamps
 
 ### Player Dashboard
 - Separate page
@@ -112,6 +122,18 @@ app/
 ### Saved Matches
 - Reopen saved matches into Workspace / Team Review / Team Analytics
 - Delete saved matches
+
+---
+
+## Download strategy (simplified in Batch B)
+
+| What | Where | Format |
+|---|---|---|
+| Transcript | Workspace | .txt |
+| Coach notes | Workspace (Game Review mode) | .txt |
+| Match Report | Team Analytics | .xlsx |
+
+All previous CSV downloads have been removed. There is now one polished report.
 
 ---
 
@@ -126,8 +148,7 @@ app/
 
 **TeamEventType** (types.ts): `"penalty for"` | `"penalty conceded"` | `"try scored"` | `"try conceded"`
 
-**LineoutResult** (types.ts): `"Won"` | `"Lost"` | `"Not Straight"`  
-*(Note: "Steal" and "Penalty" were removed from lineout options in Batch A)*
+**LineoutResult** (types.ts): `"Won"` | `"Lost"` | `"Not Straight"`
 
 **ScrumResult** (types.ts): `"Won"` | `"Lost"` | `"Penalty For"` | `"Penalty Against"` | `"Free Kick"`
 
@@ -161,13 +182,11 @@ app/
 
 ## Spacebar / button focus fix pattern
 
-**Problem discovered in testing:** Browser button focus means pressing spacebar after clicking a button re-fires that button's click handler. `preventDefault()` on the window keydown listener is not sufficient because the button activates before the window handler.
-
 **Fix pattern:** Every event-logging button must:
 1. Have `type="button"` explicitly set
-2. Call `event.currentTarget.blur()` immediately after its click handler runs
+2. Call `event.currentTarget.blur()` immediately after its click handler runs via a `runAndBlur` helper
 
-**Example (from TeamEventsPanel.tsx):**
+**Standard implementation:**
 ```tsx
 const runAndBlur = (
   handler: () => void,
@@ -185,45 +204,36 @@ const runAndBlur = (
 </button>
 ```
 
-**This fix has been applied to:** TeamEventsPanel.tsx  
-**Still needs applying to:** MatchdayRosterPanel.tsx, SetPieceLoggingPanel.tsx, NeedsReviewPanel.tsx (and any other event-logging buttons)
+**This fix has been applied to ALL of these files:**
+- ✅ `TeamEventsPanel.tsx`
+- ✅ `MatchdayRosterPanel.tsx`
+- ✅ `SetPieceLoggingPanel.tsx`
+- ✅ `NeedsReviewPanel.tsx`
+
+**If new event-logging buttons are added anywhere**, apply this same pattern immediately.
 
 ---
 
 ## What was completed — Batch A (April 2026)
 
-All changes committed to git.
-
 - ✅ Added "Penalty For" as a Team Event button
 - ✅ Removed "Steal" and "Penalty" from lineout result dropdown (now: Won / Lost / Not Straight)
-- ✅ Confirmed Download Transcript button already existed and works
-- ✅ Fixed spacebar: no longer triggers focused buttons (TeamEventsPanel done, others pending)
-- ✅ Transcript panel now sorts events by timestamp (oldest top, latest bottom)
-- ✅ "Latest" badge follows highest-timestamp event, not last array item
-- ✅ Game Flow already included in CSV download
-- ⏳ Lineout Call Summary in report — deferred to Batch B
+- ✅ Download Transcript button confirmed working
+- ✅ Spacebar fix applied to all four event-logging panels
+- ✅ Transcript panel sorts events by timestamp
+- ✅ "Latest" badge follows highest-timestamp event
 
 ---
 
-## What's next — immediate (Batch A completion)
+## What was completed — Batch B (April 2026)
 
-Apply the spacebar / blur fix to remaining panels. Need these files:
-
-1. **`MatchdayRosterPanel.tsx`** — Quick Tag buttons (Tackle, Missed Tackle, Carry, Turnover)
-2. **`SetPieceLoggingPanel.tsx`** — Add Lineout, Add Scrum buttons
-3. **`NeedsReviewPanel.tsx`** — Save and Skip buttons
-
-Pattern to apply is identical to TeamEventsPanel fix above.
-
----
-
-## What's next — Batch B (report improvements)
-
-1. **Lineout Call Summary** in the forwards section of the full report
-   - Summary of lineout calls used, success rate per call, outcomes
-   - Needs `notes` field from lineout events (already being logged)
-2. **Game Flow section** polish in downloaded report
-3. **Download Full Report** improvements (layout, section order)
+- ✅ Lineout Call Summary added to Match Report modal (call name, used, won, lost, win rate, timestamps)
+- ✅ Lineout Calls sheet added to .xlsx download (Sheet 3)
+- ✅ Download strategy simplified — one report, one transcript download
+- ✅ CSV download removed from Workspace StatsPanel
+- ✅ Text report and player stats CSV removed from Team Analytics
+- ✅ StatsPanel cleaned up (no download props)
+- ✅ Dead code removed from page.tsx and team-dashboard/page.tsx
 
 ---
 
@@ -231,16 +241,16 @@ Pattern to apply is identical to TeamEventsPanel fix above.
 
 1. **Double tackle support** — two players on the same tackle event
 2. **Substitutions** — ability to record subs during a match
-3. **Bench position selection** — bench players should be able to select what position they came on at (so reports stay accurate)
+3. **Bench position selection** — bench players should select what position they came on at (so reports stay accurate)
 4. **Split correction memory** — currently one memory store; should split into name corrections and action corrections separately for smarter learning
 
 ---
 
 ## What's next — Batch D (bigger changes, plan carefully)
 
-1. **Voice transcription during video playback** — biggest workflow blocker. Currently voice works better when video is paused. Investigate mic gain competing with video audio, Web Speech API limits, browser focus issues.
+1. **Voice transcription during video playback** — biggest workflow blocker
 2. **Reducing Needs Review volume** — better name/action matching on first pass
-3. **Team management dashboard** — store squad, assign matchday positions via dropdown, paste matchday team sheet
+3. **Team management dashboard** — store squad, assign matchday positions via dropdown
 
 ---
 
@@ -270,5 +280,5 @@ Pattern to apply is identical to TeamEventsPanel fix above.
 
 ## Naming notes
 
-- The team is currently "Easts" in examples and selectors — but this should be treated as a placeholder. All logic should work for any team name.
-- "Easts" appears in `SetPieceSide` type and some UI labels. This will be made configurable when onboarding is built.
+- The team is currently "Easts" in some internal variable names (e.g. `eastsScrumSuccessPct`) — treat as placeholder. All logic should work for any team name.
+- Will be made configurable when onboarding is built.

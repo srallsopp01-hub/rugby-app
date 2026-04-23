@@ -1,4 +1,11 @@
-import type { ReportRow, UnitSummaryRow } from "../types";
+import type { EventItem, ReportRow, UnitSummaryRow } from "../types";
+
+type LineoutCallStat = {
+  call: string;
+  total: number;
+  won: number;
+  timestamps: number[];
+};
 
 type MatchReportModalProps = {
   show: boolean;
@@ -10,9 +17,30 @@ type MatchReportModalProps = {
   unitSummaryRows: UnitSummaryRow[];
   reportRows: ReportRow[];
   forwardsRows: ReportRow[];
+  lineoutEvents: EventItem[];
   onClose: () => void;
   onOpenPlayer: (playerName: string) => void;
 };
+
+function buildLineoutCallStats(lineoutEvents: EventItem[]): LineoutCallStat[] {
+  const map = new Map<string, LineoutCallStat>();
+
+  for (const event of lineoutEvents) {
+    const call = event.notes?.trim() || "Unknown";
+    const won = event.lineoutResult === "Won";
+
+    if (!map.has(call)) {
+      map.set(call, { call, total: 0, won: 0, timestamps: [] });
+    }
+
+    const stat = map.get(call)!;
+    stat.total += 1;
+    if (won) stat.won += 1;
+    if (event.timestamp) stat.timestamps.push(event.timestamp);
+  }
+
+  return Array.from(map.values()).sort((a, b) => b.total - a.total);
+}
 
 export default function MatchReportModal({
   show,
@@ -23,10 +51,13 @@ export default function MatchReportModal({
   gameFlowSummary,
   unitSummaryRows,
   reportRows,
+  lineoutEvents,
   onClose,
   onOpenPlayer,
 }: MatchReportModalProps) {
   if (!show) return null;
+
+  const lineoutCallStats = buildLineoutCallStats(lineoutEvents);
 
   return (
     <div className="fixed inset-0 z-[70] bg-black/70 px-4 py-6">
@@ -116,6 +147,69 @@ export default function MatchReportModal({
             )}
           </section>
 
+          {/* ── Lineout Call Summary ── */}
+          <section className="mt-6 rounded-2xl border border-border bg-panel-2 p-5">
+            <h3 className="text-lg font-semibold text-foreground-strong">
+              Lineout call summary
+            </h3>
+
+            {lineoutCallStats.length === 0 ? (
+              <p className="mt-3 text-sm text-muted">No lineout data yet.</p>
+            ) : (
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full min-w-[640px] text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-muted">
+                      <th className="p-2">Call</th>
+                      <th className="p-2">Used</th>
+                      <th className="p-2">Won</th>
+                      <th className="p-2">Lost / Not Straight</th>
+                      <th className="p-2">Win Rate</th>
+                      <th className="p-2">Timestamps</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lineoutCallStats.map((stat) => {
+                      const lost = stat.total - stat.won;
+                      const winRate = stat.total > 0
+                        ? Math.round((stat.won / stat.total) * 100)
+                        : 0;
+
+                      return (
+                        <tr key={stat.call} className="border-b border-border/60">
+                          <td className="p-2 font-medium text-foreground">{stat.call}</td>
+                          <td className="p-2 text-muted">{stat.total}</td>
+                          <td className="p-2 text-muted">{stat.won}</td>
+                          <td className="p-2 text-muted">{lost}</td>
+                          <td className="p-2">
+                            <span
+                              className={
+                                winRate >= 80
+                                  ? "font-medium text-green-400"
+                                  : winRate >= 50
+                                  ? "font-medium text-yellow-400"
+                                  : "font-medium text-red-400"
+                              }
+                            >
+                              {winRate}%
+                            </span>
+                          </td>
+                          <td className="p-2 text-muted text-xs">
+                            {stat.timestamps.map((t) => {
+  const mins = Math.floor(t / 60);
+  const secs = String(Math.floor(t % 60)).padStart(2, "0");
+  return `${mins}:${secs}`;
+}).join(", ")}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
           <section className="mt-6 rounded-2xl border border-border bg-panel-2 p-5">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-lg font-semibold text-foreground-strong">
@@ -149,10 +243,7 @@ export default function MatchReportModal({
                   </thead>
                   <tbody>
                     {reportRows.map((row) => (
-                      <tr
-                        key={row.name}
-                        className="border-b border-border/60"
-                      >
+                      <tr key={row.name} className="border-b border-border/60">
                         <td className="p-2 text-muted">{row.number}</td>
                         <td className="p-2">
                           <button

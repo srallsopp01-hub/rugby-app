@@ -2,26 +2,15 @@ import type { PlayerStats } from "../types";
 
 type StatsPanelProps = {
   stats: Record<string, PlayerStats> | null;
-  canDownload: boolean;
-  onDownloadCsv: () => void;
 };
 
 export default function StatsPanel({
   stats,
-  canDownload,
-  onDownloadCsv,
 }: StatsPanelProps) {
   return (
     <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-panel)]">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3">
         <h2 className="text-lg font-semibold text-foreground-strong">Stats</h2>
-        <button
-          onClick={onDownloadCsv}
-          disabled={!canDownload}
-          className="rounded-xl border border-border px-3 py-2 text-xs font-medium text-foreground disabled:opacity-50"
-        >
-          Download Excel CSV
-        </button>
       </div>
 
       {!stats && <p className="text-sm text-muted">No stats generated yet</p>}

@@ -2190,159 +2190,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     );
   };
 
-  const downloadExcelCsv = () => {
-    const rows: string[] = [];
-
-    rows.push("SECTION,FIELD,VALUE");
-    rows.push(`Snapshot,Tackles Made,${teamTotals.tackles}`);
-    rows.push(`Snapshot,Missed Tackles,${teamTotals.missed}`);
-    rows.push(`Snapshot,Tackle %,${teamTacklePct.toFixed(0)}%`);
-    rows.push(`Snapshot,Total Carries,${teamTotals.carries}`);
-    rows.push(`Snapshot,Turnovers Won,${teamTotals.turnovers}`);
-    rows.push(
-      `Snapshot,Penalties Conceded,${teamEventSummary.penaltiesConceded}`
-    );
-    rows.push(
-      `Snapshot,Easts Scrum Success %,${setPieceSummary.eastsScrumSuccessPct.toFixed(
-        0
-      )}%`
-    );
-    rows.push(
-      `Snapshot,Easts Lineout Success %,${setPieceSummary.eastsLineoutSuccessPct.toFixed(
-        0
-      )}%`
-    );
-    rows.push(`Snapshot,Tries Scored,${teamEventSummary.triesScored}`);
-    rows.push(`Snapshot,Tries Conceded,${teamEventSummary.triesConceded}`);
-    rows.push("");
-
-    rows.push(
-      [
-        "Player Report",
-        "No",
-        "Player",
-        "Position",
-        "Unit",
-        "Minutes",
-        "Tackles",
-        "Missed",
-        "Carries",
-        "Turnovers",
-        "Involvements",
-        "Tackle %",
-        "Tackles/Min",
-        "Carries/Min",
-        "Inv/Min",
-        "Overall",
-        "Coach Comment",
-      ]
-        .map(csvEscape)
-        .join(",")
-    );
-
-    reportRows.forEach((row) => {
-      rows.push(
-        [
-          "Player Report",
-          row.number,
-          row.name,
-          row.position,
-          row.unit,
-          row.minutes,
-          row.tackles,
-          row.missed,
-          row.carries,
-          row.turnovers,
-          row.involvements,
-          `${row.tacklePct.toFixed(0)}%`,
-          row.tacklesPerMin.toFixed(2),
-          row.carriesPerMin.toFixed(2),
-          row.involvementsPerMin.toFixed(2),
-          row.overallGrade,
-          row.coachComment,
-        ]
-          .map(csvEscape)
-          .join(",")
-      );
-    });
-
-    rows.push("");
-    rows.push(
-      [
-        "Unit Summary",
-        "Unit",
-        "Players",
-        "Avg Tackles/Min",
-        "Avg Carries/Min",
-        "Avg Inv/Min",
-      ]
-        .map(csvEscape)
-        .join(",")
-    );
-
-    unitSummaryRows.forEach((row) => {
-      rows.push(
-        [
-          "Unit Summary",
-          row.unit,
-          row.players,
-          row.avgTacklesPerMin.toFixed(2),
-          row.avgCarriesPerMin.toFixed(2),
-          row.avgInvolvementsPerMin.toFixed(2),
-        ]
-          .map(csvEscape)
-          .join(",")
-      );
-    });
-
-    rows.push("");
-    rows.push(["Transcript", "Time", "Text"].map(csvEscape).join(","));
-    [...events]
-      .filter((event) => !event.isPending)
-      .sort((a, b) => a.timestamp - b.timestamp)
-      .forEach((event) => {
-        rows.push(
-          ["Transcript", formatTime(event.timestamp), event.text]
-            .map(csvEscape)
-            .join(",")
-        );
-      });
-
-    if (coachNotes.length > 0) {
-      rows.push("");
-      rows.push(
-        ["Coach Review", "Time", "Note", "Raw"].map(csvEscape).join(",")
-      );
-      [...coachNotes]
-        .sort((a, b) => a.timestamp - b.timestamp)
-        .forEach((note) => {
-          rows.push(
-            [
-              "Coach Review",
-              formatTime(note.timestamp),
-              note.text,
-              note.rawText || "",
-            ]
-              .map(csvEscape)
-              .join(",")
-          );
-        });
-    }
-
-    rows.push("");
-    rows.push(
-      ["Game Summary", "Comment", gameCoachingComment].map(csvEscape).join(",")
-    );
-    rows.push(["Game Summary", "Flow", gameFlowSummary].map(csvEscape).join(","));
-
-    downloadFile(
-      `${(matchTitle || "match-report").replace(/\s+/g, "-").toLowerCase()}.csv`,
-      rows.join("\n"),
-      "text/csv;charset=utf-8"
-    );
-
-    setStatusMessage("CSV report downloaded");
-  };
+  
 
   useEffect(() => {
     const isSpacebar = (event: KeyboardEvent) =>
@@ -2471,6 +2319,9 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
         unitSummaryRows={unitSummaryRows}
         reportRows={reportRows}
         forwardsRows={forwardsRows}
+        lineoutEvents={events.filter(
+          (e) => e.category === "set-piece" && e.setPieceType === "lineout"
+        )}
         onClose={() => setShowReportBuilder(false)}
         onOpenPlayer={(playerName) => {
           setShowReportBuilder(false);
@@ -3307,8 +3158,6 @@ Ellie missed tackle"
 
                 <StatsPanel
                   stats={stats}
-                  canDownload={reportRows.length > 0}
-                  onDownloadCsv={downloadExcelCsv}
                 />
               </>
             ) : (

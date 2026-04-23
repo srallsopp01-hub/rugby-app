@@ -25,6 +25,7 @@ import type {
   EventItem,
   ReportRow,
   RosterRow,
+  UnitSummaryRow,
 } from "../rugby-tagging/types";
 
 export default function TeamDashboardPage() {
@@ -202,135 +203,11 @@ export default function TeamDashboardPage() {
 
   // ── Export helpers ──────────────────────────────────────────────────────────
 
-  function downloadTextReport() {
-    const matchLabel = [
-      matchTitle || "Match Report",
-      opponent ? `vs ${opponent}` : "",
-      matchDate || "",
-    ]
-      .filter(Boolean)
-      .join(" • ");
+  
+      
+      
 
-    const divider = "─".repeat(60);
-
-    const playerTableHeader =
-      "No. | Player              | Pos        | Min | T  | MT | C  | TO | Inv | Tackle% | Grade | Comment";
-    const playerTableRows = reportRows
-      .map((row) =>
-        [
-          String(row.number ?? "").padEnd(3),
-          row.name.padEnd(20),
-          (row.position ?? "").padEnd(10),
-          String(row.minutes).padEnd(3),
-          String(row.tackles).padEnd(3),
-          String(row.missed).padEnd(3),
-          String(row.carries).padEnd(3),
-          String(row.turnovers).padEnd(3),
-          String(row.involvements).padEnd(4),
-          `${row.tacklePct.toFixed(0)}%`.padEnd(8),
-          row.overallGrade.padEnd(5),
-          row.coachComment,
-        ].join(" | ")
-      )
-      .join("\n");
-
-    const lines = [
-      matchLabel,
-      divider,
-      "",
-      "TEAM STATS",
-      divider,
-      `Tackles Made:       ${teamTotals.tackles}`,
-      `Missed Tackles:     ${teamTotals.missed}`,
-      `Tackle Accuracy:    ${teamTacklePct.toFixed(0)}%`,
-      `Carries:            ${teamTotals.carries}`,
-      `Turnovers:          ${teamTotals.turnovers}`,
-      `Penalties Conceded: ${teamEventSummary.penaltiesConceded}`,
-      `Tries Scored:       ${teamEventSummary.triesScored}`,
-      `Tries Conceded:     ${teamEventSummary.triesConceded}`,
-      "",
-      "SET PIECE",
-      divider,
-      `Lineout Success:    ${setPieceSummary.ownLineoutSuccessPct.toFixed(0)}% (${setPieceSummary.ownLineouts.length} logged)`,
-      `Scrum Success:      ${setPieceSummary.ownScrumSuccessPct.toFixed(0)}% (${setPieceSummary.ownScrums.length} logged)`,
-      "",
-      "COACHING COMMENT",
-      divider,
-      gameCoachingComment || "None.",
-      "",
-      "GAME FLOW SUMMARY",
-      divider,
-      gameFlowSummary || "None.",
-      "",
-      "PLAYER REPORT",
-      divider,
-      playerTableHeader,
-      playerTableRows,
-      "",
-      divider,
-      `Exported from Rugby Analysis App — ${new Date().toLocaleDateString()}`,
-    ];
-
-    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${matchTitle || "match-report"}-team-report.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function downloadCSV() {
-    const headers = [
-      "No.",
-      "Player",
-      "Position",
-      "Unit",
-      "Minutes",
-      "Tackles",
-      "Missed Tackles",
-      "Carries",
-      "Turnovers",
-      "Involvements",
-      "Tackle %",
-      "Tackles/Min",
-      "Carries/Min",
-      "Involvements/Min",
-      "Overall Grade",
-      "Coach Comment",
-    ];
-
-    const rows = reportRows.map((row) => [
-      row.number ?? "",
-      row.name,
-      row.position ?? "",
-      row.unit ?? "",
-      row.minutes,
-      row.tackles,
-      row.missed,
-      row.carries,
-      row.turnovers,
-      row.involvements,
-      `${row.tacklePct.toFixed(0)}%`,
-      row.tacklesPerMin.toFixed(2),
-      row.carriesPerMin.toFixed(2),
-      row.involvementsPerMin.toFixed(2),
-      row.overallGrade,
-      `"${row.coachComment.replace(/"/g, "'")}"`,
-    ]);
-
-    const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join(
-      "\n"
-    );
-
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${matchTitle || "match-report"}-player-stats.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
+  
 
   // ── Data load ───────────────────────────────────────────────────────────────
 
@@ -442,20 +319,6 @@ export default function TeamDashboardPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <button
-                onClick={downloadTextReport}
-                disabled={reportRows.length === 0}
-                className="rounded-xl border border-border bg-panel-2 px-4 py-2 text-sm font-medium text-foreground transition hover:bg-panel disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                ↓ Download Match Report (.txt)
-              </button>
-              <button
-                onClick={downloadCSV}
-                disabled={reportRows.length === 0}
-                className="rounded-xl border border-border bg-panel-2 px-4 py-2 text-sm font-medium text-foreground transition hover:bg-panel disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                ↓ Download Player Stats (.csv)
-              </button>
               <button
                 onClick={async () => {
                   try {

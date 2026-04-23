@@ -63,6 +63,8 @@ export type TeamAnalyticsExportInput = {
     ownScrums: EventItem[];
     ownLineoutSuccessPct: number;
     ownScrumSuccessPct: number;
+    eastsLineoutSuccessPct?: number;
+    eastsScrumSuccessPct?: number;
   };
   teamEventSummary: {
     penaltiesConceded: number;
@@ -180,6 +182,7 @@ export async function generateTeamAnalyticsWorkbook(
 
   buildGradingReferenceSheet(wb);
   buildTeamStatsSheet(wb, input);
+  buildLineoutCallsSheet(wb, input);
   buildForwardsSheet(wb, input);
   buildPlayerProgressionSheet(wb, input);
 
@@ -670,5 +673,122 @@ function buildPlayerProgressionSheet(wb: ExcelJS.Workbook, input: TeamAnalyticsE
 
   const widths = [20, 12, 18, 14, 10, 10, 10, 10, 10, 12, 12, 10, 10, 10, 42];
   widths.forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+  ws.views = [{ state: "frozen", ySplit: 5, showGridLines: false }];
+}
+// ── Sheet 3: Lineout Call Summary ─────────────────────────────────────────
+
+function buildLineoutCallsSheet(wb: ExcelJS.Workbook, input: TeamAnalyticsExportInput) {
+  const ws = wb.addWorksheet("Lineout Calls", {
+    views: [{ showGridLines: false }],
+  });
+
+  ws.getCell("A1").value = "LINEOUT CALL SUMMARY";
+  ws.getCell("A1").font = { name: FONT_NAME, size: 18, bold: true, color: { argb: "FF1F4E78" } };
+  ws.getRow(1).height = 28;
+  ws.mergeCells("A1:G1");
+
+  ws.getCell("A2").value =
+    "Success = Won only. Each row is one call. Timestamps show when that call was used in the match.";
+  ws.getCell("A2").font = { name: FONT_NAME, size: 10, italic: true, color: { argb: "FF595959" } };
+  ws.mergeCells("A2:G2");
+
+  sectionHeader(ws, 4, 1, 7, "CALL BREAKDOWN");
+  ["Call", "Used", "Won", "Lost / Not Straight", "Win Rate", "Win Rate Grade", "Timestamps"].forEach(
+    (h, i) => colHeader(ws.getCell(5, i + 1), h)
+  );
+  ws.getRow(5).height = 32;
+
+  // Build call stats from ownLineouts
+  const callMap = new Map<string, { total: number; won: number; timestamps: number[] }>();
+  for (const e of input.setPieceSummary.ownLineouts) {
+    const call = e.notes?.trim() || "Unknown";
+    if (!callMap.has(call)) callMap.set(call, { total: 0, won: 0, timestamps: [] });
+    const stat = callMap.get(call)!;
+    stat.total += 1;
+    if (e.lineoutResult === "Won") stat.won += 1;
+    if (e.timestamp) stat.timestamps.push(e.timestamp);
+  }
+
+  const callStats = Array.from(callMap.entries())
+    .sort((a, b) => b[1].total - a[1].total);
+
+  if (callStats.length === 0) {
+    ws.mergeCells(6, 1, 6, 7);
+    const empty = ws.getCell(6, 1);
+    empty.value = "No lineout data logged yet.";
+    empty.font = { name: FONT_NAME, size: 10, italic: true, color: { argb: "FF595959" } };
+    empty.alignment = { horizontal: "left", indent: 1, vertical: "middle" };
+  } else {
+    callStats.forEach(([call, stat], i) => {
+      const r = 6 + i;
+      const lost = stat.total - stat.won;
+      const winRate = stat.total > 0 ? stat.won / stat.total : 0;
+      const winRateGrade =
+        winRate >= 0.9 ? "Dominant" :
+        winRate >= 0.8 ? "Competitive" :
+        winRate >= 0.7 ? "Below" : "Poor";
+
+      const timestamps = stat.timestamps
+        .map((t) => {
+          const mins = Math.floor(t / 60);
+          const secs = String(Math.floor(t % 60)).padStart(2, "0");
+          return `${mins}:${secs}`;
+        })
+        .join("  |  ");
+
+      const values: (string | number)[] = [call, stat.total, stat.won, lost, winRate, winRateGrade, timestamps];
+      values.forEach((v, cIdx) => {
+        const cell = ws.getCell(r, cIdx + 1);
+        cell.value = v;
+        cell.font = { name: FONT_NAME, size: 10 };
+        applyBorders(cell);
+        cell.alignment = cIdx === 0 || cIdx === 6
+          ? { horizontal: "left", indent: 1, vertical: "middle", wrapText: true }
+          : { horizontal: "center", vertical: "middle" };
+      });
+
+      ws.getCell(r, 5).numFmt = "0%";
+      applyFill(ws.getCell(r, 6), gradeFill(winRateGrade as Grade));
+      ws.getCell(r, 6).font = { name: FONT_NAME, size: 10, bold: true };
+
+      if (i % 2 === 1) {
+        [1, 2, 3, 4, 7].forEach((c) => applyFill(ws.getCell(r, c), C_ALT_ROW));
+      }
+      ws.getRow(r).height = 24;
+    });
+  }
+
+  // Summary row
+  const summaryRow = 6 + Math.max(callStats.length, 1) + 1;
+  sectionHeader(ws, summaryRow, 1, 7, "OVERALL LINEOUT SUMMARY");
+  const totalUsed = input.setPieceSummary.ownLineouts.length;
+  const totalWon = input.setPieceSummary.ownLineouts.filter(e => e.lineoutResult === "Won").length;
+  const overallRate = totalUsed > 0 ? totalWon / totalUsed : 0;
+
+  const summaryData: [string, string | number][] = [
+    ["Total lineouts logged", totalUsed],
+    ["Total won", totalWon],
+    ["Overall win rate", overallRate],
+    ["Unique calls used", callStats.length],
+  ];
+  summaryData.forEach(([label, val], i) => {
+    const r = summaryRow + 1 + i;
+    const a = ws.getCell(r, 1);
+    a.value = label;
+    a.font = { name: FONT_NAME, size: 10, bold: true };
+    applyBorders(a);
+    a.alignment = { horizontal: "left", indent: 1, vertical: "middle" };
+
+    ws.mergeCells(r, 2, r, 7);
+    const b = ws.getCell(r, 2);
+    b.value = val;
+    b.font = { name: FONT_NAME, size: 10 };
+    applyBorders(b);
+    b.alignment = { horizontal: "center", vertical: "middle" };
+    if (label === "Overall win rate") b.numFmt = "0%";
+    if (i % 2 === 1) { applyFill(a, C_ALT_ROW); applyFill(b, C_ALT_ROW); }
+  });
+
+  [20, 8, 8, 20, 12, 16, 40].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
   ws.views = [{ state: "frozen", ySplit: 5, showGridLines: false }];
 }
