@@ -70,6 +70,10 @@ export default function TranscriptPanel({
                   ? "border-purple-500/20 bg-purple-500/5"
                   : event.category === "team"
                   ? "border-amber-500/20 bg-amber-500/5"
+                  : event.category === "milestone"
+                  ? "border-sky-500/20 bg-sky-500/5"
+                  : event.category === "substitution"
+                  ? "border-orange-500/20 bg-orange-500/5"
                   : "border-border bg-panel-2"
               } ${isLatestEvent ? "ring-1 ring-emerald-400/50" : ""}`}
             >
@@ -123,6 +127,14 @@ export default function TranscriptPanel({
                 ) : event.category === "team" ? (
                   <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] text-amber-300">
                     Team event
+                  </span>
+                ) : event.category === "milestone" ? (
+                  <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-[11px] text-sky-300">
+                    Milestone
+                  </span>
+                ) : event.category === "substitution" ? (
+                  <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-1 text-[11px] text-orange-300">
+                    Substitution
                   </span>
                 ) : (
                   <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] text-emerald-300">

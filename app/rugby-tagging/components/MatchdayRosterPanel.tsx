@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { POSITION_OPTIONS } from "../constants";
 import type { PlayerAction, RosterRow } from "../types";
 
@@ -14,6 +15,7 @@ type MatchdayRosterPanelProps = {
   onSelectedPlayerChange: (value: string) => void;
   onShowRawTranscriptChange: (checked: boolean) => void;
   onQuickTag: (action: PlayerAction) => void;
+  onBringOn: (playerNumber: number, position: string) => void;
 };
 
 const runAndBlur = (
@@ -33,7 +35,11 @@ export default function MatchdayRosterPanel({
   onSelectedPlayerChange,
   onShowRawTranscriptChange,
   onQuickTag,
+  onBringOn,
 }: MatchdayRosterPanelProps) {
+  const [bringOnNumber, setBringOnNumber] = useState<number | null>(null);
+  const [bringOnPosition, setBringOnPosition] = useState("");
+
   return (
     <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-panel)]">
       <div className="flex items-center justify-between">
@@ -123,6 +129,7 @@ export default function MatchdayRosterPanel({
               <th className="p-2 text-left">Name</th>
               <th className="p-2 text-left">Position</th>
               <th className="p-2 text-left">Min</th>
+              <th className="p-2"></th>
             </tr>
           </thead>
           <tbody>
@@ -168,8 +175,73 @@ export default function MatchdayRosterPanel({
                     placeholder="0"
                   />
                 </td>
+                <td className="p-2">
+                  {row.number >= 16 && row.name.trim() && bringOnNumber !== row.number && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        setBringOnNumber(row.number);
+                        setBringOnPosition("");
+                        e.currentTarget.blur();
+                      }}
+                      className="whitespace-nowrap rounded-lg border border-border px-2 py-1 text-xs font-medium text-foreground"
+                    >
+                      Bring On
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
+            {bringOnNumber !== null && (() => {
+              const row = rosterRows.find((r) => r.number === bringOnNumber);
+              if (!row) return null;
+              return (
+                <tr className="border-t border-border bg-orange-500/5">
+                  <td colSpan={5} className="px-3 py-2">
+                    <p className="mb-2 text-xs text-muted">
+                      {row.name} — coming on at:
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={bringOnPosition}
+                        onChange={(e) => setBringOnPosition(e.target.value)}
+                        className="flex-1 rounded-lg border border-border bg-panel px-2 py-1.5 text-sm text-foreground"
+                        autoFocus
+                      >
+                        <option value="">Select position</option>
+                        {POSITION_OPTIONS.filter((p) => p !== "Bench").map((p) => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          if (!bringOnPosition) return;
+                          onBringOn(bringOnNumber, bringOnPosition);
+                          setBringOnNumber(null);
+                          setBringOnPosition("");
+                          e.currentTarget.blur();
+                        }}
+                        disabled={!bringOnPosition}
+                        className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground disabled:opacity-40"
+                      >
+                        Log Sub
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          setBringOnNumber(null);
+                          e.currentTarget.blur();
+                        }}
+                        className="text-xs text-muted hover:text-foreground"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })()}
           </tbody>
         </table>
       </div>

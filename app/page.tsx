@@ -15,6 +15,7 @@ import PlayerDrilldownModal from "./rugby-tagging/components/PlayerDrilldownModa
 import GameReviewTimelinePanel from "./rugby-tagging/components/GameReviewTimelinePanel";
 import SetPieceLoggingPanel from "./rugby-tagging/components/SetPieceLoggingPanel";
 import TeamEventsPanel from "./rugby-tagging/components/TeamEventsPanel";
+import MatchMilestonesPanel from "./rugby-tagging/components/MatchMilestonesPanel";
 import PendingResolutionPanel from "./rugby-tagging/components/PendingResolutionPanel";
 import AppTopNav from "./rugby-tagging/components/AppTopNav";
 import {
@@ -41,6 +42,7 @@ import {
   buildBasicStats,
   buildCoachComment,
   buildSetPieceText,
+  buildMilestoneEventText,
   buildTeamEventText,
   cleanTranscriptText,
   copyTextToClipboard,
@@ -71,6 +73,7 @@ import {
 import type {
   EventItem,
   LineoutResult,
+  MilestoneType,
   PendingResolution,
   PlayerAction,
   PlayerStats,
@@ -1094,6 +1097,46 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     ]);
 
     setStatusMessage(`${text} logged`);
+  };
+
+  const addMilestoneEvent = (type: MilestoneType) => {
+    const timestamp = videoRef.current?.currentTime || currentTime;
+    const text = buildMilestoneEventText(type);
+
+    setEvents((prev) => [
+      ...prev,
+      {
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        timestamp,
+        text,
+        category: "milestone",
+        milestoneType: type,
+      },
+    ]);
+
+    setStatusMessage(`${text} logged`);
+  };
+
+  const addSubstitutionEvent = (playerNumber: number, position: string) => {
+    const player = rosterRows.find((r) => r.number === playerNumber);
+    if (!player) return;
+    const timestamp = videoRef.current?.currentTime || currentTime;
+    const text = `${player.name} on (${position})`;
+
+    setEvents((prev) => [
+      ...prev,
+      {
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        timestamp,
+        text,
+        category: "substitution",
+        substitutionPlayerOn: player.name,
+        substitutionPosition: position,
+      },
+    ]);
+
+    updateRosterRow(playerNumber, "position", position);
+    setStatusMessage(`${player.name} brought on at ${position}`);
   };
 
   const addCoachNote = () => {
@@ -3073,6 +3116,10 @@ Ellie missed tackle"
                   />
                 </div>
 
+                <MatchMilestonesPanel
+                  onAddMilestone={addMilestoneEvent}
+                />
+
                 <TeamEventsPanel
                   onAddPenaltyFor={() => addTeamEvent("penalty for")}
                   onAddPenaltyConceded={() => addTeamEvent("penalty conceded")}
@@ -3089,6 +3136,7 @@ Ellie missed tackle"
                   onSelectedPlayerChange={setSelectedPlayer}
                   onShowRawTranscriptChange={setShowRawTranscript}
                   onQuickTag={addQuickTag}
+                  onBringOn={addSubstitutionEvent}
                 />
               </>
             ) : (
