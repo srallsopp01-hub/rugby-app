@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after Batch C Squad Profile Step 1  
+**Last updated:** April 2026 — after Squad Profile Step 2 (management UI)  
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -40,6 +40,7 @@ It is currently a **coach-first MVP / early private beta**, best used on desktop
 | Team Analytics | `/team-dashboard` | Post-match team and player analysis, no video |
 | Player Dashboard | `/player-dashboard` | One-match player review (coach-facing, not player login) |
 | Saved Matches | `/saved-matches` | Reopen / delete matches saved in browser |
+| Squad Profile | `/squad` | Manage squad players, names, positions, colours |
 
 These screens are **separate and should stay separate**.
 
@@ -72,6 +73,8 @@ lib/
 matchVideoSession.ts          ← Video blob session management
 savedMatches.ts               ← localStorage match persistence
 squadProfile.ts               ← Squad Profile localStorage persistence (cross-match)
+squad/
+page.tsx                      ← Squad Profile management UI (/squad route)
 exports/
 teamAnalyticsExport.ts      ← .xlsx workbook builder (5 sheets)
 downloadWorkbook.ts         ← Blob download helper
@@ -273,14 +276,18 @@ All previous CSV downloads have been removed. There is now one polished report.
 
 - ✅ `lib/squadProfile.ts` created — types: `SquadPlayer`, `ActionSample`, `CorrectionMemoryEntry`, `SquadProfile`; functions: `getSquadProfile`, `saveSquadProfile`, `clearSquadProfile`, `upsertSquadPlayer`, `removeSquadPlayer`, `findPlayerByName`, `addCorrectionEntry`, `addVoiceSample`
 - ✅ `SQUAD_PROFILE_KEY` added to constants.ts
-- No UI yet — storage layer only
+
+## What was completed — Squad Profile Step 2 (April 2026)
+
+- ✅ `/squad` page created — team details (name, coach, colours), player list sorted by jersey number
+- ✅ Add/edit/remove players — full name, preferred name, nicknames, primary/secondary positions, jersey number, status
+- ✅ Squad nav link added to AppTopNav
 
 ---
 
-## What's next — Squad Profile Step 2
+## What's next — Squad Profile Step 3
 
-- Squad Profile management UI (add/edit players, set preferred names and nicknames)
-- Wire squad nicknames and preferred names into voice matching pipeline
+- Wire squad profile into voice matching pipeline (preferred name + nickname lookup, surname matching)
 
 ## What's next — Batch C part 2 (medium complexity)
 
