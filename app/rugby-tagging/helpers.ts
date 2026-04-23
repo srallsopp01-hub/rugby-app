@@ -2,6 +2,7 @@ import { DEFAULT_POSITION_BY_NUMBER, DEFAULT_ROSTER_ROWS, POSITION_OPTIONS } fro
 import type {
   EventItem,
   Grade,
+  MilestoneType,
   PendingResolution,
   PlayerStats,
   ReportRow,
@@ -526,6 +527,10 @@ export function buildSetPieceText(event: {
 }
 
 export function buildTeamEventText(type: TeamEventType) {
+  return titleCase(type);
+}
+
+export function buildMilestoneEventText(type: MilestoneType) {
   return titleCase(type);
 }
 

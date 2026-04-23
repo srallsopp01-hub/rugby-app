@@ -4,8 +4,9 @@ export type SetPieceSide = "Easts" | "Opposition";
 export type LineoutResult = "Won" | "Lost" | "Penalty" | "Not Straight" | "Steal";
 export type ScrumResult = "Won" | "Lost" | "Penalty For" | "Penalty Against" | "Free Kick";
 export type TeamEventType = "penalty for" | "penalty conceded" | "try scored" | "try conceded";
+export type MilestoneType = "kick off" | "half time" | "second half kick off" | "full time";
 
-export type EventCategory = "player" | "set-piece" | "team";
+export type EventCategory = "player" | "set-piece" | "team" | "milestone" | "substitution";
 
 export type EventItem = {
   id: number;
@@ -22,6 +23,10 @@ export type EventItem = {
   scrumResult?: ScrumResult;
   notes?: string;
   teamEventType?: TeamEventType;
+  milestoneType?: MilestoneType;
+  substitutionPlayerOn?: string;
+  substitutionPlayerOff?: string;
+  substitutionPosition?: string;
 };
 
 export type PlayerStats = {
