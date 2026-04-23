@@ -70,10 +70,23 @@ export default function PlayerSidebar() {
 
   return (
     <aside className="flex flex-col w-[220px] shrink-0 border-r border-border bg-panel h-full">
-      <div className="px-5 py-5 border-b border-border">
-        <span className="text-xs font-semibold tracking-widest uppercase text-muted">
-          Player
-        </span>
+      <div className="px-5 pt-5 pb-4 border-b border-border">
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-panel-3 border border-border">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="6" r="3" stroke="currentColor" strokeWidth="1.25"/>
+              <path d="M2.5 14c0-3.038 2.462-5.5 5.5-5.5s5.5 2.462 5.5 5.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <div>
+            <span className="text-xs font-semibold tracking-tight text-foreground-strong leading-none block">
+              Player
+            </span>
+            <span className="text-[10px] text-muted-2 leading-none mt-0.5 block">
+              Your platform
+            </span>
+          </div>
+        </div>
       </div>
 
       <nav className="flex flex-col gap-0.5 p-3 flex-1">
@@ -83,13 +96,16 @@ export default function PlayerSidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
                 active
                   ? "bg-panel-3 text-foreground-strong"
                   : "text-muted hover:text-foreground hover:bg-panel-2"
               }`}
             >
-              <span className={active ? "text-foreground-strong" : "text-muted"}>
+              {active && (
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[18px] rounded-r-full bg-foreground-strong" />
+              )}
+              <span className={`transition-colors duration-150 ${active ? "text-foreground-strong" : "text-muted"}`}>
                 {item.icon}
               </span>
               {item.label}

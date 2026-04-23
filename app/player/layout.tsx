@@ -6,7 +6,7 @@ export default function PlayerLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       <PlayerSidebar />
       <main className="flex-1 overflow-auto">{children}</main>
     </div>
