@@ -126,6 +126,23 @@ export function findPlayerByName(
   );
 }
 
+export function resolvePlayerName(
+  profile: SquadProfile,
+  name: string
+): string | null {
+  const exact = findPlayerByName(profile, name);
+  if (exact) return exact.fullName;
+
+  const needle = name.toLowerCase().trim();
+  const surnameMatch = profile.players.find((p) => {
+    const parts = p.fullName.trim().split(/\s+/);
+    const surname = parts[parts.length - 1]?.toLowerCase() ?? "";
+    return surname.length > 1 && surname === needle;
+  });
+
+  return surnameMatch?.fullName ?? null;
+}
+
 export function addCorrectionEntry(
   profile: SquadProfile,
   rawWhisperText: string,

@@ -32,6 +32,11 @@ import {
   upsertSavedMatch,
 } from "./rugby-tagging/lib/savedMatches";
 import {
+  getSquadProfile,
+  resolvePlayerName,
+  type SquadProfile,
+} from "./rugby-tagging/lib/squadProfile";
+import {
   CORRECTION_MEMORY_KEY,
   DEFAULT_LEARNED_CORRECTIONS,
   DEFAULT_ROSTER_ROWS,
@@ -117,6 +122,7 @@ export default function RugbyVoiceTaggingMVP() {
   const [opponent, setOpponent] = useState("");
   const [matchDate, setMatchDate] = useState("");
   const [currentMatchId, setCurrentMatchId] = useState("");
+  const [squadProfile, setSquadProfile] = useState<SquadProfile | null>(null);
 
   const [rosterRows, setRosterRows] = useState<RosterRow[]>(DEFAULT_ROSTER_ROWS);
   const [selectedPlayer, setSelectedPlayer] = useState("");
@@ -723,6 +729,8 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
       console.error("Failed to load help modal state", error);
       setShowHelpModal(true);
     }
+
+    setSquadProfile(getSquadProfile());
   }, []);
 
   useEffect(() => {
@@ -1712,21 +1720,36 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
           );
 
           const hasKnownAction = !!parsed && parsed.action !== "unknown";
+
+          const resolvedPlayerName =
+            squadProfile && parsed?.player
+              ? resolvePlayerName(squadProfile, parsed.player)
+              : null;
+
+          const effectivePlayerName =
+            resolvedPlayerName ?? parsed?.player ?? undefined;
+
           const parsedPlayerIsValid =
-            !!parsed?.player && players.includes(parsed.player);
+            !!resolvedPlayerName ||
+            (!!parsed?.player && players.includes(parsed.player));
 
           const highEnoughConfidence =
             parsed?.confidence === "high" || parsed?.confidence === "medium";
 
           if (hasKnownAction && parsedPlayerIsValid && highEnoughConfidence) {
+            const effectiveText =
+              resolvedPlayerName && parsed?.action && parsed.action !== "unknown"
+                ? `${resolvedPlayerName} ${parsed.action}`
+                : cleanedText;
+
             replacePendingEvent(pendingEventId, {
-              text: cleanedText,
+              text: effectiveText,
               rawText,
               isPending: false,
-              playerName: parsed?.player || undefined,
+              playerName: effectivePlayerName,
               playerAction: parsed?.action as PlayerAction,
             });
-            setStatusMessage(`Tag added: ${cleanedText}`);
+            setStatusMessage(`Tag added: ${effectiveText}`);
           } else if (hasKnownAction && mergedCandidates.length > 0) {
             setPendingResolution({
               rawText,
