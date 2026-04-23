@@ -16,6 +16,7 @@ export type EventItem = {
   isPending?: boolean;
   category?: EventCategory;
   playerName?: string;
+  secondPlayerName?: string;
   playerAction?: PlayerAction;
   setPieceType?: SetPieceType;
   setPieceSide?: SetPieceSide;
@@ -66,6 +67,7 @@ export type ReviewItem = {
   guessedText: string;
   timestamp: number;
   selectedPlayer: string;
+  secondPlayerName?: string;
   selectedAction: "" | PlayerAction;
 };
 

@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after Batch C part 2: split correction memory (double tackle still in progress)  
+**Last updated:** April 2026 — after Batch C part 2 complete (split correction memory + double tackle)  
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -324,9 +324,18 @@ All previous CSV downloads have been removed. There is now one polished report.
 
 ---
 
-## What's next — Batch C part 2: double tackle (medium complexity)
+## What was completed — Batch C part 2: double tackle (April 2026)
 
-1. **Double tackle support** — two players on the same tackle event (in progress)
+- ✅ `EventItem.secondPlayerName?: string` added — stores the second tackler on a tackle event
+- ✅ `ReviewItem.secondPlayerName?: string` added — available in Needs Review corrections
+- ✅ `buildBasicStats` counts a tackle for both `playerName` and `secondPlayerName` when present
+- ✅ `addStructuredPlayerEvent` accepts optional `secondPlayerName`; text becomes `"PlayerA + PlayerB tackle"`
+- ✅ `replacePendingEvent` accepts `secondPlayerName` and stores it on the event
+- ✅ `commitResolvedTag` builds double-tackle text and passes both names through
+- ✅ Voice pipeline: when `squadCandidates.length >= 2` and action is tackle, `resolverSecondSelection` pre-filled with second match
+- ✅ `PendingResolutionPanel`: second player `<select>` shown only when action is tackle (optional, filtered to exclude first selection)
+- ✅ `NeedsReviewPanel`: second player `<select>` shown when `selectedAction === "tackle"`, clears when action changes
+- ✅ `saveReviewItem` passes `secondPlayerName` through to `addStructuredPlayerEvent`
 
 ---
 

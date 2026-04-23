@@ -117,6 +117,7 @@ export default function NeedsReviewPanel({
                   onChange={(e) =>
                     onUpdateReviewItem(item.id, {
                       selectedAction: e.target.value as ReviewItem["selectedAction"],
+                      secondPlayerName: undefined,
                     })
                   }
                   className="rounded-xl border border-border bg-panel px-3 py-2.5 text-sm text-foreground"
@@ -127,6 +128,27 @@ export default function NeedsReviewPanel({
                   <option value="carry">carry</option>
                   <option value="turnover">turnover</option>
                 </select>
+
+                {item.selectedAction === "tackle" && (
+                  <select
+                    value={item.secondPlayerName ?? ""}
+                    onChange={(e) =>
+                      onUpdateReviewItem(item.id, {
+                        secondPlayerName: e.target.value || undefined,
+                      })
+                    }
+                    className="rounded-xl border border-border bg-panel px-3 py-2.5 text-sm text-foreground sm:col-span-2"
+                  >
+                    <option value="">+ 2nd tackler (optional)</option>
+                    {players
+                      .filter((p) => p !== item.selectedPlayer)
+                      .map((player) => (
+                        <option key={player} value={player}>
+                          {player}
+                        </option>
+                      ))}
+                  </select>
+                )}
               </div>
 
               <div className="mt-3 space-y-3">

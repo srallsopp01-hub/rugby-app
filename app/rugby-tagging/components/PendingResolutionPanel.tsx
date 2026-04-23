@@ -4,8 +4,10 @@ import type { PendingResolution } from "../types";
 type PendingResolutionPanelProps = {
   pendingResolution: PendingResolution | null;
   resolverSelection: string;
+  resolverSecondSelection: string;
   resolverCandidates: string[];
   onResolverSelectionChange: (value: string) => void;
+  onResolverSecondSelectionChange: (value: string) => void;
   onConfirm: () => void;
   onReviewLater: () => void;
 };
@@ -13,12 +15,16 @@ type PendingResolutionPanelProps = {
 export default function PendingResolutionPanel({
   pendingResolution,
   resolverSelection,
+  resolverSecondSelection,
   resolverCandidates,
   onResolverSelectionChange,
+  onResolverSecondSelectionChange,
   onConfirm,
   onReviewLater,
 }: PendingResolutionPanelProps) {
   if (!pendingResolution) return null;
+
+  const isTackle = pendingResolution.action === "tackle";
 
   return (
     <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
@@ -60,6 +66,23 @@ export default function PendingResolutionPanel({
             ))}
             <option value="">No player</option>
           </select>
+
+          {isTackle && (
+            <select
+              value={resolverSecondSelection}
+              onChange={(e) => onResolverSecondSelectionChange(e.target.value)}
+              className="rounded-xl border border-border bg-panel px-3 py-2.5 text-sm text-foreground"
+            >
+              <option value="">+ 2nd tackler (optional)</option>
+              {resolverCandidates
+                .filter((p) => p !== resolverSelection)
+                .map((player) => (
+                  <option key={player} value={player}>
+                    {player}
+                  </option>
+                ))}
+            </select>
+          )}
 
           <button
             onClick={onConfirm}

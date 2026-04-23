@@ -161,6 +161,7 @@ export default function RugbyVoiceTaggingMVP() {
   const [pendingResolution, setPendingResolution] =
     useState<PendingResolution | null>(null);
   const [resolverSelection, setResolverSelection] = useState("");
+  const [resolverSecondSelection, setResolverSecondSelection] = useState("");
   const [resolverCandidates, setResolverCandidates] = useState<string[]>([]);
   const [reviewQueue, setReviewQueue] = useState<ReviewItem[]>([]);
   const [learnedCorrections, setLearnedCorrections] =
@@ -956,9 +957,13 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     playerName: string,
     action: PlayerAction,
     timestamp: number,
-    rawText?: string
+    rawText?: string,
+    secondPlayerName?: string
   ) => {
-    const text = `${playerName} ${action}`;
+    const text =
+      action === "tackle" && secondPlayerName
+        ? `${playerName} + ${secondPlayerName} tackle`
+        : `${playerName} ${action}`;
 
     setEvents((prev) => [
       ...prev,
@@ -969,6 +974,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
         rawText: rawText?.trim() || undefined,
         category: "player",
         playerName,
+        secondPlayerName: action === "tackle" ? secondPlayerName : undefined,
         playerAction: action,
       },
     ]);
@@ -1001,6 +1007,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
       rawText?: string;
       isPending?: boolean;
       playerName?: string;
+      secondPlayerName?: string;
       playerAction?: PlayerAction;
     }
   ) => {
@@ -1014,6 +1021,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
               isPending: next.isPending ?? false,
               category: "player",
               playerName: next.playerName,
+              secondPlayerName: next.secondPlayerName,
               playerAction: next.playerAction,
             }
           : event
@@ -1258,7 +1266,8 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
           selectedPlayer,
           selectedAction,
           reviewItem.timestamp,
-          reviewRawText || undefined
+          reviewRawText || undefined,
+          selectedAction === "tackle" ? item.secondPlayerName : undefined
         );
       } else {
         addEvent(
@@ -1532,8 +1541,12 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
   const commitResolvedTag = () => {
     if (!pendingResolution) return;
 
+    const isDoubleTackle =
+      pendingResolution.action === "tackle" && !!resolverSecondSelection;
     const finalText = resolverSelection
-      ? `${resolverSelection} ${pendingResolution.action}`
+      ? isDoubleTackle
+        ? `${resolverSelection} + ${resolverSecondSelection} tackle`
+        : `${resolverSelection} ${pendingResolution.action}`
       : pendingResolution.action;
 
     rememberCorrection(pendingResolution.rawText, resolverSelection, pendingResolution.action);
@@ -1544,6 +1557,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
         rawText: pendingResolution.rawText,
         isPending: false,
         playerName: resolverSelection || undefined,
+        secondPlayerName: isDoubleTackle ? resolverSecondSelection : undefined,
         playerAction: pendingResolution.action,
       });
     } else if (resolverSelection) {
@@ -1551,7 +1565,8 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
         resolverSelection,
         pendingResolution.action,
         pendingResolution.timestamp,
-        pendingResolution.rawText
+        pendingResolution.rawText,
+        isDoubleTackle ? resolverSecondSelection : undefined
       );
     } else {
       addEvent(finalText, pendingResolution.timestamp, pendingResolution.rawText);
@@ -1559,6 +1574,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
 
     setPendingResolution(null);
     setResolverSelection("");
+    setResolverSecondSelection("");
     setResolverCandidates([]);
     setStatusMessage("Tag confirmed");
   };
@@ -1579,6 +1595,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
 
     setPendingResolution(null);
     setResolverSelection("");
+    setResolverSecondSelection("");
     setResolverCandidates([]);
     setStatusMessage("Previous unresolved tag moved to review");
   };
@@ -1771,6 +1788,11 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
             });
             setResolverCandidates(mergedCandidates);
             setResolverSelection(mergedCandidates[0] || "");
+            setResolverSecondSelection(
+              parsed!.action === "tackle" && squadCandidates.length >= 2
+                ? squadCandidates[1]
+                : ""
+            );
             setStatusMessage("Please confirm player");
           } else {
             removePendingEvent(pendingEventId);
@@ -3081,8 +3103,10 @@ Ellie missed tackle"
                 <PendingResolutionPanel
                   pendingResolution={pendingResolution}
                   resolverSelection={resolverSelection}
+                  resolverSecondSelection={resolverSecondSelection}
                   resolverCandidates={resolverCandidates}
                   onResolverSelectionChange={setResolverSelection}
+                  onResolverSecondSelectionChange={setResolverSecondSelection}
                   onConfirm={commitResolvedTag}
                   onReviewLater={() => {
                     if (!pendingResolution) return;
@@ -3099,6 +3123,7 @@ Ellie missed tackle"
                     );
                     setPendingResolution(null);
                     setResolverSelection("");
+                    setResolverSecondSelection("");
                     setResolverCandidates([]);
                     setStatusMessage("Moved to review queue");
                   }}

@@ -489,6 +489,9 @@ export function buildBasicStats(players: string[], events: EventItem[]) {
         result[matchedPlayer].missed += 1;
       } else if (event.playerAction === "tackle") {
         result[matchedPlayer].tackles += 1;
+        if (event.secondPlayerName && result[event.secondPlayerName]) {
+          result[event.secondPlayerName].tackles += 1;
+        }
       } else if (event.playerAction === "carry") {
         result[matchedPlayer].carries += 1;
       } else if (event.playerAction === "turnover") {
