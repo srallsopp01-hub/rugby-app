@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after Batch C part 1  
+**Last updated:** April 2026 — after Batch C Squad Profile Step 1  
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -71,6 +71,7 @@ constants.ts                    ← Storage keys, defaults
 lib/
 matchVideoSession.ts          ← Video blob session management
 savedMatches.ts               ← localStorage match persistence
+squadProfile.ts               ← Squad Profile localStorage persistence (cross-match)
 exports/
 teamAnalyticsExport.ts      ← .xlsx workbook builder (5 sheets)
 downloadWorkbook.ts         ← Blob download helper
@@ -160,12 +161,21 @@ All previous CSV downloads have been removed. There is now one polished report.
 
 **RosterRow**: `number`, `name`, `position`, `minutes`
 
+**SquadProfile** (lib/squadProfile.ts — cross-match, persistent): `id`, `teamName`, `coachName`, `primaryColour`, `secondaryColour`, `logoUrl`, `players[]`, `actionSamples[]`, `correctionMemory[]`
+
+**SquadPlayer**: `id`, `fullName`, `preferredName`, `nicknames[]`, `primaryPosition`, `secondaryPositions[]`, `jerseyNumber`, `voiceSamples[]`, `status`
+
+**CorrectionMemoryEntry**: `rawWhisperText`, `resolvedPlayerName`, `resolvedAction`, `count`
+
+**ActionSample**: `action`, `patterns[]`
+
 ---
 
 ## Storage
 
 - **Match session:** `localStorage` key `STORAGE_KEY` (defined in constants.ts)
-- **Correction memory:** `localStorage` key `CORRECTION_MEMORY_KEY`
+- **Correction memory (per-session):** `localStorage` key `CORRECTION_MEMORY_KEY`
+- **Squad Profile (cross-match):** `localStorage` key `SQUAD_PROFILE_KEY` (via lib/squadProfile.ts)
 - **Current match ID:** `localStorage` (via savedMatches lib)
 - **Saved matches list:** `localStorage` (via savedMatches lib)
 - **Video:** `sessionStorage` blob URL (not persisted across sessions)
@@ -259,7 +269,18 @@ All previous CSV downloads have been removed. There is now one polished report.
 - ✅ Match milestone buttons — Kick Off, Half Time, Second Half KO, Full Time logged at current video timestamp (sky-blue styling in transcript)
 - ✅ Bench bring-on flow — bench rows 16–23 get a "Bring On" button; coach selects position, confirms, logs substitution event and updates player's roster position (orange styling in transcript)
 
+## What was completed — Batch C Squad Profile Step 1 (April 2026)
+
+- ✅ `lib/squadProfile.ts` created — types: `SquadPlayer`, `ActionSample`, `CorrectionMemoryEntry`, `SquadProfile`; functions: `getSquadProfile`, `saveSquadProfile`, `clearSquadProfile`, `upsertSquadPlayer`, `removeSquadPlayer`, `findPlayerByName`, `addCorrectionEntry`, `addVoiceSample`
+- ✅ `SQUAD_PROFILE_KEY` added to constants.ts
+- No UI yet — storage layer only
+
 ---
+
+## What's next — Squad Profile Step 2
+
+- Squad Profile management UI (add/edit players, set preferred names and nicknames)
+- Wire squad nicknames and preferred names into voice matching pipeline
 
 ## What's next — Batch C part 2 (medium complexity)
 
