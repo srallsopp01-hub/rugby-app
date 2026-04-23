@@ -46,36 +46,33 @@ These screens are **separate and should stay separate**.
 ---
 
 ## Key files
-
-```
 app/
-  page.tsx                          ← Main Workspace (large file, ~2500 lines)
-  rugby-tagging/
-    components/
-      TeamEventsPanel.tsx           ← Penalty For, Penalty Conceded, Try Scored, Try Conceded
-      TeamSheetModal.tsx            ← First-load team sheet entry
-      MatchdayRosterPanel.tsx       ← Quick tag buttons + roster table
-      TranscriptPanel.tsx           ← Event timeline (right sidebar)
-      NeedsReviewPanel.tsx          ← Corrections queue
-      SetPieceLoggingPanel.tsx      ← Lineout + scrum logging
-      CoachReviewPanel.tsx          ← Coach notes (Game Review mode)
-      TeamSnapshotPanel.tsx         ← Live team stats summary
-      StatsPanel.tsx                ← Live stats table (no download button)
-      MatchReportModal.tsx          ← Full report modal (includes Lineout Call Summary)
-      PlayerDrilldownModal.tsx      ← Player breakdown modal
-      GameReviewTimelinePanel.tsx   ← Timeline for Game Review mode
-      PendingResolutionPanel.tsx    ← Player confirmation prompt after voice tag
-      AppTopNav.tsx                 ← Top navigation bar
-    helpers.ts                      ← All utility functions
-    types.ts                        ← All TypeScript types
-    constants.ts                    ← Storage keys, defaults
-    lib/
-      matchVideoSession.ts          ← Video blob session management
-      savedMatches.ts               ← localStorage match persistence
-      exports/
-        teamAnalyticsExport.ts      ← .xlsx workbook builder (5 sheets)
-        downloadWorkbook.ts         ← Blob download helper
-```
+page.tsx                          ← Main Workspace (large file, ~2500 lines)
+rugby-tagging/
+components/
+TeamEventsPanel.tsx           ← Penalty For, Penalty Conceded, Try Scored, Try Conceded
+TeamSheetModal.tsx            ← First-load team sheet entry
+MatchdayRosterPanel.tsx       ← Quick tag buttons + roster table
+TranscriptPanel.tsx           ← Event timeline (right sidebar)
+NeedsReviewPanel.tsx          ← Corrections queue
+SetPieceLoggingPanel.tsx      ← Lineout + scrum logging
+CoachReviewPanel.tsx          ← Coach notes (Game Review mode)
+TeamSnapshotPanel.tsx         ← Live team stats summary
+StatsPanel.tsx                ← Live stats table (no download button)
+MatchReportModal.tsx          ← Full report modal (includes Lineout Call Summary)
+PlayerDrilldownModal.tsx      ← Player breakdown modal
+GameReviewTimelinePanel.tsx   ← Timeline for Game Review mode
+PendingResolutionPanel.tsx    ← Player confirmation prompt after voice tag
+AppTopNav.tsx                 ← Top navigation bar
+helpers.ts                      ← All utility functions
+types.ts                        ← All TypeScript types
+constants.ts                    ← Storage keys, defaults
+lib/
+matchVideoSession.ts          ← Video blob session management
+savedMatches.ts               ← localStorage match persistence
+exports/
+teamAnalyticsExport.ts      ← .xlsx workbook builder (5 sheets)
+downloadWorkbook.ts         ← Blob download helper
 
 ---
 
@@ -125,7 +122,7 @@ app/
 
 ---
 
-## Download strategy (simplified in Batch B)
+## Download strategy
 
 | What | Where | Format |
 |---|---|---|
@@ -186,24 +183,6 @@ All previous CSV downloads have been removed. There is now one polished report.
 1. Have `type="button"` explicitly set
 2. Call `event.currentTarget.blur()` immediately after its click handler runs via a `runAndBlur` helper
 
-**Standard implementation:**
-```tsx
-const runAndBlur = (
-  handler: () => void,
-  event: React.MouseEvent<HTMLButtonElement>
-) => {
-  handler();
-  event.currentTarget.blur();
-};
-
-<button
-  type="button"
-  onClick={(e) => runAndBlur(onAddPenaltyFor, e)}
->
-  + Penalty For
-</button>
-```
-
 **This fix has been applied to ALL of these files:**
 - ✅ `TeamEventsPanel.tsx`
 - ✅ `MatchdayRosterPanel.tsx`
@@ -211,6 +190,32 @@ const runAndBlur = (
 - ✅ `NeedsReviewPanel.tsx`
 
 **If new event-logging buttons are added anywhere**, apply this same pattern immediately.
+
+---
+
+## How we work — coding workflow
+
+### Planning
+- Use **Claude.ai chat** to plan changes, understand what needs doing, and get instructions written out clearly before touching any code.
+
+### Applying changes
+- Use **Claude Code in VS Code** to apply changes to the actual files.
+- Claude Code can find the right place in large files without manual copy/pasting.
+- Always **review the diff** Claude Code proposes before accepting it.
+- Never accept a change you don't understand.
+
+### After every change
+1. Test the change in the browser (localhost:3000)
+2. Confirm it works as expected
+3. Run `git add . && git commit -m "description of change"`
+4. Update PROJECT_CONTEXT.md if anything has changed
+5. Start a fresh chat with the updated context pasted in
+
+### Rules for working with code
+- `page.tsx` is large (~2500 lines) — never rewrite the whole file, always use targeted find/replace
+- Always ask for the current file before making changes — never guess from memory
+- Stability over cleverness — this app is live in private beta
+- Test after every change before moving to the next
 
 ---
 
@@ -227,7 +232,7 @@ const runAndBlur = (
 
 ## What was completed — Batch B (April 2026)
 
-- ✅ Lineout Call Summary added to Match Report modal (call name, used, won, lost, win rate, timestamps)
+- ✅ Lineout Call Summary added to Match Report modal
 - ✅ Lineout Calls sheet added to .xlsx download (Sheet 3)
 - ✅ Download strategy simplified — one report, one transcript download
 - ✅ CSV download removed from Workspace StatsPanel
@@ -241,8 +246,8 @@ const runAndBlur = (
 
 1. **Double tackle support** — two players on the same tackle event
 2. **Substitutions** — ability to record subs during a match
-3. **Bench position selection** — bench players should select what position they came on at (so reports stay accurate)
-4. **Split correction memory** — currently one memory store; should split into name corrections and action corrections separately for smarter learning
+3. **Bench position selection** — bench players should select what position they came on at
+4. **Split correction memory** — split into name corrections and action corrections separately
 
 ---
 
@@ -260,25 +265,14 @@ const runAndBlur = (
 - Coach accounts
 - Player logins and season dashboards
 - Custom KPI systems
-- Onboarding flow (team name, roster, logo, colours, lineout calls)
+- Onboarding flow
 - Video annotation / telestration
 - Cross-match player trends
 - Shared team analysis links
 
 ---
 
-## How to work with this codebase
-
-- `page.tsx` is large (~2500 lines). Always use **find/replace blocks**, never rewrite the whole file.
-- For small component files, full ready-to-paste replacements are fine.
-- Always ask for the **current file** before making changes — never guess from memory.
-- Test after every change before moving to the next.
-- The app is live in private beta — **stability over cleverness**.
-- When in doubt, prefer the safe incremental path.
-
----
-
 ## Naming notes
 
-- The team is currently "Easts" in some internal variable names (e.g. `eastsScrumSuccessPct`) — treat as placeholder. All logic should work for any team name.
-- Will be made configurable when onboarding is built.
+- "Easts" appears in some internal variable names — treat as placeholder
+- Will be made configurable when onboarding is built
