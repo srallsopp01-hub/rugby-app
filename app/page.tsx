@@ -1710,36 +1710,60 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
             return;
           }
 
-          const backendCandidates = (parsed?.candidate_players || []).filter(
-            (name) => players.includes(name)
-          );
-          const frontendCandidates = getClosestPlayers(rawText, players, 3);
-          const mergedCandidates = mergeUniqueCandidates(
-            backendCandidates,
-            frontendCandidates
-          );
-
           const hasKnownAction = !!parsed && parsed.action !== "unknown";
 
+          // Step 3: resolve GPT's parsed.player through squad
           const resolvedPlayerName =
             squadProfile && parsed?.player
               ? resolvePlayerName(squadProfile, parsed.player)
               : null;
 
+          // Step 4a: scan rawText tokens against squad for candidates
+          const squadCandidates: string[] = [];
+          if (squadProfile) {
+            const tokens = normalizeForMatch(rawText).split(" ").filter(Boolean);
+            for (const token of tokens) {
+              if (token.length < 2) continue;
+              const found = resolvePlayerName(squadProfile, token);
+              if (found && players.includes(found) && !squadCandidates.includes(found)) {
+                squadCandidates.push(found);
+              }
+            }
+          }
+
+          // Step 4b: if GPT found no player but token scan found exactly one, promote it
+          const tokenResolvedName =
+            !resolvedPlayerName && !parsed?.player && squadCandidates.length === 1
+              ? squadCandidates[0]
+              : null;
+
           const effectivePlayerName =
-            resolvedPlayerName ?? parsed?.player ?? undefined;
+            resolvedPlayerName ?? tokenResolvedName ?? parsed?.player ?? undefined;
 
           const parsedPlayerIsValid =
             !!resolvedPlayerName ||
+            !!tokenResolvedName ||
             (!!parsed?.player && players.includes(parsed.player));
 
           const highEnoughConfidence =
             parsed?.confidence === "high" || parsed?.confidence === "medium";
 
+          const backendCandidates = (parsed?.candidate_players || []).filter(
+            (name) => players.includes(name)
+          );
+          const frontendCandidates = getClosestPlayers(rawText, players, 3);
+          const mergedCandidates = mergeUniqueCandidates(
+            squadCandidates,
+            backendCandidates,
+            frontendCandidates
+          );
+
           if (hasKnownAction && parsedPlayerIsValid && highEnoughConfidence) {
             const effectiveText =
-              resolvedPlayerName && parsed?.action && parsed.action !== "unknown"
-                ? `${resolvedPlayerName} ${parsed.action}`
+              (resolvedPlayerName || tokenResolvedName) &&
+              parsed?.action &&
+              parsed.action !== "unknown"
+                ? `${resolvedPlayerName ?? tokenResolvedName} ${parsed.action}`
                 : cleanedText;
 
             replacePendingEvent(pendingEventId, {
