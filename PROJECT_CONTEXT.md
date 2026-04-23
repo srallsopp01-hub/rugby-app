@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after Squad Profile Step 4 (token scanning)  
+**Last updated:** April 2026 — after Batch C part 2: split correction memory (double tackle still in progress)  
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -314,10 +314,19 @@ All previous CSV downloads have been removed. There is now one polished report.
 7. Pending Resolution: `hasKnownAction && mergedCandidates.length > 0` (squad candidates first)
 8. Needs Review: everything else
 
-## What's next — Batch C part 2 (medium complexity)
+## What was completed — Batch C part 2: split correction memory (April 2026)
 
-1. **Double tackle support** — two players on the same tackle event
-2. **Split correction memory** — split into name corrections and action corrections separately
+- ✅ `CORRECTION_MEMORY_KEY` bumped to `v2` — old `v1` format is not loaded (clean break, different key)
+- ✅ `learnedCorrections` state changed from `Record<string, string>` to `Record<string, { playerName: string; action: PlayerAction | "" }>`
+- ✅ `rememberCorrection(rawText, playerName, action)` — stores player and action separately instead of a flat string
+- ✅ `getLearnedCorrection` returns structured entry; application uses `learned.playerName` / `learned.action` directly with no string re-parsing
+- ✅ Both callers updated: `commitResolvedTag` and `saveReviewItem`
+
+---
+
+## What's next — Batch C part 2: double tackle (medium complexity)
+
+1. **Double tackle support** — two players on the same tackle event (in progress)
 
 ---
 

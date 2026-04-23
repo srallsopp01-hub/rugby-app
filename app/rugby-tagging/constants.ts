@@ -1,7 +1,7 @@
 import type { RosterRow } from "./types";
 
 export const STORAGE_KEY = "rugby-voice-tagging-mvp-v2";
-export const CORRECTION_MEMORY_KEY = "rugby-voice-tagging-corrections-v1";
+export const CORRECTION_MEMORY_KEY = "rugby-voice-tagging-corrections-v2";
 export const SQUAD_PROFILE_KEY = "rugby-tagging-squad-profile-v1";
 export const DEFAULT_LEARNED_CORRECTIONS: Record<string, string> = {};
 

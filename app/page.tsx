@@ -38,7 +38,6 @@ import {
 } from "./rugby-tagging/lib/squadProfile";
 import {
   CORRECTION_MEMORY_KEY,
-  DEFAULT_LEARNED_CORRECTIONS,
   DEFAULT_ROSTER_ROWS,
   STORAGE_KEY,
 } from "./rugby-tagging/constants";
@@ -165,7 +164,7 @@ export default function RugbyVoiceTaggingMVP() {
   const [resolverCandidates, setResolverCandidates] = useState<string[]>([]);
   const [reviewQueue, setReviewQueue] = useState<ReviewItem[]>([]);
   const [learnedCorrections, setLearnedCorrections] =
-    useState<Record<string, string>>(DEFAULT_LEARNED_CORRECTIONS);
+    useState<Record<string, { playerName: string; action: PlayerAction | "" }>>({});
 
   const [lineoutSide, setLineoutSide] = useState<SetPieceSide>("Easts");
   const [lineoutResult, setLineoutResult] = useState<LineoutResult>("Won");
@@ -712,14 +711,14 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     try {
       const raw = localStorage.getItem(CORRECTION_MEMORY_KEY);
       if (!raw) {
-        setLearnedCorrections(DEFAULT_LEARNED_CORRECTIONS);
+        setLearnedCorrections({});
       } else {
         const saved = JSON.parse(raw);
-        setLearnedCorrections(saved || DEFAULT_LEARNED_CORRECTIONS);
+        setLearnedCorrections(saved || {});
       }
     } catch (error) {
       console.error("Failed to load correction memory", error);
-      setLearnedCorrections(DEFAULT_LEARNED_CORRECTIONS);
+      setLearnedCorrections({});
     }
 
     try {
@@ -1247,12 +1246,8 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
           )
         : [item];
 
-    const finalText = selectedPlayer
-      ? `${selectedPlayer} ${selectedAction}`
-      : selectedAction;
-
     if (normalizedRawText) {
-      rememberCorrection(normalizedRawText, finalText);
+      rememberCorrection(normalizedRawText, selectedPlayer, selectedAction);
     }
 
     matchingItems.forEach((reviewItem) => {
@@ -1438,16 +1433,16 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
 
   const getLearnedCorrection = (rawText: string) => {
     const key = normalizeCorrectionKey(rawText);
-    return learnedCorrections[key] || null;
+    return learnedCorrections[key] ?? null;
   };
 
-  const rememberCorrection = (rawText: string, finalText: string) => {
+  const rememberCorrection = (rawText: string, playerName: string, action: PlayerAction | "") => {
     const key = normalizeCorrectionKey(rawText);
-    if (!key || !finalText.trim()) return;
+    if (!key) return;
 
     setLearnedCorrections((prev) => ({
       ...prev,
-      [key]: cleanTranscriptText(finalText),
+      [key]: { playerName: playerName.trim(), action },
     }));
   };
 
@@ -1541,7 +1536,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
       ? `${resolverSelection} ${pendingResolution.action}`
       : pendingResolution.action;
 
-    rememberCorrection(pendingResolution.rawText, finalText);
+    rememberCorrection(pendingResolution.rawText, resolverSelection, pendingResolution.action);
 
     if (pendingResolution.pendingEventId) {
       replacePendingEvent(pendingResolution.pendingEventId, {
@@ -1676,29 +1671,21 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
           const cleanedText = data.text?.trim() || "";
           const parsed = data.parsed || null;
 
-          const learnedCorrection = getLearnedCorrection(rawText);
+          const learned = getLearnedCorrection(rawText);
 
-          if (learnedCorrection) {
-            const matchedPlayer = findMatchingPlayer(players, learnedCorrection);
-            const learnedAction =
-              (normalizeForMatch(learnedCorrection).includes("missed tackle") &&
-                "missed tackle") ||
-              (normalizeForMatch(learnedCorrection).includes("tackle") &&
-                "tackle") ||
-              (normalizeForMatch(learnedCorrection).includes("carry") &&
-                "carry") ||
-              (normalizeForMatch(learnedCorrection).includes("turnover") &&
-                "turnover") ||
-              undefined;
+          if (learned) {
+            const learnedText = learned.playerName
+              ? `${learned.playerName} ${learned.action}`
+              : learned.action;
 
             replacePendingEvent(pendingEventId, {
-              text: learnedCorrection,
+              text: cleanTranscriptText(learnedText),
               rawText,
               isPending: false,
-              playerName: matchedPlayer || undefined,
-              playerAction: learnedAction,
+              playerName: learned.playerName || undefined,
+              playerAction: learned.action || undefined,
             });
-            setStatusMessage(`Tag added: ${learnedCorrection}`);
+            setStatusMessage(`Tag added: ${cleanTranscriptText(learnedText)}`);
             return;
           }
 
