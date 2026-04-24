@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after Phase 10 (aesthetic and layout polish) complete  
+**Last updated:** April 2026 — after Batch F complete  
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -402,14 +402,18 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 - ✅ Clip tagging on Review screen — Mark Start / Mark End flow captures video segments with a label; clips listed with click-to-jump; persisted to localStorage under existing STORAGE_KEY; `ClipAnnotation` type added to types.ts
 - ✅ Cross-match player trends in Insights — loads all saved matches via `getSavedMatches()`, computes per-player stats with `buildReportRowsFromMatch()`, shows tackle%/carries/grade per match with trend arrows (↑↓→); gated behind 2+ matches
 
+### Batch F (April 2026)
+- ✅ Needs Review reduction — `resolvePlayerName` now has a fuzzy surname fallback (Levenshtein ≤ 1 on surnames ≥ 4 chars); GPT prompt updated so action-clear + player-uncertain gives `confidence: "medium"` and always populates `candidate_players`; routes more tags to PendingResolution instead of Needs Review
+- ✅ Clip categories on Review — `category?: string` added to `ClipAnnotation`; pill-button picker (Breakdown, Set Piece, Kick, Defence, Attack, Other) in clip confirm flow; saved clips show a muted category badge in the list
+- ✅ Player trends drilldown — clicking a player row in the Insights trends table expands a detail sub-table showing full per-match stats (tackles, missed, carries, turnovers, involvements, grade); one row open at a time
+
 ---
 
-## Next — Batch F (plan carefully before starting)
+## Next — Batch G (plan carefully before starting)
 
 Ideas:
-- Further Needs Review reduction — smarter confidence thresholds, partial surname matching
-- Onboarding flow (first-time setup wizard)
-- `/coach/compare` — side-by-side player/match comparison (currently stub)
+- Onboarding flow (first-time setup wizard — team name, squad import, voice samples)
+- `/coach/compare` — side-by-side player/match comparison (currently stub, large effort)
 
 ---
 
