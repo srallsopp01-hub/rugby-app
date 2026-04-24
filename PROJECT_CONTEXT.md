@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after homepage product slider and colour schemes
+**Last updated:** April 2026 — after Team Setup multi-select positions (Batch L)
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -487,10 +487,18 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
-## Next — Batch L (plan carefully before starting)
+### Batch L (April 2026)
+- ✅ Team Setup multi-select positions — replaced free-text secondary positions input with a proper checkbox dropdown; first selected = primary, rest = secondary; `primaryPosition` and `secondaryPositions[]` on `SquadPlayer` type used directly
+- ✅ Jersey number field removed from player entry form; `jerseyNumber` always writes `null` (field remains in type for backwards compat)
+- ✅ Player list sorted by position order (front row → backs) using `POSITION_OPTIONS` index; alphabetical tiebreaker
+- ✅ "No." column removed from player table; Position column shows primary + secondary positions inline
+
+---
+
+## Next — Batch M (plan carefully before starting)
 
 Idea:
-- Validate Batch K in-browser across desktop widths and both colour schemes, then decide on next priority area
+- Validate Batch L in-browser, then decide on next priority area
 
 ---
 

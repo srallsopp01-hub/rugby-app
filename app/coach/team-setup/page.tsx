@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { POSITION_OPTIONS } from "@/app/rugby-tagging/constants";
 import {
   createDefaultSquadProfile,
@@ -13,13 +13,92 @@ import {
   type SquadProfile,
 } from "@/app/rugby-tagging/lib/squadProfile";
 
+function PositionMultiSelect({
+  selected,
+  onChange,
+}: {
+  selected: string[];
+  onChange: (positions: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const toggle = (position: string) => {
+    if (selected.includes(position)) {
+      onChange(selected.filter((p) => p !== position));
+    } else {
+      onChange([...selected, position]);
+    }
+  };
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between rounded-xl border border-border bg-panel-2 px-3 py-2.5 text-left text-sm text-foreground"
+      >
+        <span className={selected.length === 0 ? "text-muted" : ""}>
+          {selected.length === 0 ? "Select positions…" : selected.join(" · ")}
+        </span>
+        <svg
+          className={`h-4 w-4 shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute z-20 mt-1 w-full rounded-xl border border-border bg-panel-2 py-1 shadow-lg">
+          {POSITION_OPTIONS.map((position) => {
+            const checked = selected.includes(position);
+            const idx = selected.indexOf(position);
+            return (
+              <label
+                key={position}
+                className="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-panel-3"
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggle(position)}
+                  className="h-4 w-4 rounded accent-foreground"
+                />
+                <span className="flex-1 text-sm text-foreground">{position}</span>
+                {checked && (
+                  <span className="text-xs text-muted">
+                    {idx === 0 ? "primary" : "secondary"}
+                  </span>
+                )}
+              </label>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const BLANK_FORM = {
   fullName: "",
   preferredName: "",
   nicknamesRaw: "",
-  primaryPosition: "",
-  secondaryPositionsRaw: "",
-  jerseyNumber: "",
+  selectedPositions: [] as string[],
   status: "active" as SquadPlayer["status"],
 };
 
@@ -57,9 +136,7 @@ export default function TeamSetupPage() {
       fullName: player.fullName,
       preferredName: player.preferredName,
       nicknamesRaw: player.nicknames.join(", "),
-      primaryPosition: player.primaryPosition,
-      secondaryPositionsRaw: player.secondaryPositions.join(", "),
-      jerseyNumber: player.jerseyNumber !== null ? String(player.jerseyNumber) : "",
+      selectedPositions: [player.primaryPosition, ...player.secondaryPositions].filter(Boolean),
       status: player.status,
     });
     setShowForm(true);
@@ -82,12 +159,9 @@ export default function TeamSetupPage() {
         .split(",")
         .map((n) => n.trim())
         .filter(Boolean),
-      primaryPosition: form.primaryPosition,
-      secondaryPositions: form.secondaryPositionsRaw
-        .split(",")
-        .map((p) => p.trim())
-        .filter(Boolean),
-      jerseyNumber: form.jerseyNumber ? Number(form.jerseyNumber) : null,
+      primaryPosition: form.selectedPositions[0] ?? "",
+      secondaryPositions: form.selectedPositions.slice(1),
+      jerseyNumber: null,
       voiceSamples: existing?.voiceSamples ?? [],
       status: form.status,
     };
@@ -105,9 +179,11 @@ export default function TeamSetupPage() {
   if (!profile) return null;
 
   const sortedPlayers = [...profile.players].sort((a, b) => {
-    const aNum = a.jerseyNumber ?? 999;
-    const bNum = b.jerseyNumber ?? 999;
-    return aNum !== bNum ? aNum - bNum : a.fullName.localeCompare(b.fullName);
+    const ai = POSITION_OPTIONS.indexOf(a.primaryPosition);
+    const bi = POSITION_OPTIONS.indexOf(b.primaryPosition);
+    const aIdx = ai === -1 ? 999 : ai;
+    const bIdx = bi === -1 ? 999 : bi;
+    return aIdx !== bIdx ? aIdx - bIdx : a.fullName.localeCompare(b.fullName);
   });
 
   return (
@@ -208,7 +284,6 @@ export default function TeamSetupPage() {
               <table className="w-full text-sm">
                 <thead className="bg-panel-2">
                   <tr>
-                    <th className="p-3 text-left text-xs text-muted">No.</th>
                     <th className="p-3 text-left text-xs text-muted">Full name</th>
                     <th className="p-3 text-left text-xs text-muted">Preferred / nicknames</th>
                     <th className="p-3 text-left text-xs text-muted">Position</th>
@@ -219,14 +294,24 @@ export default function TeamSetupPage() {
                 <tbody>
                   {sortedPlayers.map((player) => (
                     <tr key={player.id} className="border-t border-border">
-                      <td className="p-3 text-muted">{player.jerseyNumber ?? "—"}</td>
                       <td className="p-3 font-medium text-foreground">{player.fullName}</td>
                       <td className="p-3 text-muted">
                         {[player.preferredName, ...player.nicknames]
                           .filter(Boolean)
                           .join(", ") || "—"}
                       </td>
-                      <td className="p-3 text-muted">{player.primaryPosition || "—"}</td>
+                      <td className="p-3">
+                        {player.primaryPosition ? (
+                          <span className="text-foreground">{player.primaryPosition}</span>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                        {player.secondaryPositions.length > 0 && (
+                          <span className="ml-1 text-muted">
+                            · {player.secondaryPositions.join(" · ")}
+                          </span>
+                        )}
+                      </td>
                       <td className="p-3">
                         <span
                           className={`rounded-full px-2 py-0.5 text-[11px] ${
@@ -315,48 +400,6 @@ export default function TeamSetupPage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs text-muted">Jersey number</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={99}
-                  value={form.jerseyNumber}
-                  onChange={(e) => setForm({ ...form, jerseyNumber: e.target.value })}
-                  className="w-full rounded-xl border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground"
-                  placeholder="e.g. 6"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs text-muted">Primary position</label>
-                <select
-                  value={form.primaryPosition}
-                  onChange={(e) => setForm({ ...form, primaryPosition: e.target.value })}
-                  className="w-full rounded-xl border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground"
-                >
-                  <option value="">Select position</option>
-                  {POSITION_OPTIONS.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs text-muted">Secondary positions</label>
-                <input
-                  value={form.secondaryPositionsRaw}
-                  onChange={(e) =>
-                    setForm({ ...form, secondaryPositionsRaw: e.target.value })
-                  }
-                  className="w-full rounded-xl border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground"
-                  placeholder="e.g. Prop, Hooker"
-                />
-                <p className="mt-1 text-xs text-muted">Positions this player can cover — separate with commas</p>
-              </div>
-
-              <div>
                 <label className="mb-1 block text-xs text-muted">Status</label>
                 <select
                   value={form.status}
@@ -369,6 +412,21 @@ export default function TeamSetupPage() {
                   <option value="injured">Injured</option>
                   <option value="unavailable">Unavailable</option>
                 </select>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-xs text-muted">
+                  Positions
+                  {form.selectedPositions.length > 0 && (
+                    <span className="ml-2 text-muted">
+                      — first selected is primary
+                    </span>
+                  )}
+                </label>
+                <PositionMultiSelect
+                  selected={form.selectedPositions}
+                  onChange={(positions) => setForm({ ...form, selectedPositions: positions })}
+                />
               </div>
             </div>
 
