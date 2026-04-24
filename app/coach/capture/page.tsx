@@ -152,6 +152,8 @@ export default function RugbyVoiceTaggingMVP() {
   const [statusMessage, setStatusMessage] = useState("Ready");
   const [showRawTranscript, setShowRawTranscript] = useState(true);
   const [videoLoaded, setVideoLoaded] = useState(false);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [videoDuration, setVideoDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [showReportBuilder, setShowReportBuilder] = useState(false);
   const [showPlayerDrilldownModal, setShowPlayerDrilldownModal] = useState(false);
@@ -1404,6 +1406,16 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
   const restoreVideoAudio = () => {
     if (videoRef.current) {
       videoRef.current.volume = originalVideoVolumeRef.current;
+    }
+  };
+
+  const toggleVideoPlayback = () => {
+    const video = videoRef.current;
+    if (!video || !videoLoaded) return;
+    if (video.paused) {
+      video.play();
+    } else {
+      video.pause();
     }
   };
 
@@ -2914,9 +2926,13 @@ Ellie missed tackle"
                         setPlaybackRate(1);
                         setCurrentTime(0);
                         setVideoLoaded(true);
+                        setIsVideoPlaying(false);
+                        setVideoDuration(0);
                         setStatusMessage("Video loaded");
                       } else {
                         setVideoLoaded(false);
+                        setIsVideoPlaying(false);
+                        setVideoDuration(0);
                         setPlaybackRate(1);
                         sessionStorage.removeItem("rugby-tagging-video-src");
                       }
@@ -2928,17 +2944,22 @@ Ellie missed tackle"
               <div className="overflow-hidden rounded-2xl border border-border bg-black shadow-[var(--shadow-panel)]">
                 <video
                   ref={videoRef}
-                  controls
-                  className="aspect-video min-h-[340px] w-full bg-black object-contain xl:min-h-[460px] 2xl:min-h-[560px]"
+                  className="aspect-video min-h-[340px] w-full cursor-pointer bg-black object-contain xl:min-h-[460px] 2xl:min-h-[560px]"
                   onLoadedData={() => {
                     setVideoLoaded(true);
                     if (videoRef.current) {
                       videoRef.current.playbackRate = playbackRate;
                     }
                   }}
+                  onLoadedMetadata={() => {
+                    setVideoDuration(videoRef.current?.duration || 0);
+                  }}
                   onTimeUpdate={() =>
                     setCurrentTime(videoRef.current?.currentTime || 0)
                   }
+                  onPlay={() => setIsVideoPlaying(true)}
+                  onPause={() => setIsVideoPlaying(false)}
+                  onClick={toggleVideoPlayback}
                 />
               </div>
 
@@ -2946,7 +2967,20 @@ Ellie missed tackle"
                 <div className="mb-4 flex flex-col gap-3 rounded-xl border border-border bg-panel px-4 py-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <button
-                      onClick={() => jumpVideoBy(-5)}
+                      type="button"
+                      onClick={(e) => { toggleVideoPlayback(); e.currentTarget.blur(); }}
+                      disabled={!videoLoaded}
+                      className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground disabled:opacity-50"
+                      aria-label={isVideoPlaying ? "Pause" : "Play"}
+                    >
+                      {isVideoPlaying ? "⏸" : "▶"}
+                    </button>
+
+                    <div className="h-6 w-px bg-border" />
+
+                    <button
+                      type="button"
+                      onClick={(e) => { jumpVideoBy(-5); e.currentTarget.blur(); }}
                       disabled={!videoLoaded}
                       className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground disabled:opacity-50"
                     >
@@ -2954,7 +2988,8 @@ Ellie missed tackle"
                     </button>
 
                     <button
-                      onClick={() => jumpVideoBy(5)}
+                      type="button"
+                      onClick={(e) => { jumpVideoBy(5); e.currentTarget.blur(); }}
                       disabled={!videoLoaded}
                       className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground disabled:opacity-50"
                     >
@@ -2965,8 +3000,9 @@ Ellie missed tackle"
 
                     {[0.5, 0.75, 1, 2].map((rate) => (
                       <button
+                        type="button"
                         key={rate}
-                        onClick={() => changePlaybackRate(rate)}
+                        onClick={(e) => { changePlaybackRate(rate); e.currentTarget.blur(); }}
                         disabled={!videoLoaded}
                         className={`rounded-xl border px-4 py-2.5 text-sm font-medium disabled:opacity-50 ${
                           playbackRate === rate
@@ -2979,8 +3015,31 @@ Ellie missed tackle"
                     ))}
                   </div>
 
+                  <div className="flex items-center gap-3">
+                    <span className="w-16 text-right text-xs tabular-nums text-muted">
+                      {formatTime(currentTime)}
+                    </span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={videoDuration || 1}
+                      step={0.5}
+                      value={currentTime}
+                      disabled={!videoLoaded}
+                      onChange={(e) => {
+                        const t = Number(e.target.value);
+                        if (videoRef.current) videoRef.current.currentTime = t;
+                        setCurrentTime(t);
+                      }}
+                      className="h-1.5 flex-1 cursor-pointer accent-foreground disabled:opacity-40"
+                    />
+                    <span className="w-16 text-xs tabular-nums text-muted">
+                      {formatTime(videoDuration)}
+                    </span>
+                  </div>
+
                   <p className="text-sm text-muted">
-                    Review controls for quick rewind, quick skip, and slower playback.
+                    Click video or ▶ to play. Spacebar tags while video plays when voice mode is on.
                   </p>
                 </div>
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
