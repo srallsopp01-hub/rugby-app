@@ -7,32 +7,59 @@ export default function MarketingLayout({
 }) {
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-border bg-panel/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="mx-auto max-w-6xl px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="flex items-center justify-center w-6 h-6 rounded-md bg-foreground-strong group-hover:opacity-90 transition-opacity">
-              <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                <ellipse cx="7" cy="7" rx="5.5" ry="3.5" stroke="#0b0c0f" strokeWidth="1.5"/>
-                <path d="M1.5 7h11M7 1.5c-1.5 1.5-2 3.5-2 5.5s.5 4 2 5.5" stroke="#0b0c0f" strokeWidth="1.25" strokeLinecap="round"/>
+      <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-6 px-5 py-4 sm:px-8 lg:px-12">
+          <Link href="/" className="group flex items-center gap-3">
+            <div className="grid h-9 w-9 place-items-center rounded-lg bg-foreground-strong text-background transition-opacity group-hover:opacity-90">
+              <svg width="18" height="18" viewBox="0 0 14 14" fill="none">
+                <ellipse
+                  cx="7"
+                  cy="7"
+                  rx="5.5"
+                  ry="3.5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                />
+                <path
+                  d="M1.5 7h11M7 1.5c-1.5 1.5-2 3.5-2 5.5s.5 4 2 5.5"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeWidth="1.25"
+                />
               </svg>
             </div>
-            <span className="text-sm font-semibold text-foreground-strong tracking-tight">
-              RugbyCoach
-            </span>
+            <div>
+              <div className="text-base font-black uppercase text-foreground-strong">
+                RugbyCoach
+              </div>
+              <div className="font-mono text-[10px] font-semibold uppercase text-muted-2">
+                Private beta
+              </div>
+            </div>
           </Link>
-          <nav className="flex items-center gap-6">
-            <Link href="/pricing" className="text-sm text-muted hover:text-foreground transition-colors">
+
+          <nav className="flex items-center gap-5 sm:gap-7">
+            <Link
+              href="/pricing"
+              className="hidden text-xs font-bold uppercase text-muted transition-colors hover:text-foreground-strong sm:inline"
+            >
               Pricing
             </Link>
-            <Link href="/about" className="text-sm text-muted hover:text-foreground transition-colors">
+            <Link
+              href="/about"
+              className="hidden text-xs font-bold uppercase text-muted transition-colors hover:text-foreground-strong sm:inline"
+            >
               About
             </Link>
-            <Link href="/blog" className="text-sm text-muted hover:text-foreground transition-colors">
+            <Link
+              href="/blog"
+              className="hidden text-xs font-bold uppercase text-muted transition-colors hover:text-foreground-strong md:inline"
+            >
               Blog
             </Link>
             <Link
               href="/coach"
-              className="rounded-lg border border-border bg-panel-2 px-4 py-1.5 text-sm font-medium text-foreground hover:bg-panel-3 hover:border-border-light transition-all duration-150"
+              className="rounded-md border border-border bg-panel-2 px-4 py-2 text-xs font-black uppercase text-foreground-strong transition hover:border-border-light hover:bg-panel-3"
             >
               Coach Login
             </Link>
@@ -40,9 +67,29 @@ export default function MarketingLayout({
         </div>
       </header>
       <main className="flex-1">{children}</main>
-      <footer className="border-t border-border py-8">
-        <div className="mx-auto max-w-6xl px-6 text-center text-xs text-muted-2">
-          RugbyCoach — private beta
+      <footer className="border-t border-border bg-panel py-10">
+        <div className="mx-auto flex max-w-[1400px] flex-col gap-6 px-5 text-xs text-muted-2 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-12">
+          <div>
+            <div className="text-sm font-black uppercase text-foreground-strong">
+              RugbyCoach
+            </div>
+            <p className="mt-2 max-w-md leading-5">
+              Match analysis for coaches who tag, review, grade, and brief the
+              team from one desktop-first rugby workspace.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-4 font-mono uppercase">
+            <Link href="/pricing" className="transition-colors hover:text-foreground">
+              Pricing
+            </Link>
+            <Link href="/about" className="transition-colors hover:text-foreground">
+              About
+            </Link>
+            <Link href="/blog" className="transition-colors hover:text-foreground">
+              Blog
+            </Link>
+            <span>Private beta</span>
+          </div>
         </div>
       </footer>
     </div>

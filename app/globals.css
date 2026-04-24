@@ -116,3 +116,36 @@ button:hover {
 button:active {
   transform: translateY(0);
 }
+
+.marketing-marquee {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.marketing-marquee-track {
+  display: inline-flex;
+  min-width: max-content;
+  gap: 3rem;
+  animation: marketing-marquee 34s linear infinite;
+}
+
+.marketing-marquee-track-slow {
+  gap: 4rem;
+  animation-duration: 44s;
+}
+
+@keyframes marketing-marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-marquee-track {
+    animation: none;
+  }
+}
