@@ -1,4 +1,9 @@
+"use client";
+
+import { useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { shouldStartCoachOnboarding } from "@/app/rugby-tagging/lib/onboarding";
 
 const quickLinks = [
   {
@@ -50,6 +55,14 @@ const quickLinks = [
 ];
 
 export default function CoachHomePage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    if (shouldStartCoachOnboarding()) {
+      router.replace("/coach/onboarding");
+    }
+  }, [router]);
+
   return (
     <div className="p-8 max-w-4xl">
       <div className="mb-8">

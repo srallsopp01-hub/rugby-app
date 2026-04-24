@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after Batch F complete  
+**Last updated:** April 2026 — after Batch G complete  
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -59,6 +59,7 @@ The app is split into four clearly separated layers with independent layouts and
 | Route | Status | Purpose |
 |---|---|---|
 | `/coach` | Live | Coach home — quick nav card grid to main features |
+| `/coach/onboarding` | Live | First-time coach setup wizard — team details, manual squad entry, voice tagging guidance |
 | `/coach/team-setup` | Live | Squad, names, positions, voice samples, lineout calls |
 | `/coach/capture` | Live | Live match tagging workspace (~2600 lines) |
 | `/coach/insights` | Live | Team analytics, player output, set piece, export |
@@ -108,6 +109,8 @@ app/
     layout.tsx                        ← Coach layout: h-screen, sidebar + scrollable main
     CoachSidebar.tsx                  ← Coach left sidebar (accent bar active state, logo mark)
     page.tsx                          ← Coach home (quick nav cards)
+    OnboardingWizard.tsx              ← First-time setup wizard component
+    onboarding/page.tsx               ← Dedicated onboarding route
     capture/page.tsx                  ← Full Workspace (~2600 lines) — DO NOT rewrite wholesale
     insights/page.tsx                 ← Team analytics page
     review/page.tsx                   ← Film review page
@@ -150,6 +153,7 @@ app/
     constants.ts                      ← Storage keys, defaults
     lib/
       matchVideoSession.ts            ← Video blob session management
+      onboarding.ts                   ← Onboarding completion helpers
       savedMatches.ts                 ← localStorage match persistence
       squadProfile.ts                 ← Squad Profile localStorage persistence (cross-match)
     squad/
@@ -291,6 +295,7 @@ All previous CSV downloads have been removed. One polished report.
 - **Match session:** `localStorage` key `STORAGE_KEY` (defined in constants.ts)
 - **Correction memory (v2):** `localStorage` key `CORRECTION_MEMORY_KEY`
 - **Squad Profile (cross-match):** `localStorage` key `SQUAD_PROFILE_KEY` (via lib/squadProfile.ts)
+- **Onboarding completion:** `localStorage` key `ONBOARDING_COMPLETE_KEY`
 - **Current match ID:** `localStorage` (via savedMatches lib)
 - **Saved matches list:** `localStorage` (via savedMatches lib)
 - **Video:** `sessionStorage` blob URL (not persisted across sessions)
@@ -409,10 +414,18 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
-## Next — Batch G (plan carefully before starting)
+### Batch G (April 2026)
+- ✅ Dedicated `/coach/onboarding` route added for first-time coach setup
+- ✅ `/coach` redirects first-time coaches to onboarding when onboarding is incomplete and no named squad profile exists
+- ✅ Onboarding wizard supports team details, manual squad player entry, and voice tagging guidance
+- ✅ "Skip for now" marks onboarding complete and returns to `/coach` without creating or overwriting squad profile data
+- ✅ Capture roster seeding intentionally left out — `/coach/capture` keeps its existing team-sheet/session flow
 
-Ideas:
-- Onboarding flow (first-time setup wizard — team name, squad import, voice samples)
+---
+
+## Next — Batch H (plan carefully before starting)
+
+Idea:
 - `/coach/compare` — side-by-side player/match comparison (currently stub, large effort)
 
 ---
@@ -422,7 +435,6 @@ Ideas:
 - Cloud storage and coach accounts
 - Player logins and season dashboards
 - Custom KPI systems
-- Onboarding flow
 - Video annotation / telestration
 - Cross-match player trends
 - Shared team analysis links
