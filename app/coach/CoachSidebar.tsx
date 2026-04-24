@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 const navItems = [
@@ -108,6 +109,18 @@ const navItems = [
 
 export default function CoachSidebar() {
   const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    setCollapsed(localStorage.getItem("coach-sidebar-collapsed") === "true");
+  }, []);
+
+  const toggle = () => {
+    setCollapsed((prev) => {
+      localStorage.setItem("coach-sidebar-collapsed", String(!prev));
+      return !prev;
+    });
+  };
 
   function isActive(href: string, exact: boolean) {
     if (exact) return pathname === href;
@@ -115,16 +128,24 @@ export default function CoachSidebar() {
   }
 
   return (
-    <aside className="flex flex-col w-[220px] shrink-0 border-r border-border bg-panel h-full">
+    <aside
+      className={`flex flex-col shrink-0 border-r border-border bg-panel h-full overflow-hidden transition-[width] duration-200 ${
+        collapsed ? "w-[56px]" : "w-[220px]"
+      }`}
+    >
       {/* Logo / product name */}
-      <div className="px-5 pt-5 pb-4 border-b border-border">
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-foreground-strong">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <ellipse cx="7" cy="7" rx="5.5" ry="3.5" stroke="#0b0c0f" strokeWidth="1.5"/>
-              <path d="M1.5 7h11M7 1.5c-1.5 1.5-2 3.5-2 5.5s.5 4 2 5.5" stroke="#0b0c0f" strokeWidth="1.25" strokeLinecap="round"/>
-            </svg>
-          </div>
+      <div
+        className={`pt-5 pb-4 border-b border-border flex items-center ${
+          collapsed ? "justify-center px-0" : "gap-2.5 px-5"
+        }`}
+      >
+        <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-foreground-strong shrink-0">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <ellipse cx="7" cy="7" rx="5.5" ry="3.5" stroke="#0b0c0f" strokeWidth="1.5"/>
+            <path d="M1.5 7h11M7 1.5c-1.5 1.5-2 3.5-2 5.5s.5 4 2 5.5" stroke="#0b0c0f" strokeWidth="1.25" strokeLinecap="round"/>
+          </svg>
+        </div>
+        {!collapsed && (
           <div>
             <span className="text-xs font-semibold tracking-tight text-foreground-strong leading-none block">
               RugbyCoach
@@ -133,17 +154,20 @@ export default function CoachSidebar() {
               Coach platform
             </span>
           </div>
-        </div>
+        )}
       </div>
 
-      <nav className="flex flex-col gap-0.5 p-3 flex-1">
+      <nav className="flex flex-col gap-0.5 p-2 flex-1">
         {navItems.map((item) => {
           const active = isActive(item.href, item.exact);
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+              title={collapsed ? item.label : undefined}
+              className={`relative flex items-center rounded-lg text-sm font-medium transition-all duration-150 ${
+                collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"
+              } ${
                 active
                   ? "bg-panel-3 text-foreground-strong"
                   : "text-muted hover:text-foreground hover:bg-panel-2"
@@ -152,17 +176,45 @@ export default function CoachSidebar() {
               {active && (
                 <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[18px] rounded-r-full bg-foreground-strong" />
               )}
-              <span className={`transition-colors duration-150 ${active ? "text-foreground-strong" : "text-muted"}`}>
+              <span
+                className={`transition-colors duration-150 shrink-0 ${
+                  active ? "text-foreground-strong" : "text-muted"
+                }`}
+              >
                 {item.icon}
               </span>
-              {item.label}
+              {!collapsed && item.label}
             </Link>
           );
         })}
       </nav>
 
-      <div className="px-5 py-4 border-t border-border">
-        <span className="text-xs text-muted-2">Private beta</span>
+      {/* Toggle + footer */}
+      <div className="border-t border-border">
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className={`w-full flex items-center py-3 text-muted hover:text-foreground transition-colors duration-150 ${
+            collapsed ? "justify-center px-0" : "gap-2 px-5"
+          }`}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            className={`shrink-0 transition-transform duration-200 ${collapsed ? "rotate-180" : ""}`}
+          >
+            <path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          {!collapsed && <span className="text-xs">Collapse</span>}
+        </button>
+        {!collapsed && (
+          <div className="px-5 pb-4">
+            <span className="text-xs text-muted-2">Private beta</span>
+          </div>
+        )}
       </div>
     </aside>
   );
