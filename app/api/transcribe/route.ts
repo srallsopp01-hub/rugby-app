@@ -91,14 +91,16 @@ Rules:
    - jackal, jackle, jackall, jack all => turnover
    - turns, turned, turnover won => turnover
 3. If player and action are reasonably clear, confidence can be high or medium.
-4. If action is clear but player is uncertain, set player to null and confidence to low.
+4. If action is clear but player is uncertain, set player to null, confidence to medium, and populate candidate_players with the most plausible roster names.
 5. candidate_players must only contain names from the roster.
 6. Do NOT invent players not in the roster.
-7. normalized_text should be:
+7. When any word in the transcript sounds like a partial or phonetically similar player name, include that player in candidate_players even if you are not certain.
+8. Only set confidence to "low" if the action is also unclear.
+9. normalized_text should be:
    - "<Player> <action>" if both are known
    - "<action>" if only action is known
    - otherwise a cleaned best guess
-8. should_keep should be true if this looks like a possible rugby event and false if it looks like junk.
+10. should_keep should be true if this looks like a possible rugby event and false if it looks like junk.
 
 Examples:
 

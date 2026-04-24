@@ -1,4 +1,5 @@
 import { SQUAD_PROFILE_KEY } from "../constants";
+import { levenshtein } from "../helpers";
 
 export type SquadPlayerStatus = "active" | "injured" | "unavailable";
 
@@ -139,8 +140,16 @@ export function resolvePlayerName(
     const surname = parts[parts.length - 1]?.toLowerCase() ?? "";
     return surname.length > 1 && surname === needle;
   });
+  if (surnameMatch) return surnameMatch.fullName;
 
-  return surnameMatch?.fullName ?? null;
+  // Fuzzy surname fallback: catches Whisper mishearings (e.g. "Thomson" → "Thompson")
+  const fuzzyMatch = profile.players.find((p) => {
+    const parts = p.fullName.trim().split(/\s+/);
+    const surname = parts[parts.length - 1]?.toLowerCase() ?? "";
+    return surname.length >= 4 && levenshtein(surname, needle) <= 1;
+  });
+
+  return fuzzyMatch?.fullName ?? null;
 }
 
 export function addCorrectionEntry(
