@@ -116,4 +116,5 @@ export type ClipAnnotation = {
   startTime: number;
   endTime: number;
   label: string;
+  category?: string;
 };

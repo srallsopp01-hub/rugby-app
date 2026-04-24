@@ -27,6 +27,8 @@ type SavedSession = {
   clips?: ClipAnnotation[];
 };
 
+const CLIP_CATEGORIES = ["Breakdown", "Set Piece", "Kick", "Defence", "Attack", "Other"];
+
 export default function ReviewPage() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -47,6 +49,7 @@ export default function ReviewPage() {
   const [clipInProgress, setClipInProgress] = useState<number | null>(null);
   const [pendingEndTime, setPendingEndTime] = useState<number | null>(null);
   const [clipLabelDraft, setClipLabelDraft] = useState("");
+  const [clipCategoryDraft, setClipCategoryDraft] = useState("");
 
   useEffect(() => {
     try {
@@ -224,6 +227,7 @@ export default function ReviewPage() {
     setClipInProgress(videoRef.current?.currentTime ?? currentTime);
     setPendingEndTime(null);
     setClipLabelDraft("");
+    setClipCategoryDraft("");
   };
 
   const markEnd = () => {
@@ -242,12 +246,14 @@ export default function ReviewPage() {
         startTime: clipInProgress,
         endTime: pendingEndTime,
         label: clipLabelDraft.trim() || "Clip",
+        category: clipCategoryDraft || undefined,
       },
     ];
     setClips(next);
     setClipInProgress(null);
     setPendingEndTime(null);
     setClipLabelDraft("");
+    setClipCategoryDraft("");
     saveClipsToStorage(next);
   };
 
@@ -255,6 +261,7 @@ export default function ReviewPage() {
     setClipInProgress(null);
     setPendingEndTime(null);
     setClipLabelDraft("");
+    setClipCategoryDraft("");
   };
 
   const deleteClip = (id: number) => {
@@ -423,8 +430,24 @@ export default function ReviewPage() {
 
                   {pendingEndTime !== null && clipInProgress !== null && (
                     <div className="mt-3 rounded-2xl border border-border bg-panel-2 p-4">
-                      <div className="text-sm font-medium text-foreground mb-2">
+                      <div className="text-sm font-medium text-foreground mb-3">
                         Clip: {formatTime(clipInProgress)} → {formatTime(pendingEndTime)}
+                      </div>
+                      <div className="mb-3 flex flex-wrap gap-1.5">
+                        {CLIP_CATEGORIES.map((cat) => (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setClipCategoryDraft(clipCategoryDraft === cat ? "" : cat)}
+                            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                              clipCategoryDraft === cat
+                                ? "border-border-light bg-panel-3 text-foreground"
+                                : "border-border bg-panel text-muted"
+                            }`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
                       </div>
                       <div className="flex items-center gap-2">
                         <input
@@ -539,7 +562,14 @@ export default function ReviewPage() {
                           Delete
                         </button>
                       </div>
-                      <div className="mt-2 text-sm text-foreground">{clip.label}</div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-sm text-foreground">{clip.label}</span>
+                        {clip.category && (
+                          <span className="rounded-full border border-border bg-panel px-2 py-0.5 text-xs text-muted">
+                            {clip.category}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
