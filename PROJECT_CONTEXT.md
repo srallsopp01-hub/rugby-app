@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after Batch C part 2 complete (split correction memory + double tackle)  
+**Last updated:** April 2026 — after Phase 10 (aesthetic and layout polish) complete  
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -22,66 +22,193 @@ It is currently a **coach-first MVP / early private beta**, best used on desktop
 
 ## Tech stack
 
-- Next.js (App Router)
+- Next.js 16 (App Router, Turbopack)
 - React + TypeScript
-- Tailwind CSS (custom design tokens via CSS variables)
+- Tailwind CSS v4 (custom design tokens via CSS variables in `globals.css`)
 - localStorage for match persistence (no backend/cloud yet)
 - Anthropic API for voice transcription (`/api/transcribe`)
 - ExcelJS for `.xlsx` report generation
 
 ---
 
+## Platform structure — 4 layers
+
+The app is split into four clearly separated layers with independent layouts and sidebars.
+
+| Layer | Routes | Layout file |
+|---|---|---|
+| Public marketing | `/` `/pricing` `/about` `/blog` `/blog/[slug]` | `app/(marketing)/layout.tsx` |
+| Coach platform | `/coach/*` | `app/coach/layout.tsx` |
+| Player platform | `/player/*` | `app/player/layout.tsx` |
+| Admin panel | `/admin/*` | `app/admin/layout.tsx` |
+
+---
+
 ## App structure — current screens
 
-| Screen | Route | Purpose |
+### Public marketing
+| Route | Status | Purpose |
 |---|---|---|
-| Workspace | `/` (main page.tsx) | Live tagging, video, transcript, roster |
-| Team Review | `/game-review` | Video-based team review and coaching notes |
-| Team Analytics | `/team-dashboard` | Post-match team and player analysis, no video |
-| Player Dashboard | `/player-dashboard` | One-match player review (coach-facing, not player login) |
-| Saved Matches | `/saved-matches` | Reopen / delete matches saved in browser |
-| Squad Profile | `/squad` | Manage squad players, names, positions, colours |
+| `/` | Live | Marketing homepage — hero, feature highlights, CTA |
+| `/pricing` | Stub | Pricing tiers |
+| `/about` | Stub | Founder / product story |
+| `/blog` | Stub | Blog index |
+| `/blog/[slug]` | Stub | Blog post |
 
-These screens are **separate and should stay separate**.
+### Coach platform
+| Route | Status | Purpose |
+|---|---|---|
+| `/coach` | Live | Coach home — quick nav card grid to main features |
+| `/coach/team-setup` | Live | Squad, names, positions, voice samples, lineout calls |
+| `/coach/capture` | Live | Live match tagging workspace (~2600 lines) |
+| `/coach/insights` | Live | Team analytics, player output, set piece, export |
+| `/coach/review` | Live | Film review, coach notes, timestamped timeline |
+| `/coach/players` | Live | Player directory and coach-facing player analysis |
+| `/coach/players/[playerId]` | Live | Individual player drilldown |
+| `/coach/compare` | Stub (in dev) | Side-by-side player/match comparison |
+| `/coach/saved-matches` | Live | Reopen / delete saved matches |
+| `/coach/settings` | Stub (in dev) | Account, preferences, permissions |
+
+### Player platform
+| Route | Status | Purpose |
+|---|---|---|
+| `/player` | Stub (in dev) | Player home — recent grades, coach feedback |
+| `/player/performance` | Stub (in dev) | Personal analytics and season trends |
+| `/player/games` | Stub (in dev) | Match history |
+| `/player/games/[gameId]` | Stub (in dev) | Individual game view |
+| `/player/review` | Stub (in dev) | Clip playlist and coach annotations |
+| `/player/settings` | Stub (in dev) | Account and preferences |
+
+### Admin panel (internal only)
+| Route | Status | Purpose |
+|---|---|---|
+| `/admin` | Stub | Admin home |
+| `/admin/accounts` | Stub | User account management |
+| `/admin/organisations` | Stub | Organisation management |
+| `/admin/teams` | Stub | Team management |
+| `/admin/billing` | Stub | Billing and subscriptions |
+| `/admin/usage` | Stub | Platform usage metrics |
+| `/admin/issues` | Stub | Internal issue tracking |
+| `/admin/settings` | Stub | Admin settings |
 
 ---
 
 ## Key files
+
+```
 app/
-page.tsx                          ← Main Workspace (large file, ~2600 lines)
-rugby-tagging/
-components/
-TeamEventsPanel.tsx           ← Penalty For, Penalty Conceded, Try Scored, Try Conceded
-MatchMilestonesPanel.tsx      ← Kick Off, Half Time, Second Half KO, Full Time buttons
-TeamSheetModal.tsx            ← First-load team sheet entry
-MatchdayRosterPanel.tsx       ← Quick tag buttons + roster table
-TranscriptPanel.tsx           ← Event timeline (right sidebar)
-NeedsReviewPanel.tsx          ← Corrections queue
-SetPieceLoggingPanel.tsx      ← Lineout + scrum logging
-CoachReviewPanel.tsx          ← Coach notes (Game Review mode)
-TeamSnapshotPanel.tsx         ← Live team stats summary
-StatsPanel.tsx                ← Live stats table (no download button)
-MatchReportModal.tsx          ← Full report modal (includes Lineout Call Summary)
-PlayerDrilldownModal.tsx      ← Player breakdown modal
-GameReviewTimelinePanel.tsx   ← Timeline for Game Review mode
-PendingResolutionPanel.tsx    ← Player confirmation prompt after voice tag
-AppTopNav.tsx                 ← Top navigation bar
-helpers.ts                      ← All utility functions
-types.ts                        ← All TypeScript types
-constants.ts                    ← Storage keys, defaults
-lib/
-matchVideoSession.ts          ← Video blob session management
-savedMatches.ts               ← localStorage match persistence
-squadProfile.ts               ← Squad Profile localStorage persistence (cross-match)
-squad/
-page.tsx                      ← Squad Profile management UI (/squad route)
-exports/
-teamAnalyticsExport.ts      ← .xlsx workbook builder (5 sheets)
-downloadWorkbook.ts         ← Blob download helper
+  layout.tsx                          ← Root layout (Geist fonts, globals.css)
+  globals.css                         ← Design tokens (dark theme CSS variables, Tailwind v4)
+
+  (marketing)/
+    layout.tsx                        ← Marketing header + footer
+    page.tsx                          ← Marketing homepage
+
+  coach/
+    layout.tsx                        ← Coach layout: h-screen, sidebar + scrollable main
+    CoachSidebar.tsx                  ← Coach left sidebar (accent bar active state, logo mark)
+    page.tsx                          ← Coach home (quick nav cards)
+    capture/page.tsx                  ← Full Workspace (~2600 lines) — DO NOT rewrite wholesale
+    insights/page.tsx                 ← Team analytics page
+    review/page.tsx                   ← Film review page
+    team-setup/page.tsx               ← Team/squad setup page
+    players/page.tsx                  ← Player directory
+    players/[playerId]/page.tsx       ← Individual player drilldown
+    saved-matches/page.tsx            ← Saved match management
+    compare/page.tsx                  ← Stub
+    settings/page.tsx                 ← Stub
+
+  player/
+    layout.tsx                        ← Player layout: h-screen, sidebar + scrollable main
+    PlayerSidebar.tsx                 ← Player left sidebar (same pattern as coach)
+    page.tsx + all sub-pages          ← Stubs with "In development" badge
+
+  admin/
+    layout.tsx                        ← Admin layout: h-screen, sidebar + scrollable main
+    AdminSidebar.tsx                  ← Admin left sidebar (text-only, accent bar)
+    page.tsx + all sub-pages          ← Internal stubs
+
+  rugby-tagging/
+    components/
+      TeamEventsPanel.tsx             ← Penalty For/Conceded, Try Scored/Conceded
+      MatchMilestonesPanel.tsx        ← Kick Off, Half Time, Second Half KO, Full Time
+      TeamSheetModal.tsx              ← First-load team sheet entry
+      MatchdayRosterPanel.tsx         ← Quick tag buttons + roster table
+      TranscriptPanel.tsx             ← Event timeline (right sidebar)
+      NeedsReviewPanel.tsx            ← Corrections queue
+      SetPieceLoggingPanel.tsx        ← Lineout + scrum logging
+      CoachReviewPanel.tsx            ← Coach notes (Game Review mode)
+      TeamSnapshotPanel.tsx           ← Live team stats summary
+      StatsPanel.tsx                  ← Live stats table (no download button)
+      MatchReportModal.tsx            ← Full report modal (Lineout Call Summary included)
+      PlayerDrilldownModal.tsx        ← Player breakdown modal
+      GameReviewTimelinePanel.tsx     ← Timeline for Game Review mode
+      PendingResolutionPanel.tsx      ← Player confirmation prompt after voice tag
+      AppTopNav.tsx                   ← Legacy top nav (used in old routes only)
+    helpers.ts                        ← All utility functions
+    types.ts                          ← All TypeScript types
+    constants.ts                      ← Storage keys, defaults
+    lib/
+      matchVideoSession.ts            ← Video blob session management
+      savedMatches.ts                 ← localStorage match persistence
+      squadProfile.ts                 ← Squad Profile localStorage persistence (cross-match)
+    squad/
+      page.tsx                        ← Squad Profile management UI (/squad route, legacy)
+    exports/
+      teamAnalyticsExport.ts          ← .xlsx workbook builder (5 sheets)
+      downloadWorkbook.ts             ← Blob download helper
+```
 
 ---
 
-## Current working features
+## Design tokens (globals.css)
+
+Dark theme CSS variables available as Tailwind classes:
+
+| Token | Value | Usage |
+|---|---|---|
+| `bg-background` | #0b0c0f | Base page background |
+| `bg-background-elevated` | #111317 | Elevated surfaces |
+| `bg-panel` | #17191d | Cards and panels |
+| `bg-panel-2` | #1d2025 | Inset / secondary panels |
+| `bg-panel-3` | #23272d | Active sidebar items |
+| `text-foreground` | #d7dbe2 | Primary text |
+| `text-foreground-strong` | #f1f4f8 | Headings / strong text |
+| `text-muted` | #98a0ab | Secondary text |
+| `text-muted-2` | #7e8793 | Tertiary / labels |
+| `border-border` | #373c44 | Default borders |
+| `border-border-light` | #505762 | Hover/active borders |
+| `text-success` | #7ea37e | Muted green |
+| `text-warning` | #b79a63 | Muted gold |
+| `text-danger` | #b16e6e | Muted red |
+
+Body has a radial + linear gradient applied. Buttons get `translateY(-1px)` on hover. Inputs have 0.18s transitions.
+
+---
+
+## Layout pattern (coach / player / admin)
+
+All three platform layouts use the same structure:
+
+```tsx
+<div className="flex h-screen overflow-hidden">   // locks to viewport
+  <Sidebar />
+  <main className="flex-1 overflow-auto">          // only this scrolls
+    {children}
+  </main>
+</div>
+```
+
+Sidebar pattern:
+- 220px wide (coach/player) or 200px (admin)
+- Left accent bar (`w-[3px] rounded-r-full bg-foreground-strong`) on active link
+- Logo mark + platform name + sub-label in header
+- `transition-all duration-150` on nav links
+- "Private beta" footer label
+
+---
+
+## Current working features (coach/capture)
 
 ### Workspace
 - Match details (title, opponent, date)
@@ -104,27 +231,22 @@ downloadWorkbook.ts         ← Blob download helper
 - Download coach notes (.txt)
 - Correction memory (learned corrections saved to localStorage)
 
-### Team Review
-- Separate page, video-based review
-- Coaching notes workflow
+### Coach Insights (/coach/insights)
+- Team analytics: tackle %, carry count, lineout %, scrum %
+- Headline insights, game coaching comment, game flow summary
+- Player report table (all players, all stats)
+- Forward pack snapshot
+- Unit summary
+- Export: Download Full Report (.xlsx, 5 sheets)
 
-### Team Analytics
-- Separate page, no video
-- Team snapshot, unit summary, player report table, game flow summary, coaching comment
-- **One download button: "Download Match Report" (.xlsx)**
-  - 5 sheets: Grading Reference, Team Stats, Lineout Calls, Forwards, Player Progression
+### Coach Review (/coach/review)
+- Video-based film review
+- Timestamped coaching notes
+- Team snapshot sidebar
+- Game Review Timeline Panel
 
-### Match Report Modal (Workspace)
-- Accessible from Workspace
-- Sections: Game coaching comment, Game flow summary, Unit summary, Lineout call summary, Player report
-- Lineout call summary shows: call name, times used, won, lost, win rate (colour coded), timestamps
-
-### Player Dashboard
-- Separate page
-- One-match player review (coach-facing only, no player logins yet)
-
-### Saved Matches
-- Reopen saved matches into Workspace / Team Review / Team Analytics
+### Saved Matches (/coach/saved-matches)
+- Reopen saved matches into Capture / Insights / Review
 - Delete saved matches
 
 ---
@@ -133,34 +255,26 @@ downloadWorkbook.ts         ← Blob download helper
 
 | What | Where | Format |
 |---|---|---|
-| Transcript | Workspace | .txt |
-| Coach notes | Workspace (Game Review mode) | .txt |
-| Match Report | Team Analytics | .xlsx |
+| Transcript | Capture | .txt |
+| Coach notes | Capture (Game Review mode) | .txt |
+| Match Report | Insights | .xlsx (5 sheets) |
 
-All previous CSV downloads have been removed. There is now one polished report.
+All previous CSV downloads have been removed. One polished report.
 
 ---
 
 ## Data model summary
 
-**Events** (`EventItem[]`) — the core data structure. Each event has:
+**Events** (`EventItem[]`) — core data structure. Each event has:
 - `id`, `timestamp`, `text`, `rawText?`, `isPending?`
-- `category`: `"player"` | `"set-piece"` | `"team"`
-- Player events: `playerName?`, `playerAction?`
+- `category`: `"player"` | `"set-piece"` | `"team"` | `"milestone"` | `"substitution"`
+- Player events: `playerName?`, `playerAction?`, `secondPlayerName?`
 - Set piece events: `setPieceType`, `setPieceSide`, `lineoutResult?`, `scrumResult?`, `notes?`
 - Team events: `teamEventType`
 
 **TeamEventType** (types.ts): `"penalty for"` | `"penalty conceded"` | `"try scored"` | `"try conceded"`
 
 **MilestoneType** (types.ts): `"kick off"` | `"half time"` | `"second half kick off"` | `"full time"`
-
-**EventCategory** (types.ts): `"player"` | `"set-piece"` | `"team"` | `"milestone"` | `"substitution"`
-
-**Substitution fields on EventItem**: `substitutionPlayerOn?`, `substitutionPlayerOff?`, `substitutionPosition?`
-
-**LineoutResult** (types.ts): `"Won"` | `"Lost"` | `"Not Straight"`
-
-**ScrumResult** (types.ts): `"Won"` | `"Lost"` | `"Penalty For"` | `"Penalty Against"` | `"Free Kick"`
 
 **RosterRow**: `number`, `name`, `position`, `minutes`
 
@@ -170,14 +284,12 @@ All previous CSV downloads have been removed. There is now one polished report.
 
 **CorrectionMemoryEntry**: `rawWhisperText`, `resolvedPlayerName`, `resolvedAction`, `count`
 
-**ActionSample**: `action`, `patterns[]`
-
 ---
 
 ## Storage
 
 - **Match session:** `localStorage` key `STORAGE_KEY` (defined in constants.ts)
-- **Correction memory (per-session):** `localStorage` key `CORRECTION_MEMORY_KEY`
+- **Correction memory (v2):** `localStorage` key `CORRECTION_MEMORY_KEY`
 - **Squad Profile (cross-match):** `localStorage` key `SQUAD_PROFILE_KEY` (via lib/squadProfile.ts)
 - **Current match ID:** `localStorage` (via savedMatches lib)
 - **Saved matches list:** `localStorage` (via savedMatches lib)
@@ -188,14 +300,17 @@ All previous CSV downloads have been removed. There is now one polished report.
 
 ## Important product rules (never break these)
 
-1. **No hardcoded Easts logic in core product** — keep everything generalisable for any team
-2. **Screens stay separate** — Workspace, Team Review, Team Analytics, Player Dashboard are separate routes
-3. **No player logins yet** — Player Dashboard is coach-facing only
-4. **No cloud storage yet** — all persistence is browser localStorage
-5. **Desktop-first** — not optimised for mobile
-6. **Spacebar = voice recording only** — must never trigger a focused button
-7. **Transcript always sorted by timestamp** — oldest at top, newest at bottom
-8. **"Latest" badge follows highest timestamp**, not last array item
+1. **No hardcoded team logic in core product** — keep everything generalisable for any team
+2. **Capture page is tagging only** — do not add analytics or clip review to it
+3. **Insights is analytics only** — do not add clip review or tagging to it
+4. **Review is teaching/review only** — do not add tagging to it
+5. **No player logins yet** — player platform is UI scaffold only; coach-facing analysis only
+6. **No cloud storage yet** — all persistence is browser localStorage
+7. **Desktop-first** — not optimised for mobile
+8. **Spacebar = voice recording only** — must never trigger a focused button
+9. **Transcript always sorted by timestamp** — oldest at top, newest at bottom
+10. **"Latest" badge follows highest timestamp**, not last array item
+11. **Screens stay separate** — platform layers are independent, with their own layouts
 
 ---
 
@@ -205,162 +320,118 @@ All previous CSV downloads have been removed. There is now one polished report.
 1. Have `type="button"` explicitly set
 2. Call `event.currentTarget.blur()` immediately after its click handler runs via a `runAndBlur` helper
 
-**This fix has been applied to ALL of these files:**
+**Applied to:**
 - ✅ `TeamEventsPanel.tsx`
 - ✅ `MatchdayRosterPanel.tsx`
 - ✅ `SetPieceLoggingPanel.tsx`
 - ✅ `NeedsReviewPanel.tsx`
+- ✅ `MatchMilestonesPanel.tsx`
 
-**If new event-logging buttons are added anywhere**, apply this same pattern immediately.
-
-**This fix has also been applied to:**
-- ✅ `MatchMilestonesPanel.tsx` (new in Batch C)
-
----
-
-## How we work — coding workflow
-
-### Planning
-- Use **Claude.ai chat** to plan changes, understand what needs doing, and get instructions written out clearly before touching any code.
-
-### Applying changes
-- Use **Claude Code in VS Code** to apply changes to the actual files.
-- Claude Code can find the right place in large files without manual copy/pasting.
-- Always **review the diff** Claude Code proposes before accepting it.
-- Never accept a change you don't understand.
-
-### After every change
-1. Test the change in the browser (localhost:3000)
-2. Confirm it works as expected
-3. Run `git add . && git commit -m "description of change"`
-4. Update PROJECT_CONTEXT.md if anything has changed
-5. Start a fresh chat with the updated context pasted in
-
-### Rules for working with code
-- `page.tsx` is large (~2500 lines) — never rewrite the whole file, always use targeted find/replace
-- Always ask for the current file before making changes — never guess from memory
-- Stability over cleverness — this app is live in private beta
-- Test after every change before moving to the next
-
----
-
-## What was completed — Batch A (April 2026)
-
-- ✅ Added "Penalty For" as a Team Event button
-- ✅ Removed "Steal" and "Penalty" from lineout result dropdown (now: Won / Lost / Not Straight)
-- ✅ Download Transcript button confirmed working
-- ✅ Spacebar fix applied to all four event-logging panels
-- ✅ Transcript panel sorts events by timestamp
-- ✅ "Latest" badge follows highest-timestamp event
-
----
-
-## What was completed — Batch B (April 2026)
-
-- ✅ Lineout Call Summary added to Match Report modal
-- ✅ Lineout Calls sheet added to .xlsx download (Sheet 3)
-- ✅ Download strategy simplified — one report, one transcript download
-- ✅ CSV download removed from Workspace StatsPanel
-- ✅ Text report and player stats CSV removed from Team Analytics
-- ✅ StatsPanel cleaned up (no download props)
-- ✅ Dead code removed from page.tsx and team-dashboard/page.tsx
-
----
-
-## What was completed — Batch C part 1 (April 2026)
-
-- ✅ Match milestone buttons — Kick Off, Half Time, Second Half KO, Full Time logged at current video timestamp (sky-blue styling in transcript)
-- ✅ Bench bring-on flow — bench rows 16–23 get a "Bring On" button; coach selects position, confirms, logs substitution event and updates player's roster position (orange styling in transcript)
-
-## What was completed — Batch C Squad Profile Step 1 (April 2026)
-
-- ✅ `lib/squadProfile.ts` created — types: `SquadPlayer`, `ActionSample`, `CorrectionMemoryEntry`, `SquadProfile`; functions: `getSquadProfile`, `saveSquadProfile`, `clearSquadProfile`, `upsertSquadPlayer`, `removeSquadPlayer`, `findPlayerByName`, `addCorrectionEntry`, `addVoiceSample`
-- ✅ `SQUAD_PROFILE_KEY` added to constants.ts
-
-## What was completed — Squad Profile Step 2 (April 2026)
-
-- ✅ `/squad` page created — team details (name, coach, colours), player list sorted by jersey number
-- ✅ Add/edit/remove players — full name, preferred name, nicknames, primary/secondary positions, jersey number, status
-- ✅ Squad nav link added to AppTopNav
-
----
-
-## What was completed — Squad Profile Step 3 (April 2026)
-
-- ✅ `resolvePlayerName()` added to `lib/squadProfile.ts` — resolves against fullName, preferredName, nicknames, and surname (last word of fullName)
-- ✅ Squad profile loaded on Workspace mount; resolution runs before `parsedPlayerIsValid` check in transcription callback
-- ✅ Auto-matched events use canonical fullName and reconstructed text when a preferred name/nickname/surname was spoken
-- ✅ Falls back gracefully to existing Levenshtein/Pending Resolution/Needs Review if player not in squad
-
----
-
-## What was completed — Squad Profile Step 4 (April 2026)
-
-- ✅ Token scanning: every rawText word checked against squad profile on each voice tag
-- ✅ Squad candidates prepend `mergedCandidates` — Pending Resolution pre-selects the correct player
-- ✅ When GPT returns `player: null` but exactly one squad token match exists, promotes to `tokenResolvedName` (auto-matches at high/medium confidence, or Pending Resolution pre-selected)
-- ✅ Guard: only surfaces players already on the matchday roster (`players.includes`)
+If new event-logging buttons are added anywhere, apply this same pattern immediately.
 
 ---
 
 ## Voice matching pipeline — current state
 
-1. Learned correction memory (per-session) — fires first, bypasses everything else
-2. Squad resolution of GPT's `parsed.player` — preferred name, nickname, surname (Step 3)
-3. Token scan of rawText against squad — squad candidates built (Step 4)
-4. `tokenResolvedName` promoted if unique token match and no parsed player (Step 4)
+1. Learned correction memory (per-session, v2 format) — fires first, bypasses everything else
+2. Squad resolution of GPT's `parsed.player` — preferred name, nickname, surname
+3. Token scan of rawText against squad — squad candidates built
+4. `tokenResolvedName` promoted if unique token match and no parsed player
 5. `parsedPlayerIsValid` = resolved OR token-resolved OR exact roster match
 6. Auto-match: `hasKnownAction && parsedPlayerIsValid && highEnoughConfidence`
 7. Pending Resolution: `hasKnownAction && mergedCandidates.length > 0` (squad candidates first)
 8. Needs Review: everything else
 
-## What was completed — Batch C part 2: split correction memory (April 2026)
-
-- ✅ `CORRECTION_MEMORY_KEY` bumped to `v2` — old `v1` format is not loaded (clean break, different key)
-- ✅ `learnedCorrections` state changed from `Record<string, string>` to `Record<string, { playerName: string; action: PlayerAction | "" }>`
-- ✅ `rememberCorrection(rawText, playerName, action)` — stores player and action separately instead of a flat string
-- ✅ `getLearnedCorrection` returns structured entry; application uses `learned.playerName` / `learned.action` directly with no string re-parsing
-- ✅ Both callers updated: `commitResolvedTag` and `saveReviewItem`
+Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, second player pre-filled in `PendingResolutionPanel`.
 
 ---
 
-## What was completed — Batch C part 2: double tackle (April 2026)
+## What was completed
 
-- ✅ `EventItem.secondPlayerName?: string` added — stores the second tackler on a tackle event
-- ✅ `ReviewItem.secondPlayerName?: string` added — available in Needs Review corrections
-- ✅ `buildBasicStats` counts a tackle for both `playerName` and `secondPlayerName` when present
-- ✅ `addStructuredPlayerEvent` accepts optional `secondPlayerName`; text becomes `"PlayerA + PlayerB tackle"`
-- ✅ `replacePendingEvent` accepts `secondPlayerName` and stores it on the event
-- ✅ `commitResolvedTag` builds double-tackle text and passes both names through
-- ✅ Voice pipeline: when `squadCandidates.length >= 2` and action is tackle, `resolverSecondSelection` pre-filled with second match
-- ✅ `PendingResolutionPanel`: second player `<select>` shown only when action is tackle (optional, filtered to exclude first selection)
-- ✅ `NeedsReviewPanel`: second player `<select>` shown when `selectedAction === "tackle"`, clears when action changes
-- ✅ `saveReviewItem` passes `secondPlayerName` through to `addStructuredPlayerEvent`
+### Batch A (April 2026)
+- ✅ Added "Penalty For" as a Team Event button
+- ✅ Removed "Steal" and "Penalty" from lineout result dropdown
+- ✅ Spacebar fix applied to all event-logging panels
+- ✅ Transcript sorted by timestamp; "Latest" badge follows highest timestamp
+
+### Batch B (April 2026)
+- ✅ Lineout Call Summary added to Match Report modal
+- ✅ Lineout Calls sheet added to .xlsx download (Sheet 3)
+- ✅ Download strategy simplified — one report, one transcript download
+- ✅ Dead code removed
+
+### Batch C (April 2026)
+- ✅ Match milestone buttons (Kick Off, Half Time, Second Half KO, Full Time)
+- ✅ Bench bring-on flow with substitution logging
+- ✅ Squad Profile lib created (`lib/squadProfile.ts`)
+- ✅ `/squad` page — team details, add/edit/remove players
+- ✅ `resolvePlayerName()` — resolves against fullName, preferredName, nicknames, surname
+- ✅ Token scanning of rawText against squad
+- ✅ Correction memory split to v2 (player + action stored separately)
+- ✅ Double-tackle support — second player tracked, text and export updated
+
+### Route architecture migration — Phases 1–9 (April 2026)
+- ✅ Phase 1: Repo scaffold (App Router folders, routing plan)
+- ✅ Phase 2: globals.css dark theme tokens, root layout
+- ✅ Phase 3: `/team-dashboard` → `/coach/insights`
+- ✅ Phase 4: `/game-review` → `/coach/review`
+- ✅ Phase 5: `/player-dashboard` → `/coach/players`
+- ✅ Phase 6: `/saved-matches` → `/coach/saved-matches`
+- ✅ Phase 7: Workspace → `/coach/capture`
+- ✅ Phase 8: Public marketing homepage at `/`
+- ✅ Phase 9: `/player` and `/admin` layout scaffolds with sidebars
+- Old redirect stubs remain at legacy routes for now
+
+### Phase 10 — Aesthetic and layout polish (April 2026)
+- ✅ Layout fix: coach/player/admin use `h-screen overflow-hidden`, sidebar stays fixed
+- ✅ Coach sidebar: left accent bar on active link, RugbyCoach logo mark, refined transitions
+- ✅ Player/Admin sidebars: same accent bar + logo mark treatment applied
+- ✅ Marketing layout: logo mark in header, tighter button styling
+- ✅ Marketing homepage: radial hero glow, contrast headline, status dot badge, feature cards with icons and hover, CTA in panel card
+- ✅ Coach Home: quick nav card grid to Capture / Insights / Review / Players
+- ✅ All stub pages: consistent "In development" amber badge + dashed-border placeholder + purposeful description
 
 ---
 
-## What's next — Batch D (bigger changes, plan carefully)
+## Next — Batch D (bigger changes, plan carefully)
 
-1. **Voice transcription during video playback** — biggest workflow blocker
+1. **Voice transcription during video playback** — biggest workflow blocker; recording and playback currently conflict
 2. **Reducing Needs Review volume** — better name/action matching on first pass
-3. **Team management dashboard** — store squad, assign matchday positions via dropdown
+3. **Collapsible sidebar** — the design spec calls for it; coach/player sidebars are always 220px wide currently
+4. **Team Setup page** — `/coach/team-setup` needs full squad management UI (squad is currently at legacy `/squad` route)
 
 ---
 
 ## Longer-term (don't prioritise yet)
 
-- Cloud storage
-- Coach accounts
+- Cloud storage and coach accounts
 - Player logins and season dashboards
 - Custom KPI systems
 - Onboarding flow
 - Video annotation / telestration
 - Cross-match player trends
 - Shared team analysis links
+- Mobile support
+
+---
+
+## How we work — coding workflow
+
+1. Paste this file at the start of every new Claude chat
+2. Plan in Claude before touching code
+3. Apply changes with Claude Code in VS Code — review every diff before accepting
+4. Test in the browser after every change (`localhost:3000`)
+5. Commit to git after each stable milestone
+6. Update this file after major structural changes
+
+### Rules for working with code
+- `coach/capture/page.tsx` is large (~2600 lines) — never rewrite the whole file, always use targeted find/replace
+- Always read the current file before making changes — never guess from memory
+- Stability over cleverness — app is live in private beta
+- Test after every change before moving to the next
 
 ---
 
 ## Naming notes
 
-- "Easts" appears in some internal variable names — treat as placeholder
-- Will be made configurable when onboarding is built
+- "Easts" appears in some internal variable names — treat as placeholder, will be made configurable during onboarding build
