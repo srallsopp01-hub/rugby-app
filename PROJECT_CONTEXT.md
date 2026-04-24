@@ -212,9 +212,9 @@ Sidebar pattern:
 
 ### Workspace
 - Match details (title, opponent, date)
-- Video upload and playback
+- Video upload and playback with custom controls (Play/Pause button, seek bar, time display)
 - Quick skip buttons (-5s / +5s) and playback speed controls (0.5x, 0.75x, 1x, 2x)
-- Voice tagging (push-to-talk with spacebar, Whisper API transcription)
+- Voice tagging (push-to-talk with spacebar, Whisper API transcription) — works while video plays
 - Transcript panel (right sidebar, sorted by timestamp)
 - Transcript import from pasted text or .txt file (with clean/preview flow)
 - Needs Review queue (items that failed auto-match)
@@ -391,14 +391,22 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 - ✅ Coach Home: quick nav card grid to Capture / Insights / Review / Players
 - ✅ All stub pages: consistent "In development" amber badge + dashed-border placeholder + purposeful description
 
+### Batch D (April 2026)
+- ✅ Voice tagging during video playback — removed native `<video controls>`, added custom Play/Pause button + seek bar; spacebar no longer pauses video
+- ✅ Team Setup page — `/coach/team-setup` was already live (completed in Phase 7 migration); `/squad` redirects to it
+- ✅ Collapsible coach sidebar — animates 220px ↔ 56px (icon-only), persists to localStorage, chevron toggle, native title tooltips
+- ✅ Needs Review volume — Whisper prompt with player names + action words; expanded GPT action synonyms (jackal→turnover, run→carry, etc.); preferred names + nicknames sent to API
+
 ---
 
-## Next — Batch D (bigger changes, plan carefully)
+## Next — Batch E (plan carefully before starting)
 
-1. **Voice transcription during video playback** — biggest workflow blocker; recording and playback currently conflict
-2. **Reducing Needs Review volume** — better name/action matching on first pass
-3. **Collapsible sidebar** — the design spec calls for it; coach/player sidebars are always 220px wide currently
-4. **Team Setup page** — `/coach/team-setup` needs full squad management UI (squad is currently at legacy `/squad` route)
+Ideas (not yet prioritised):
+- Further Needs Review reduction — smarter confidence thresholds, partial surname matching
+- Collapsible sidebar for Player layout (mirrors coach pattern)
+- Clip tagging / video annotation on the Review screen
+- Cross-match player trends in Insights
+- Onboarding flow (first-time setup wizard)
 
 ---
 
