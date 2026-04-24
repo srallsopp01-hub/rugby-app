@@ -397,16 +397,19 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 - ✅ Collapsible coach sidebar — animates 220px ↔ 56px (icon-only), persists to localStorage, chevron toggle, native title tooltips
 - ✅ Needs Review volume — Whisper prompt with player names + action words; expanded GPT action synonyms (jackal→turnover, run→carry, etc.); preferred names + nicknames sent to API
 
+### Batch E (April 2026)
+- ✅ Collapsible player sidebar — mirrors CoachSidebar pattern exactly, localStorage key `"player-sidebar-collapsed"`, independent of coach key
+- ✅ Clip tagging on Review screen — Mark Start / Mark End flow captures video segments with a label; clips listed with click-to-jump; persisted to localStorage under existing STORAGE_KEY; `ClipAnnotation` type added to types.ts
+- ✅ Cross-match player trends in Insights — loads all saved matches via `getSavedMatches()`, computes per-player stats with `buildReportRowsFromMatch()`, shows tackle%/carries/grade per match with trend arrows (↑↓→); gated behind 2+ matches
+
 ---
 
-## Next — Batch E (plan carefully before starting)
+## Next — Batch F (plan carefully before starting)
 
-Ideas (not yet prioritised):
+Ideas:
 - Further Needs Review reduction — smarter confidence thresholds, partial surname matching
-- Collapsible sidebar for Player layout (mirrors coach pattern)
-- Clip tagging / video annotation on the Review screen
-- Cross-match player trends in Insights
 - Onboarding flow (first-time setup wizard)
+- `/coach/compare` — side-by-side player/match comparison (currently stub)
 
 ---
 
