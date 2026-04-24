@@ -110,3 +110,10 @@ export type UnitSummaryRow = {
   avgCarriesPerMin: number;
   avgInvolvementsPerMin: number;
 };
+
+export type ClipAnnotation = {
+  id: number;
+  startTime: number;
+  endTime: number;
+  label: string;
+};

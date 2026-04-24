@@ -7,7 +7,7 @@ import TeamSnapshotPanel from "@/app/rugby-tagging/components/TeamSnapshotPanel"
 import { getMatchVideoUrl } from "@/app/rugby-tagging/lib/matchVideoSession";
 import { DEFAULT_ROSTER_ROWS, STORAGE_KEY } from "@/app/rugby-tagging/constants";
 import { formatTime, hydrateRosterRows } from "@/app/rugby-tagging/helpers";
-import type { EventItem, RosterRow } from "@/app/rugby-tagging/types";
+import type { ClipAnnotation, EventItem, RosterRow } from "@/app/rugby-tagging/types";
 
 type CoachReviewNote = {
   id: number;
@@ -24,6 +24,7 @@ type SavedSession = {
   events?: EventItem[];
   coachNotes?: CoachReviewNote[];
   showRawTranscript?: boolean;
+  clips?: ClipAnnotation[];
 };
 
 export default function ReviewPage() {
@@ -42,6 +43,10 @@ export default function ReviewPage() {
   const [coachNoteDraft, setCoachNoteDraft] = useState("");
   const [coachRawDraft, setCoachRawDraft] = useState("");
   const [showCoachRawInput, setShowCoachRawInput] = useState(false);
+  const [clips, setClips] = useState<ClipAnnotation[]>([]);
+  const [clipInProgress, setClipInProgress] = useState<number | null>(null);
+  const [pendingEndTime, setPendingEndTime] = useState<number | null>(null);
+  const [clipLabelDraft, setClipLabelDraft] = useState("");
 
   useEffect(() => {
     try {
@@ -59,6 +64,7 @@ export default function ReviewPage() {
       setRosterRows(hydrateRosterRows(saved.rosterRows));
       setEvents(safeEvents);
       setCoachNotes(Array.isArray(saved.coachNotes) ? saved.coachNotes : []);
+      setClips(Array.isArray(saved.clips) ? saved.clips : []);
       setShowRawTranscript(
         typeof saved.showRawTranscript === "boolean"
           ? saved.showRawTranscript
@@ -204,6 +210,59 @@ export default function ReviewPage() {
     }
   };
 
+  const saveClipsToStorage = (nextClips: ClipAnnotation[]) => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...JSON.parse(raw), clips: nextClips }));
+    } catch (error) {
+      console.error("Failed to save clips", error);
+    }
+  };
+
+  const markStart = () => {
+    setClipInProgress(videoRef.current?.currentTime ?? currentTime);
+    setPendingEndTime(null);
+    setClipLabelDraft("");
+  };
+
+  const markEnd = () => {
+    if (clipInProgress === null) return;
+    const t = videoRef.current?.currentTime ?? currentTime;
+    if (t <= clipInProgress) return;
+    setPendingEndTime(t);
+  };
+
+  const confirmClip = () => {
+    if (clipInProgress === null || pendingEndTime === null) return;
+    const next = [
+      ...clips,
+      {
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        startTime: clipInProgress,
+        endTime: pendingEndTime,
+        label: clipLabelDraft.trim() || "Clip",
+      },
+    ];
+    setClips(next);
+    setClipInProgress(null);
+    setPendingEndTime(null);
+    setClipLabelDraft("");
+    saveClipsToStorage(next);
+  };
+
+  const cancelClip = () => {
+    setClipInProgress(null);
+    setPendingEndTime(null);
+    setClipLabelDraft("");
+  };
+
+  const deleteClip = (id: number) => {
+    const next = clips.filter((c) => c.id !== id);
+    setClips(next);
+    saveClipsToStorage(next);
+  };
+
   const jumpVideoBy = (seconds: number) => {
     const video = videoRef.current;
     if (!video) return;
@@ -338,11 +397,65 @@ export default function ReviewPage() {
                         </button>
                       ))}
 
-                      <div className="ml-auto text-sm text-muted">
-                        {formatTime(currentTime)}
+                      <div className="ml-auto flex items-center gap-2">
+                        <span className="text-sm text-muted">{formatTime(currentTime)}</span>
+                        <div className="h-6 w-px bg-border" />
+                        {clipInProgress === null ? (
+                          <button
+                            type="button"
+                            onClick={markStart}
+                            className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:text-foreground-strong transition-colors"
+                          >
+                            Mark Start
+                          </button>
+                        ) : pendingEndTime === null ? (
+                          <button
+                            type="button"
+                            onClick={markEnd}
+                            className="rounded-xl border border-border-light bg-panel-3 px-4 py-2.5 text-sm font-medium text-foreground"
+                          >
+                            End ({formatTime(clipInProgress)} → ?)
+                          </button>
+                        ) : null}
                       </div>
                     </div>
                   </div>
+
+                  {pendingEndTime !== null && clipInProgress !== null && (
+                    <div className="mt-3 rounded-2xl border border-border bg-panel-2 p-4">
+                      <div className="text-sm font-medium text-foreground mb-2">
+                        Clip: {formatTime(clipInProgress)} → {formatTime(pendingEndTime)}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={clipLabelDraft}
+                          onChange={(e) => setClipLabelDraft(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") confirmClip();
+                            if (e.key === "Escape") cancelClip();
+                          }}
+                          placeholder="Label this clip…"
+                          autoFocus
+                          className="flex-1 rounded-xl border border-border bg-panel px-3 py-2 text-sm text-foreground"
+                        />
+                        <button
+                          type="button"
+                          onClick={confirmClip}
+                          className="rounded-xl border border-border-light bg-panel-3 px-4 py-2 text-sm font-medium text-foreground"
+                        >
+                          Save clip
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelClip}
+                          className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="rounded-xl border border-border bg-panel-2 px-4 py-4 text-sm text-muted">
@@ -388,6 +501,50 @@ export default function ReviewPage() {
               }}
               onDeleteCoachNote={deleteCoachNote}
             />
+
+            <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-foreground-strong">Clip annotations</h2>
+                <span className="rounded-full border border-border bg-panel-2 px-3 py-1 text-xs text-muted">
+                  {clips.length} clip{clips.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              {clips.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border p-3 text-sm text-muted">
+                  No clips marked yet. Use Mark Start / Mark End while watching to annotate a segment.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {clips.map((clip) => (
+                    <div key={clip.id} className="rounded-xl border border-border bg-panel-2 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (videoRef.current) {
+                              videoRef.current.currentTime = clip.startTime;
+                              videoRef.current.pause();
+                              setCurrentTime(clip.startTime);
+                            }
+                          }}
+                          className="text-sm font-medium text-muted underline underline-offset-2"
+                        >
+                          {formatTime(clip.startTime)} → {formatTime(clip.endTime)}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteClip(clip.id)}
+                          className="rounded-xl border border-border px-3 py-1.5 text-xs font-medium text-foreground"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                      <div className="mt-2 text-sm text-foreground">{clip.label}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </section>
 
           <aside className="space-y-5 xl:col-span-4 xl:sticky xl:top-5 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto xl:pr-1">
