@@ -47,6 +47,7 @@ export default function InsightsPage() {
   const [rosterRows, setRosterRows] = useState<RosterRow[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [allMatches, setAllMatches] = useState<SavedMatchRecord[]>([]);
+  const [expandedTrendPlayer, setExpandedTrendPlayer] = useState<string | null>(null);
 
   const players = useMemo(
     () => rosterRows.map((row) => row.name.trim()).filter(Boolean),
@@ -696,30 +697,82 @@ export default function InsightsPage() {
                           .filter((r): r is NonNullable<typeof r> => r !== null)
                           .map((r) => r.tacklePct);
                         const trend = trendArrow(tacklePcts);
+                        const isExpanded = expandedTrendPlayer === playerName;
+                        const totalCols = trendData.matchSnapshots.length + 2;
                         return (
-                          <tr key={playerName} className="border-b border-border/60">
-                            <td className="p-2 font-medium text-foreground">{playerName}</td>
-                            {appearances.map((row, i) => (
-                              <td key={i} className="p-2 text-center">
-                                {row ? (
-                                  <div>
-                                    <div className="text-muted">{row.tacklePct.toFixed(0)}%</div>
-                                    <div className="text-muted">{row.carries}c</div>
-                                    <div className={`font-medium ${gradeClassName(row.overallGrade)}`}>
-                                      {row.overallGrade}
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <span className="text-muted-2">—</span>
-                                )}
+                          <>
+                            <tr
+                              key={playerName}
+                              className={`border-b border-border/60 cursor-pointer hover:bg-panel-2/60 transition-colors ${isExpanded ? "bg-panel-2/60" : ""}`}
+                              onClick={() => setExpandedTrendPlayer(isExpanded ? null : playerName)}
+                            >
+                              <td className="p-2 font-medium text-foreground">
+                                <span className="mr-1.5 text-xs text-muted-2">{isExpanded ? "▾" : "▸"}</span>
+                                {playerName}
                               </td>
-                            ))}
-                            <td className="p-2 text-center text-base">
-                              {trend === "up" && <span className="text-emerald-400">↑</span>}
-                              {trend === "down" && <span className="text-rose-400">↓</span>}
-                              {trend === "flat" && <span className="text-muted">→</span>}
-                            </td>
-                          </tr>
+                              {appearances.map((row, i) => (
+                                <td key={i} className="p-2 text-center">
+                                  {row ? (
+                                    <div>
+                                      <div className="text-muted">{row.tacklePct.toFixed(0)}%</div>
+                                      <div className="text-muted">{row.carries}c</div>
+                                      <div className={`font-medium ${gradeClassName(row.overallGrade)}`}>
+                                        {row.overallGrade}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted-2">—</span>
+                                  )}
+                                </td>
+                              ))}
+                              <td className="p-2 text-center text-base">
+                                {trend === "up" && <span className="text-emerald-400">↑</span>}
+                                {trend === "down" && <span className="text-rose-400">↓</span>}
+                                {trend === "flat" && <span className="text-muted">→</span>}
+                              </td>
+                            </tr>
+                            {isExpanded && (
+                              <tr key={`${playerName}-detail`} className="border-b border-border/60 bg-panel-2/40">
+                                <td colSpan={totalCols} className="px-3 py-3">
+                                  <table className="w-full text-xs">
+                                    <thead>
+                                      <tr className="text-left text-muted-2">
+                                        <th className="pr-3 pb-1 font-normal">Match</th>
+                                        <th className="px-2 pb-1 text-center font-normal">Tackles</th>
+                                        <th className="px-2 pb-1 text-center font-normal">Missed</th>
+                                        <th className="px-2 pb-1 text-center font-normal">Carries</th>
+                                        <th className="px-2 pb-1 text-center font-normal">Turnovers</th>
+                                        <th className="px-2 pb-1 text-center font-normal">Involvements</th>
+                                        <th className="px-2 pb-1 text-center font-normal">Grade</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {trendData.matchSnapshots.map((snap, i) => {
+                                        const row = appearances[i];
+                                        return (
+                                          <tr key={snap.label} className="border-t border-border/40">
+                                            <td className="pr-3 py-1 text-muted">{snap.label}</td>
+                                            {row ? (
+                                              <>
+                                                <td className="px-2 py-1 text-center text-foreground">{row.tackles}</td>
+                                                <td className="px-2 py-1 text-center text-foreground">{row.missed}</td>
+                                                <td className="px-2 py-1 text-center text-foreground">{row.carries}</td>
+                                                <td className="px-2 py-1 text-center text-foreground">{row.turnovers}</td>
+                                                <td className="px-2 py-1 text-center text-foreground">{row.involvements}</td>
+                                                <td className={`px-2 py-1 text-center font-medium ${gradeClassName(row.overallGrade)}`}>{row.overallGrade}</td>
+                                              </>
+                                            ) : (
+                                              <td colSpan={6} className="px-2 py-1 text-center text-muted-2">Did not play</td>
+                                            )}
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </td>
+                              </tr>
+                            )}
+                          </>
                         );
                       })}
                     </tbody>
