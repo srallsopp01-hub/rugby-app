@@ -190,6 +190,30 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
   const playersText = players.join("\n");
   const playersReady = players.length > 0;
 
+  // Enhanced player name list for the transcribe API: includes preferred names
+  // and nicknames from the squad profile so GPT can match informal names.
+  // resolvePlayerName() maps them back to the full name in the pipeline.
+  const enhancedPlayersText = useMemo(() => {
+    const names = new Set<string>();
+    for (const row of rosterRows) {
+      const name = row.name.trim();
+      if (!name) continue;
+      names.add(name);
+      if (squadProfile) {
+        const sp = squadProfile.players.find(
+          (p) =>
+            p.fullName.toLowerCase() === name.toLowerCase() ||
+            p.preferredName.toLowerCase() === name.toLowerCase()
+        );
+        if (sp) {
+          if (sp.preferredName) names.add(sp.preferredName);
+          sp.nicknames.forEach((n) => { if (n) names.add(n); });
+        }
+      }
+    }
+    return [...names].filter(Boolean).join("\n");
+  }, [rosterRows, squadProfile]);
+
   const sessionStateLabel = getSessionStateLabel({
     voiceModeEnabled,
     recording,
@@ -1682,7 +1706,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
 
           const formData = new FormData();
           formData.append("audio", file);
-          formData.append("players", playersText);
+          formData.append("players", enhancedPlayersText);
 
           const response = await fetch("/api/transcribe", {
             method: "POST",

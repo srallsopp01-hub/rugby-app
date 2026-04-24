@@ -42,9 +42,18 @@ export async function POST(req: Request) {
             .filter(Boolean)
         : [];
 
+    const whisperPrompt = [
+      "Rugby match tagging.",
+      players.length > 0 ? `Players: ${players.join(", ")}.` : "",
+      "Actions: tackle, missed tackle, carry, turnover, jackal.",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
     const transcription = await client.audio.transcriptions.create({
       file: audio,
       model: "whisper-1",
+      prompt: whisperPrompt,
     });
 
     const rawText = transcription.text?.trim() || "";
@@ -75,10 +84,12 @@ Allowed actions:
 Rules:
 1. Prefer exact player names from the roster.
 2. Correct obvious action mistakes:
-   - tuckle => tackle
-   - mistackle => missed tackle
-   - miss tackle => missed tackle
-   - carey => carry
+   - tuckle, tacle, tackled => tackle
+   - mistackle, miss tackle, missed tuckle, missed tacle => missed tackle
+   - carey, carried, carry on => carry
+   - run, running, runner => carry
+   - jackal, jackle, jackall, jack all => turnover
+   - turns, turned, turnover won => turnover
 3. If player and action are reasonably clear, confidence can be high or medium.
 4. If action is clear but player is uncertain, set player to null and confidence to low.
 5. candidate_players must only contain names from the roster.
