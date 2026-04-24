@@ -474,10 +474,23 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
-## Next — Batch K (plan carefully before starting)
+---
+
+### Batch K (April 2026)
+- ✅ Insights page fully redesigned as a 4-tab SaaS analytics dashboard
+- ✅ Tab 1 — Overview: season snapshot strip (2+ matches), 8 KPI hero cards, top performers, players needing attention, unit summary, team totals
+- ✅ Tab 2 — Game Analysis: headline insights, coaching comment, game flow, set piece CSS bar charts (lineout + scrum), discipline tiles, unit performance table
+- ✅ Tab 3 — Players: position filter pills (All / Forwards / Backs), full player table with GradeBadge, player comment cards
+- ✅ Tab 4 — Season Trends: locked state < 2 matches; season KPI averages, 3 Recharts bar charts (tackle %, tries, lineout %), player grade progression table
+- ✅ Export button moved to persistent page header, always accessible from any tab
+- ✅ recharts added as a dependency for multi-match bar charts
+
+---
+
+## Next — Batch L (plan carefully before starting)
 
 Idea:
-- Validate Batch J in-browser across desktop widths and both colour schemes, then decide whether to improve report export polish, reduce Capture lint warnings, or add cloud/account foundations
+- Validate Batch K in-browser across desktop widths and both colour schemes, then decide on next priority area
 
 ---
 
