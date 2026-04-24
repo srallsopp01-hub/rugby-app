@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after Team Setup multi-select positions (Batch L)
+**Last updated:** April 2026 — after same-match player comparison on Compare page
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -492,6 +492,13 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 - ✅ Jersey number field removed from player entry form; `jerseyNumber` always writes `null` (field remains in type for backwards compat)
 - ✅ Player list sorted by position order (front row → backs) using `POSITION_OPTIONS` index; alphabetical tiebreaker
 - ✅ "No." column removed from player table; Position column shows primary + secondary positions inline
+
+---
+
+### Batch L addendum (April 2026)
+- ✅ Compare page: Player tab now allows same-match selection so two players from the same game can be compared side by side
+- ✅ When same match active, right player auto-defaults to the second roster player (not the same as left); a context note confirms single-match scope
+- ✅ Match tab retains the existing same-match block and warning unchanged
 
 ---
 
