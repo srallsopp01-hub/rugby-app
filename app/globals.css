@@ -24,6 +24,30 @@
   --shadow-panel: 0 6px 18px rgba(0, 0, 0, 0.22);
 }
 
+[data-theme-scheme="bright"] {
+  --background: #fbfaf7;
+  --background-elevated: #f4f1ea;
+  --panel: #ffffff;
+  --panel-2: #f3eee6;
+  --panel-3: #ebe2d5;
+
+  --foreground: #25211c;
+  --foreground-strong: #0c0b09;
+  --muted: #635b51;
+  --muted-2: #887d70;
+
+  --border: #ded4c5;
+  --border-light: #bda88f;
+  --accent: #ed6a1f;
+
+  --success: #3e7a48;
+  --warning: #a86518;
+  --danger: #c24b1a;
+
+  --shadow-soft: 0 12px 28px rgba(20, 16, 10, 0.08);
+  --shadow-panel: 0 8px 20px rgba(20, 16, 10, 0.07);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-background-elevated: var(--background-elevated);
@@ -64,6 +88,12 @@ body {
     linear-gradient(to bottom, #111317 0%, #0b0c0f 100%);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+[data-theme-scheme="bright"] body {
+  background:
+    radial-gradient(circle at top left, rgba(237, 106, 31, 0.1), transparent 30%),
+    linear-gradient(to bottom, #ffffff 0%, #fbfaf7 42%, #f4f1ea 100%);
 }
 
 button,
@@ -134,6 +164,10 @@ button:active {
   animation-duration: 44s;
 }
 
+.marketing-slide-enter {
+  animation: marketing-slide-enter 0.32s ease both;
+}
+
 @keyframes marketing-marquee {
   from {
     transform: translateX(0);
@@ -144,8 +178,24 @@ button:active {
   }
 }
 
+@keyframes marketing-slide-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .marketing-marquee-track {
+    animation: none;
+  }
+
+  .marketing-slide-enter {
     animation: none;
   }
 }

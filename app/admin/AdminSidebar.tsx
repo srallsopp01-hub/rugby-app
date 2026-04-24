@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
 
 const navItems = [
   { label: "Home", href: "/admin", exact: true },
@@ -65,8 +66,9 @@ export default function AdminSidebar() {
         })}
       </nav>
 
-      <div className="px-5 py-4 border-t border-border">
-        <span className="text-xs text-muted-2">Internal only</span>
+      <div className="space-y-3 border-t border-border px-5 py-4">
+        <ThemeSchemeToggle />
+        <span className="block text-xs text-muted-2">Internal only</span>
       </div>
     </aside>
   );

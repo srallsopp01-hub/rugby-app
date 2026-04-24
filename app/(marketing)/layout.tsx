@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
 
 export default function MarketingLayout({
   children,
@@ -63,6 +64,7 @@ export default function MarketingLayout({
             >
               Coach Login
             </Link>
+            <ThemeSchemeToggle compact />
           </nav>
         </div>
       </header>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
+import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
 
 const navItems = [
   {
@@ -191,6 +192,9 @@ export default function CoachSidebar() {
 
       {/* Toggle + footer */}
       <div className="border-t border-border">
+        <div className={`${collapsed ? "flex justify-center px-0 py-3" : "px-5 py-3"}`}>
+          <ThemeSchemeToggle compact={collapsed} />
+        </div>
         <button
           type="button"
           onClick={toggle}

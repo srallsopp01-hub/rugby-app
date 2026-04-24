@@ -1,4 +1,5 @@
 import Link from "next/link";
+import MarketingProductSlider from "./MarketingProductSlider";
 
 const scoreboardItems = [
   {
@@ -30,57 +31,6 @@ const scoreboardItems = [
     value: "Coach",
     unit: "",
     detail: "Desktop-first private beta",
-  },
-];
-
-const tourItems = [
-  {
-    step: "01",
-    route: "/coach/capture",
-    title: "Capture",
-    headline: "Tag the match without looking down.",
-    body: "Hold space, say the rugby action, and keep the transcript tied to the video while the match plays.",
-    points: ["Voice tags", "Quick player events", "Set pieces and milestones"],
-  },
-  {
-    step: "02",
-    route: "/coach/insights",
-    title: "Insights",
-    headline: "Grades straight from tagged data.",
-    body: "Turn tackles, carries, lineouts, scrums, and player output into a readable coach report.",
-    points: ["Team analytics", "Player grades", "Unit summaries"],
-  },
-  {
-    step: "03",
-    route: "/coach/players",
-    title: "Players",
-    headline: "One player, every match.",
-    body: "Drill from squad view into player performance, match context, and trends for coach-led conversations.",
-    points: ["Player directory", "Individual drilldowns", "Season trends"],
-  },
-  {
-    step: "04",
-    route: "/coach/review",
-    title: "Review",
-    headline: "Build the Monday film session as you go.",
-    body: "Capture coach notes, timestamp the teaching moments, and reopen the exact match context later.",
-    points: ["Film notes", "Clip context", "Match timeline"],
-  },
-  {
-    step: "05",
-    route: "/coach/team-setup",
-    title: "Team Setup",
-    headline: "Names, numbers, positions, calls.",
-    body: "Keep the squad profile ready before kickoff so voice tagging can understand the team language.",
-    points: ["Squad details", "Nicknames", "Lineout calls"],
-  },
-  {
-    step: "06",
-    route: "/coach/saved-matches",
-    title: "Saved Matches",
-    headline: "Every match one click away.",
-    body: "Reopen previous games into Capture, Insights, Review, or Compare without adding a backend yet.",
-    points: ["Local match library", "Confidence cues", "Reopen workflows"],
   },
 ];
 
@@ -385,62 +335,7 @@ export default function MarketingHomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1400px] px-5 py-24 sm:px-8 lg:px-12">
-        <div className="mb-12 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="mb-4 font-mono text-xs font-bold uppercase text-muted-2">
-              01 / A tour of the app
-            </p>
-            <h2 className="max-w-4xl text-4xl font-black uppercase leading-none text-foreground-strong sm:text-6xl lg:text-7xl">
-              Every coach tool.
-              <br />
-              <span className="text-transparent [-webkit-text-stroke:1.25px_var(--border-light)]">
-                One workflow.
-              </span>
-            </h2>
-          </div>
-          <p className="max-w-md text-sm leading-6 text-muted">
-            The product stays split the way coaches use it: Capture for tagging,
-            Insights for analytics, Review for teaching, and Compare for
-            cross-match context.
-          </p>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {tourItems.map((item) => (
-            <article
-              key={item.title}
-              className="group flex min-h-[320px] flex-col rounded-xl border border-border bg-panel p-6 transition hover:border-border-light hover:bg-panel-2"
-            >
-              <div className="mb-10 flex items-center justify-between gap-4">
-                <span className="font-mono text-xs font-bold uppercase text-danger">
-                  {item.step} / {item.title}
-                </span>
-                <span className="rounded border border-border bg-panel-2 px-2 py-1 font-mono text-[10px] text-muted-2">
-                  {item.route}
-                </span>
-              </div>
-              <h3 className="text-2xl font-black uppercase leading-none text-foreground-strong">
-                {item.headline}
-              </h3>
-              <p className="mt-4 text-sm leading-6 text-muted">{item.body}</p>
-              <div className="mt-auto pt-7">
-                <div className="grid gap-2 border-t border-border pt-4">
-                  {item.points.map((point) => (
-                    <div
-                      key={point}
-                      className="flex items-center gap-2 text-xs font-semibold text-foreground"
-                    >
-                      <span className="text-muted-2">-&gt;</span>
-                      {point}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
+      <MarketingProductSlider />
 
       <section className="border-y border-border bg-panel/50 py-12">
         <div className="marketing-marquee text-[58px] font-black uppercase leading-none text-foreground-strong sm:text-[88px] lg:text-[116px]">

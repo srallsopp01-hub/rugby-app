@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after marketing homepage bold sport redesign
+**Last updated:** April 2026 — after homepage product slider and colour schemes
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -26,6 +26,7 @@ It is currently a **coach-first MVP / early private beta**, best used on desktop
 - React + TypeScript
 - Tailwind CSS v4 (custom design tokens via CSS variables in `globals.css`)
 - localStorage for match persistence (no backend/cloud yet)
+- localStorage for browser-local colour scheme preference (`dark` / `bright`)
 - Anthropic API for voice transcription (`/api/transcribe`)
 - ExcelJS for `.xlsx` report generation
 
@@ -49,7 +50,7 @@ The app is split into four clearly separated layers with independent layouts and
 ### Public marketing
 | Route | Status | Purpose |
 |---|---|---|
-| `/` | Live | Bold sport marketing homepage — product-first hero, rugby workflow tour, feature matrix, quote, CTA |
+| `/` | Live | Bold sport marketing homepage — product-first hero, interactive app-page slider, feature matrix, quote, CTA |
 | `/pricing` | Stub | Pricing tiers |
 | `/about` | Stub | Founder / product story |
 | `/blog` | Stub | Blog index |
@@ -104,6 +105,10 @@ app/
   (marketing)/
     layout.tsx                        ← Marketing header + footer
     page.tsx                          ← Marketing homepage
+    MarketingProductSlider.tsx        ← Client-side homepage app tour slider
+
+  components/
+    ThemeSchemeToggle.tsx             ← Shared dark / bright scheme toggle
 
   coach/
     layout.tsx                        ← Coach layout: h-screen, sidebar + scrollable main
@@ -168,7 +173,7 @@ app/
 
 ## Design tokens (globals.css)
 
-Dark theme CSS variables available as Tailwind classes:
+Theme CSS variables available as Tailwind classes. Default is the dark scheme; a browser-local bright scheme can be selected via the shared theme toggle and is stored in `localStorage` as `rugbycoach-theme-scheme`.
 
 | Token | Value | Usage |
 |---|---|---|
@@ -188,6 +193,11 @@ Dark theme CSS variables available as Tailwind classes:
 | `text-danger` | #b16e6e | Muted red |
 
 Body has a radial + linear gradient applied. Buttons get `translateY(-1px)` on hover. Inputs have 0.18s transitions.
+
+Bright scheme:
+- Uses white / off-white surfaces with black text and orange accent (`--accent: #ed6a1f`).
+- Applies across marketing, coach, player, and admin through `data-theme-scheme="bright"` on `<html>`.
+- Video and product mock areas may stay dark where they represent match footage or film UI.
 
 ---
 
@@ -454,10 +464,20 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
-## Next — Batch J (plan carefully before starting)
+### Batch J (April 2026)
+- ✅ Marketing homepage polished with a product-first bold sport layout
+- ✅ Homepage app tour upgraded to a client-side slider covering Coach Home, Capture, Insights, Players, Review, Team Setup, Saved Matches, and Compare
+- ✅ Capture slide highlights specific Capture areas: video timeline, quick tags, voice tagging, transcript, and report flow
+- ✅ Whole-product dark / bright colour scheme preference added via shared CSS tokens and `ThemeSchemeToggle`
+- ✅ Bright scheme uses white/off-white surfaces with orange and black accents; preference persists in browser localStorage
+- ✅ Theme toggle is available from marketing header and coach/player/admin sidebars
+
+---
+
+## Next — Batch K (plan carefully before starting)
 
 Idea:
-- Validate Batch I in-browser with real saved match data, then decide whether to improve report export polish, reduce Capture lint warnings, or add cloud/account foundations
+- Validate Batch J in-browser across desktop widths and both colour schemes, then decide whether to improve report export polish, reduce Capture lint warnings, or add cloud/account foundations
 
 ---
 

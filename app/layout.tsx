@@ -26,11 +26,28 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const themeScript = `
+    (function() {
+      try {
+        var key = "rugbycoach-theme-scheme";
+        var saved = window.localStorage.getItem(key);
+        var scheme = saved === "bright" ? "bright" : "dark";
+        document.documentElement.setAttribute("data-theme-scheme", scheme);
+      } catch (error) {
+        document.documentElement.setAttribute("data-theme-scheme", "dark");
+      }
+    })();
+  `;
+
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
