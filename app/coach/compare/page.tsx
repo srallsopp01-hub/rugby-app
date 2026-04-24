@@ -424,6 +424,9 @@ export default function ComparePage() {
     [snapshots, rightMatchId]
   );
 
+  const isSameMatchSelected =
+    Boolean(leftMatchId) && Boolean(rightMatchId) && leftMatchId === rightMatchId;
+
   useEffect(() => {
     if (!leftSnapshot) {
       setLeftPlayerName("");
@@ -495,9 +498,6 @@ export default function ComparePage() {
       { label: "Inv/min", left: leftPlayer.involvementsPerMin, right: rightPlayer.involvementsPerMin, format: "rate" },
     ];
   }, [leftPlayer, rightPlayer]);
-
-  const isSameMatchSelected =
-    Boolean(leftMatchId) && Boolean(rightMatchId) && leftMatchId === rightMatchId;
 
   const renderMatchOptions = (side: CompareSide) =>
     snapshots.map((snapshot) => (
