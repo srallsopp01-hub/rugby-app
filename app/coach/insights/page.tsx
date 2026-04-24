@@ -6,6 +6,7 @@ import TeamSnapshotPanel from "@/app/rugby-tagging/components/TeamSnapshotPanel"
 import {
   getCurrentMatchId,
   getSavedMatchById,
+  getSavedMatches,
 } from "@/app/rugby-tagging/lib/savedMatches";
 import { STORAGE_KEY } from "@/app/rugby-tagging/constants";
 import { generateTeamAnalyticsWorkbook } from "@/app/rugby-tagging/lib/exports/teamAnalyticsExport";
@@ -16,6 +17,7 @@ import {
   buildTeamEventSummary,
   buildTeamTotals,
   buildUnitSummaryRows,
+  gradeClassName,
   hydrateRosterRows,
   isForwardPosition,
   teamTacklePctFromTotals,
@@ -26,6 +28,15 @@ import type {
   RosterRow,
   UnitSummaryRow,
 } from "@/app/rugby-tagging/types";
+import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
+
+function trendArrow(values: number[]): "up" | "down" | "flat" {
+  if (values.length < 2) return "flat";
+  const d = values[values.length - 1] - values[values.length - 2];
+  if (d > 0.001) return "up";
+  if (d < -0.001) return "down";
+  return "flat";
+}
 
 export default function InsightsPage() {
   const router = useRouter();
@@ -35,6 +46,7 @@ export default function InsightsPage() {
   const [matchDate, setMatchDate] = useState("");
   const [rosterRows, setRosterRows] = useState<RosterRow[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
+  const [allMatches, setAllMatches] = useState<SavedMatchRecord[]>([]);
 
   const players = useMemo(
     () => rosterRows.map((row) => row.name.trim()).filter(Boolean),
@@ -63,6 +75,34 @@ export default function InsightsPage() {
   const teamEventSummary = useMemo(() => buildTeamEventSummary(events), [events]);
 
   const teamTacklePct = teamTacklePctFromTotals(teamTotals);
+
+  const trendData = useMemo(() => {
+    if (allMatches.length < 2) return null;
+
+    const sorted = [...allMatches].sort((a, b) => {
+      const ak = (a.matchDate || a.updatedAt || "").trim();
+      const bk = (b.matchDate || b.updatedAt || "").trim();
+      return ak.localeCompare(bk);
+    });
+
+    const matchSnapshots = sorted.map((m) => ({
+      label: m.matchTitle?.trim() || m.matchDate || `Match ${m.id.slice(-4)}`,
+      date: m.matchDate || m.updatedAt,
+      rows: buildReportRowsFromMatch(m.rosterRows, m.events),
+    }));
+
+    const playerCount: Record<string, number> = {};
+    for (const snap of matchSnapshots)
+      for (const row of snap.rows)
+        playerCount[row.name] = (playerCount[row.name] || 0) + 1;
+
+    const eligiblePlayers = Object.entries(playerCount)
+      .filter(([, c]) => c >= 2)
+      .map(([n]) => n)
+      .sort();
+
+    return { matchSnapshots, eligiblePlayers };
+  }, [allMatches]);
 
   const bestDefender = useMemo(() => {
     if (reportRows.length === 0) return null;
@@ -236,6 +276,12 @@ export default function InsightsPage() {
       );
     } catch (error) {
       console.error("Failed to load insights session", error);
+    }
+
+    try {
+      setAllMatches(getSavedMatches());
+    } catch (error) {
+      console.error("Failed to load saved matches for trends", error);
     }
   }, []);
 
@@ -601,6 +647,81 @@ export default function InsightsPage() {
                           </td>
                         </tr>
                       ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Player trends */}
+            <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold text-foreground-strong">Player trends</h2>
+                {trendData && (
+                  <span className="text-xs text-muted">Across {trendData.matchSnapshots.length} matches</span>
+                )}
+              </div>
+
+              {!trendData ? (
+                <div className="rounded-xl border border-dashed border-border px-4 py-4 text-sm text-muted">
+                  Save more matches to see cross-match trends. Player trends appear once two or more matches are saved.
+                </div>
+              ) : trendData.eligiblePlayers.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border px-4 py-4 text-sm text-muted">
+                  No players appear in two or more matches yet.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-muted">
+                        <th className="p-2">Player</th>
+                        {trendData.matchSnapshots.map((snap) => (
+                          <th key={snap.label} className="p-2 text-center">
+                            <div>{snap.label}</div>
+                            {snap.date && (
+                              <div className="text-[11px] text-muted-2 font-normal">{snap.date}</div>
+                            )}
+                          </th>
+                        ))}
+                        <th className="p-2 text-center">Trend</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {trendData.eligiblePlayers.map((playerName) => {
+                        const appearances = trendData.matchSnapshots.map((snap) =>
+                          snap.rows.find((r) => r.name === playerName) ?? null
+                        );
+                        const tacklePcts = appearances
+                          .filter((r): r is NonNullable<typeof r> => r !== null)
+                          .map((r) => r.tacklePct);
+                        const trend = trendArrow(tacklePcts);
+                        return (
+                          <tr key={playerName} className="border-b border-border/60">
+                            <td className="p-2 font-medium text-foreground">{playerName}</td>
+                            {appearances.map((row, i) => (
+                              <td key={i} className="p-2 text-center">
+                                {row ? (
+                                  <div>
+                                    <div className="text-muted">{row.tacklePct.toFixed(0)}%</div>
+                                    <div className="text-muted">{row.carries}c</div>
+                                    <div className={`font-medium ${gradeClassName(row.overallGrade)}`}>
+                                      {row.overallGrade}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-2">—</span>
+                                )}
+                              </td>
+                            ))}
+                            <td className="p-2 text-center text-base">
+                              {trend === "up" && <span className="text-emerald-400">↑</span>}
+                              {trend === "down" && <span className="text-rose-400">↓</span>}
+                              {trend === "flat" && <span className="text-muted">→</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
