@@ -440,9 +440,14 @@ export default function ComparePage() {
       return;
     }
     if (!rightSnapshot.reportRows.some((row) => row.name === rightPlayerName)) {
-      setRightPlayerName(rightSnapshot.reportRows[0]?.name || "");
+      // When the same match is on both sides, default right to the second player
+      // so the comparison isn't immediately player-vs-themselves
+      const fallback = isSameMatchSelected
+        ? (rightSnapshot.reportRows[1]?.name || rightSnapshot.reportRows[0]?.name || "")
+        : (rightSnapshot.reportRows[0]?.name || "");
+      setRightPlayerName(fallback);
     }
-  }, [rightSnapshot, rightPlayerName]);
+  }, [rightSnapshot, rightPlayerName, isSameMatchSelected]);
 
   const matchMetrics = useMemo<DeltaMetric[]>(() => {
     if (!leftSnapshot || !rightSnapshot) return [];
@@ -500,9 +505,10 @@ export default function ComparePage() {
         key={snapshot.match.id}
         value={snapshot.match.id}
         disabled={
-          side === "left"
+          activeTab === "match" &&
+          (side === "left"
             ? snapshot.match.id === rightMatchId
-            : snapshot.match.id === leftMatchId
+            : snapshot.match.id === leftMatchId)
         }
       >
         {snapshot.label}
@@ -603,7 +609,7 @@ export default function ComparePage() {
               </div>
             </section>
 
-            {isSameMatchSelected && (
+            {isSameMatchSelected && activeTab === "match" && (
               <div className="rounded-2xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
                 Choose two different saved matches to compare. The same match cannot produce a useful delta.
               </div>
@@ -619,9 +625,15 @@ export default function ComparePage() {
               </>
             )}
 
-            {leftSnapshot && rightSnapshot && !isSameMatchSelected && activeTab === "player" && (
+            {leftSnapshot && rightSnapshot && activeTab === "player" && (
               <>
                 <section className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
+                  {isSameMatchSelected && (
+                    <p className="mb-3 text-xs text-muted">
+                      Comparing two players from the same match —{" "}
+                      <span className="font-medium text-foreground">{leftSnapshot.label}</span>
+                    </p>
+                  )}
                   <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
                     <SelectField
                       label="Left player"
