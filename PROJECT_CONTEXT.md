@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after Batch G complete  
+**Last updated:** April 2026 — after Batch H complete
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -66,7 +66,7 @@ The app is split into four clearly separated layers with independent layouts and
 | `/coach/review` | Live | Film review, coach notes, timestamped timeline |
 | `/coach/players` | Live | Player directory and coach-facing player analysis |
 | `/coach/players/[playerId]` | Live | Individual player drilldown |
-| `/coach/compare` | Stub (in dev) | Side-by-side player/match comparison |
+| `/coach/compare` | Live | Side-by-side saved match and player comparison |
 | `/coach/saved-matches` | Live | Reopen / delete saved matches |
 | `/coach/settings` | Stub (in dev) | Account, preferences, permissions |
 
@@ -118,7 +118,7 @@ app/
     players/page.tsx                  ← Player directory
     players/[playerId]/page.tsx       ← Individual player drilldown
     saved-matches/page.tsx            ← Saved match management
-    compare/page.tsx                  ← Stub
+    compare/page.tsx                  ← Saved match + player comparison
     settings/page.tsx                 ← Stub
 
   player/
@@ -423,10 +423,18 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
-## Next — Batch H (plan carefully before starting)
+### Batch H (April 2026)
+- ✅ `/coach/compare` is now live as a desktop-first, side-by-side comparison screen
+- ✅ Match comparison mode compares two saved localStorage matches using the same shared analytics helpers as Insights/export
+- ✅ Player comparison mode compares one player from each selected saved match with KPI deltas
+- ✅ Compare is read-only and comparison-only — no tagging, film review, video playback, saved-match editing, backend, or cloud storage
+
+---
+
+## Next — Batch I (plan carefully before starting)
 
 Idea:
-- `/coach/compare` — side-by-side player/match comparison (currently stub, large effort)
+- Decide the next coach-first MVP improvement after validating Compare with saved match data
 
 ---
 
