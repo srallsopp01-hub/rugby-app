@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getMatchVideoUrl } from "@/app/rugby-tagging/lib/matchVideoSession";
 import {
@@ -35,6 +35,35 @@ type SavedSession = {
   events?: EventItem[];
 };
 
+function loadPlayersSession(): SavedSession {
+  if (typeof window === "undefined") return {};
+
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    const saved: SavedSession = JSON.parse(raw);
+    return saved && typeof saved === "object" ? saved : {};
+  } catch (error) {
+    console.error("Failed to load saved session", error);
+    return {};
+  }
+}
+
+function loadPlayersVideoSrc() {
+  if (typeof window === "undefined") return "";
+
+  try {
+    return (
+      getMatchVideoUrl() ||
+      sessionStorage.getItem("rugby-tagging-video-src") ||
+      ""
+    );
+  } catch (error) {
+    console.error("Failed to load video source", error);
+    return "";
+  }
+}
+
 export default function PlayersPage() {
   return (
     <Suspense fallback={<PlayersLoading />}>
@@ -62,46 +91,25 @@ function PlayersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [savedSession] = useState(loadPlayersSession);
 
-  const [matchTitle, setMatchTitle] = useState("");
-  const [opponent, setOpponent] = useState("");
-  const [matchDate, setMatchDate] = useState("");
-  const [rosterRows, setRosterRows] = useState<RosterRow[]>(DEFAULT_ROSTER_ROWS);
-  const [events, setEvents] = useState<EventItem[]>([]);
-  const [videoSrc, setVideoSrc] = useState("");
+  const [matchTitle] = useState(savedSession.matchTitle || "");
+  const [opponent] = useState(savedSession.opponent || "");
+  const [matchDate] = useState(savedSession.matchDate || "");
+  const [rosterRows] = useState<RosterRow[]>(() =>
+    savedSession.rosterRows
+      ? hydrateRosterRows(savedSession.rosterRows)
+      : DEFAULT_ROSTER_ROWS
+  );
+  const [events] = useState<EventItem[]>(() =>
+    Array.isArray(savedSession.events)
+      ? savedSession.events.filter((event) => !event.isPending)
+      : []
+  );
+  const [videoSrc] = useState(loadPlayersVideoSrc);
   const [currentTime, setCurrentTime] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [activeEventIndex, setActiveEventIndex] = useState(0);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-
-      const saved: SavedSession = JSON.parse(raw);
-      const safeEvents = Array.isArray(saved.events)
-        ? saved.events.filter((event) => !event.isPending)
-        : [];
-
-      setMatchTitle(saved.matchTitle || "");
-      setOpponent(saved.opponent || "");
-      setMatchDate(saved.matchDate || "");
-      setRosterRows(hydrateRosterRows(saved.rosterRows));
-      setEvents(safeEvents);
-    } catch (error) {
-      console.error("Failed to load saved session", error);
-    }
-
-    try {
-      const savedVideoSrc =
-        getMatchVideoUrl() ||
-        sessionStorage.getItem("rugby-tagging-video-src") ||
-        "";
-      setVideoSrc(savedVideoSrc);
-    } catch (error) {
-      console.error("Failed to load video source", error);
-    }
-  }, []);
 
   const players = rosterRows.map((row) => row.name.trim()).filter(Boolean);
   const selectedPlayerName = searchParams.get("player") || players[0] || "";
@@ -198,10 +206,6 @@ function PlayersContent() {
       .sort((a, b) => a.timestamp - b.timestamp);
   }, [events, selectedPlayerName]);
 
-  useEffect(() => {
-    setActiveEventIndex(0);
-  }, [selectedPlayerName, playerEvents.length]);
-
   const jumpVideoBy = (seconds: number) => {
     const video = videoRef.current;
     if (!video) return;
@@ -233,7 +237,11 @@ function PlayersContent() {
     setActiveEventIndex(index);
   };
 
-  const selectedEvent = playerEvents[activeEventIndex] || null;
+  const safeActiveEventIndex =
+    playerEvents.length === 0
+      ? 0
+      : Math.min(activeEventIndex, playerEvents.length - 1);
+  const selectedEvent = playerEvents[safeActiveEventIndex] || null;
 
   return (
     <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
@@ -360,8 +368,8 @@ function PlayersContent() {
                 <div className="mb-4 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => jumpToEventIndex(Math.max(activeEventIndex - 1, 0))}
-                    disabled={playerEvents.length === 0 || activeEventIndex === 0}
+                    onClick={() => jumpToEventIndex(Math.max(safeActiveEventIndex - 1, 0))}
+                    disabled={playerEvents.length === 0 || safeActiveEventIndex === 0}
                     className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground disabled:opacity-50"
                   >
                     Previous clip
@@ -370,12 +378,12 @@ function PlayersContent() {
                     type="button"
                     onClick={() =>
                       jumpToEventIndex(
-                        Math.min(activeEventIndex + 1, playerEvents.length - 1)
+                        Math.min(safeActiveEventIndex + 1, playerEvents.length - 1)
                       )
                     }
                     disabled={
                       playerEvents.length === 0 ||
-                      activeEventIndex >= playerEvents.length - 1
+                      safeActiveEventIndex >= playerEvents.length - 1
                     }
                     className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground disabled:opacity-50"
                   >
@@ -402,7 +410,7 @@ function PlayersContent() {
                         key={event.id}
                         onClick={() => jumpToEventIndex(index)}
                         className={`flex w-full items-start justify-between gap-3 rounded-xl border px-4 py-3 text-left transition ${
-                          index === activeEventIndex
+                          index === safeActiveEventIndex
                             ? "border-border-light bg-panel text-foreground"
                             : "border-border bg-panel-2 hover:border-border-light hover:bg-panel"
                         }`}

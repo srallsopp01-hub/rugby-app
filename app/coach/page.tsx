@@ -3,7 +3,39 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSyncExternalStore } from "react";
 import { shouldStartCoachOnboarding } from "@/app/rugby-tagging/lib/onboarding";
+import {
+  CURRENT_MATCH_ID_KEY,
+  SAVED_MATCHES_KEY,
+  type SavedMatchRecord,
+} from "@/app/rugby-tagging/lib/savedMatches";
+import {
+  buildMatchConfidenceSummary,
+  formatUpdatedLabel,
+} from "@/app/rugby-tagging/lib/matchConfidence";
+
+const emptyStorageSnapshot = "[]";
+const subscribeToStorage = () => () => {};
+
+function getSavedMatchesSnapshot() {
+  if (typeof window === "undefined") return emptyStorageSnapshot;
+  return localStorage.getItem(SAVED_MATCHES_KEY) || emptyStorageSnapshot;
+}
+
+function getCurrentMatchSnapshot() {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem(CURRENT_MATCH_ID_KEY) || "";
+}
+
+function parseSavedMatches(snapshot: string): SavedMatchRecord[] {
+  try {
+    const parsed = JSON.parse(snapshot);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 const quickLinks = [
   {
@@ -52,10 +84,54 @@ const quickLinks = [
       </svg>
     ),
   },
+  {
+    label: "Compare",
+    href: "/coach/compare",
+    description: "Compare saved matches",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+        <path d="M5 3H2.5A.5.5 0 002 3.5v9a.5.5 0 00.5.5H5M11 3h2.5a.5.5 0 01.5.5v9a.5.5 0 01-.5.5H11M8 2v12M5 6l-2 2 2 2M11 6l2 2-2 2" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+  },
+  {
+    label: "Saved Matches",
+    href: "/coach/saved-matches",
+    description: "Reopen local matches",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+        <rect x="2" y="2" width="12" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.25"/>
+        <path d="M5 8h6M5 5.5h6M5 10.5h4" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
 ];
 
 export default function CoachHomePage() {
   const router = useRouter();
+  const savedMatchesSnapshot = useSyncExternalStore(
+    subscribeToStorage,
+    getSavedMatchesSnapshot,
+    () => emptyStorageSnapshot
+  );
+  const currentMatchId = useSyncExternalStore(
+    subscribeToStorage,
+    getCurrentMatchSnapshot,
+    () => ""
+  );
+  const savedMatches = parseSavedMatches(savedMatchesSnapshot);
+  const sortedMatches = [...savedMatches].sort((a, b) => {
+    const aTime = new Date(a.updatedAt || a.createdAt).getTime();
+    const bTime = new Date(b.updatedAt || b.createdAt).getTime();
+    return bTime - aTime;
+  });
+  const activeMatch =
+    sortedMatches.find((match) => match.id === currentMatchId) || null;
+  const latestMatch = sortedMatches[0] || null;
+  const dashboardMatch = activeMatch || latestMatch;
+  const confidence = dashboardMatch
+    ? buildMatchConfidenceSummary(dashboardMatch)
+    : null;
 
   useEffect(() => {
     if (shouldStartCoachOnboarding()) {
@@ -64,17 +140,105 @@ export default function CoachHomePage() {
   }, [router]);
 
   return (
-    <div className="p-8 max-w-4xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-foreground-strong">
-          Coach Home
-        </h1>
-        <p className="mt-1.5 text-sm text-muted">
-          Your coaching control centre. Start a match, review data, or check player output.
-        </p>
-      </div>
+    <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1500px] space-y-5">
+        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div className="max-w-3xl">
+              <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
+                Coach Home
+              </h1>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Your coaching control centre. Start a match, reopen analysis,
+                or check whether the current saved match is report-ready.
+              </p>
+            </div>
+            <div className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
+              {savedMatches.length} saved match{savedMatches.length === 1 ? "" : "es"} on this browser
+            </div>
+          </div>
+        </section>
 
-      <div className="grid grid-cols-2 gap-4">
+        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">
+                Next action
+              </div>
+              {confidence ? (
+                <>
+                  <h2 className="mt-2 text-xl font-semibold text-foreground-strong">
+                    {activeMatch ? "Continue active match" : "Review latest saved match"}
+                  </h2>
+                  <p className="mt-1 text-sm text-muted">
+                    {confidence.title} - {confidence.subtitle}
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Link
+                      href="/coach/capture"
+                      className="rounded-xl border border-border-light bg-panel-3 px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-panel-2"
+                    >
+                      Open Capture
+                    </Link>
+                    <Link
+                      href="/coach/insights"
+                      className="rounded-xl border border-border bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                    >
+                      Open Insights
+                    </Link>
+                    <Link
+                      href="/coach/review"
+                      className="rounded-xl border border-border bg-panel-2 px-4 py-2 text-sm font-medium text-foreground transition hover:bg-panel"
+                    >
+                      Open Review
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 className="mt-2 text-xl font-semibold text-foreground-strong">
+                    Start your first saved match
+                  </h2>
+                  <p className="mt-1 text-sm text-muted">
+                    No local saved matches were found on this browser yet.
+                  </p>
+                  <div className="mt-4">
+                    <Link
+                      href="/coach/capture"
+                      className="rounded-xl border border-border bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                    >
+                      Open Capture
+                    </Link>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="grid w-full grid-cols-2 gap-3 xl:w-[620px] xl:grid-cols-4">
+              <StatusTile
+                label="Last saved"
+                value={formatUpdatedLabel(dashboardMatch?.updatedAt)}
+              />
+              <StatusTile
+                label="Events"
+                value={confidence ? String(confidence.resolvedEvents) : "0"}
+                detail="resolved"
+              />
+              <StatusTile
+                label="Review"
+                value={confidence ? String(confidence.unresolvedReview) : "0"}
+                detail="open items"
+              />
+              <StatusTile
+                label="Report"
+                value={confidence?.readyLabel || "Not ready"}
+                tone={confidence?.readyTone}
+              />
+            </div>
+          </div>
+        </section>
+
+        <section className="grid grid-cols-2 gap-4 xl:grid-cols-3">
         {quickLinks.map((link) => (
           <Link
             key={link.href}
@@ -92,7 +256,58 @@ export default function CoachHomePage() {
             </div>
           </Link>
         ))}
+        </section>
+
+        <section className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-foreground-strong">
+                Current beta storage
+              </h2>
+              <p className="mt-1 text-sm text-muted">
+                Saved matches are local to this browser and device. Use Saved
+                Matches to choose the active match before opening Insights or
+                Review.
+              </p>
+            </div>
+            <Link
+              href="/coach/saved-matches"
+              className="w-fit rounded-xl border border-border bg-panel-2 px-4 py-2 text-sm font-medium text-foreground transition hover:bg-panel"
+            >
+              Manage saved matches
+            </Link>
+          </div>
+        </section>
       </div>
+    </main>
+  );
+}
+
+function StatusTile({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+  tone?: "ready" | "needs-work";
+}) {
+  const toneClass =
+    tone === "ready"
+      ? "text-success"
+      : tone === "needs-work"
+      ? "text-warning"
+      : "text-foreground";
+
+  return (
+    <div className="rounded-xl border border-border bg-panel-2 px-3 py-3">
+      <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
+        {label}
+      </div>
+      <div className={`mt-1 text-sm font-semibold ${toneClass}`}>{value}</div>
+      {detail && <div className="mt-0.5 text-xs text-muted">{detail}</div>}
     </div>
   );
 }

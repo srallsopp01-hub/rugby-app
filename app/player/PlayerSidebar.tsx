@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -63,11 +63,11 @@ const navItems = [
 
 export default function PlayerSidebar() {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    setCollapsed(localStorage.getItem("player-sidebar-collapsed") === "true");
-  }, []);
+  const [collapsed, setCollapsed] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      localStorage.getItem("player-sidebar-collapsed") === "true"
+  );
 
   const toggle = () => setCollapsed(prev => {
     localStorage.setItem("player-sidebar-collapsed", String(!prev));

@@ -188,12 +188,14 @@ Return:
       rawText,
       parsed,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Transcription error full:", error);
+    const message =
+      error instanceof Error ? error.message : "Failed to transcribe audio";
 
     return NextResponse.json(
       {
-        error: error?.message || "Failed to transcribe audio",
+        error: message,
       },
       { status: 500 }
     );

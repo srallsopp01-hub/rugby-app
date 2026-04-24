@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after Batch H complete
+**Last updated:** April 2026 — after Batch I complete
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -58,16 +58,16 @@ The app is split into four clearly separated layers with independent layouts and
 ### Coach platform
 | Route | Status | Purpose |
 |---|---|---|
-| `/coach` | Live | Coach home — quick nav card grid to main features |
+| `/coach` | Live | Coach home — next-action dashboard, match confidence, quick nav |
 | `/coach/onboarding` | Live | First-time coach setup wizard — team details, manual squad entry, voice tagging guidance |
 | `/coach/team-setup` | Live | Squad, names, positions, voice samples, lineout calls |
 | `/coach/capture` | Live | Live match tagging workspace (~2600 lines) |
-| `/coach/insights` | Live | Team analytics, player output, set piece, export |
-| `/coach/review` | Live | Film review, coach notes, timestamped timeline |
+| `/coach/insights` | Live | Team analytics, player output, set piece, export, match confidence banner |
+| `/coach/review` | Live | Film review, coach notes, timestamped timeline, match context banner |
 | `/coach/players` | Live | Player directory and coach-facing player analysis |
 | `/coach/players/[playerId]` | Live | Individual player drilldown |
-| `/coach/compare` | Live | Side-by-side saved match and player comparison |
-| `/coach/saved-matches` | Live | Reopen / delete saved matches |
+| `/coach/compare` | Live | Side-by-side saved match and player comparison with confidence cues |
+| `/coach/saved-matches` | Live | Reopen / delete saved matches, local storage context |
 | `/coach/settings` | Stub (in dev) | Account, preferences, permissions |
 
 ### Player platform
@@ -153,6 +153,7 @@ app/
     constants.ts                      ← Storage keys, defaults
     lib/
       matchVideoSession.ts            ← Video blob session management
+      matchConfidence.ts              ← Read-only saved match labels, counts, report readiness
       onboarding.ts                   ← Onboarding completion helpers
       savedMatches.ts                 ← localStorage match persistence
       squadProfile.ts                 ← Squad Profile localStorage persistence (cross-match)
@@ -248,10 +249,20 @@ Sidebar pattern:
 - Timestamped coaching notes
 - Team snapshot sidebar
 - Game Review Timeline Panel
+- Match context banner shows current match, local storage/video scope, note count, resolved event count, report readiness
 
 ### Saved Matches (/coach/saved-matches)
 - Reopen saved matches into Capture / Insights / Review
 - Delete saved matches
+- Local storage context panel
+- Per-match confidence cues: named players, resolved events, unresolved review items, notes, Ready for report / Needs review
+
+### Coach Compare (/coach/compare)
+- Match comparison: two saved localStorage matches side by side
+- Player comparison: one player from each selected saved match
+- Same-match comparison is blocked/warned against
+- KPI cards and delta tables explicitly use resolved tagged events
+- Confidence cues show pending events, unresolved review items, and report readiness
 
 ---
 
@@ -431,10 +442,22 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
-## Next — Batch I (plan carefully before starting)
+### Batch I (April 2026)
+- ✅ Coach Home upgraded from simple quick links to a next-action dashboard
+- ✅ Coach Home now shows active/latest saved match, saved-match count, last saved time, resolved event count, open review count, and report readiness
+- ✅ Compare and Saved Matches added to Coach Home quick links
+- ✅ Shared `matchConfidence.ts` helper added for saved match labels, localStorage confidence counts, and Ready for report / Needs review status
+- ✅ Insights, Review, Compare, and Saved Matches now show match context/confidence cues
+- ✅ Compare prevents same-match comparison and labels stats as based on resolved tagged events
+- ✅ Root metadata no longer says Create Next App
+- ✅ Scoped Next 16/React lint stability improved: full lint now exits with warnings only
+
+---
+
+## Next — Batch J (plan carefully before starting)
 
 Idea:
-- Decide the next coach-first MVP improvement after validating Compare with saved match data
+- Validate Batch I in-browser with real saved match data, then decide whether to improve report export polish, reduce Capture lint warnings, or add cloud/account foundations
 
 ---
 

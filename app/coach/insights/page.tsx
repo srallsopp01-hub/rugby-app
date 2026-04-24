@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import TeamSnapshotPanel from "@/app/rugby-tagging/components/TeamSnapshotPanel";
 import {
-  getCurrentMatchId,
-  getSavedMatchById,
-  getSavedMatches,
+  CURRENT_MATCH_ID_KEY,
+  SAVED_MATCHES_KEY,
 } from "@/app/rugby-tagging/lib/savedMatches";
 import { STORAGE_KEY } from "@/app/rugby-tagging/constants";
+import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfidence";
 import { generateTeamAnalyticsWorkbook } from "@/app/rugby-tagging/lib/exports/teamAnalyticsExport";
 import { downloadWorkbook } from "@/app/rugby-tagging/lib/exports/downloadWorkbook";
 import {
@@ -24,11 +24,45 @@ import {
 } from "@/app/rugby-tagging/helpers";
 import type {
   EventItem,
-  ReportRow,
   RosterRow,
-  UnitSummaryRow,
 } from "@/app/rugby-tagging/types";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
+
+type SavedSession = {
+  matchTitle?: string;
+  opponent?: string;
+  matchDate?: string;
+  rosterRows?: RosterRow[];
+  events?: EventItem[];
+  reviewQueue?: unknown[];
+  coachNotes?: unknown[];
+};
+
+const emptyArraySnapshot = "[]";
+const subscribeToStorage = () => () => {};
+
+function getStorageSnapshot(key: string, fallback: string) {
+  if (typeof window === "undefined") return fallback;
+  return localStorage.getItem(key) || fallback;
+}
+
+function parseSavedMatches(snapshot: string): SavedMatchRecord[] {
+  try {
+    const parsed = JSON.parse(snapshot);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseSavedSession(snapshot: string): SavedSession | null {
+  try {
+    const parsed = JSON.parse(snapshot);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
 function trendArrow(values: number[]): "up" | "down" | "flat" {
   if (values.length < 2) return "flat";
@@ -40,18 +74,51 @@ function trendArrow(values: number[]): "up" | "down" | "flat" {
 
 export default function InsightsPage() {
   const router = useRouter();
-
-  const [matchTitle, setMatchTitle] = useState("");
-  const [opponent, setOpponent] = useState("");
-  const [matchDate, setMatchDate] = useState("");
-  const [rosterRows, setRosterRows] = useState<RosterRow[]>([]);
-  const [events, setEvents] = useState<EventItem[]>([]);
-  const [allMatches, setAllMatches] = useState<SavedMatchRecord[]>([]);
   const [expandedTrendPlayer, setExpandedTrendPlayer] = useState<string | null>(null);
-
-  const players = useMemo(
-    () => rosterRows.map((row) => row.name.trim()).filter(Boolean),
-    [rosterRows]
+  const savedMatchesSnapshot = useSyncExternalStore(
+    subscribeToStorage,
+    () => getStorageSnapshot(SAVED_MATCHES_KEY, emptyArraySnapshot),
+    () => emptyArraySnapshot
+  );
+  const currentMatchId = useSyncExternalStore(
+    subscribeToStorage,
+    () => getStorageSnapshot(CURRENT_MATCH_ID_KEY, ""),
+    () => ""
+  );
+  const sessionSnapshot = useSyncExternalStore(
+    subscribeToStorage,
+    () => getStorageSnapshot(STORAGE_KEY, "{}"),
+    () => "{}"
+  );
+  const allMatches = useMemo(
+    () => parseSavedMatches(savedMatchesSnapshot),
+    [savedMatchesSnapshot]
+  );
+  const sessionMatch = useMemo(
+    () => parseSavedSession(sessionSnapshot),
+    [sessionSnapshot]
+  );
+  const activeMatch = useMemo(() => {
+    return allMatches.find((match) => match.id === currentMatchId) || null;
+  }, [allMatches, currentMatchId]);
+  const currentMatch = activeMatch || sessionMatch;
+  const matchTitle = currentMatch?.matchTitle || "";
+  const opponent = currentMatch?.opponent || "";
+  const matchDate = currentMatch?.matchDate || "";
+  const rosterRows = useMemo(
+    () => hydrateRosterRows(currentMatch?.rosterRows),
+    [currentMatch]
+  );
+  const events = useMemo(
+    () =>
+      Array.isArray(currentMatch?.events)
+        ? currentMatch.events.filter((event: EventItem) => !event.isPending)
+        : [],
+    [currentMatch]
+  );
+  const confidence = useMemo(
+    () => buildMatchConfidenceSummary(currentMatch),
+    [currentMatch]
   );
 
   const reportRows = useMemo(
@@ -241,65 +308,55 @@ export default function InsightsPage() {
     teamTacklePct,
   ]);
 
-  useEffect(() => {
-    try {
-      const existingMatchId = getCurrentMatchId();
-
-      if (existingMatchId) {
-        const savedMatch = getSavedMatchById(existingMatchId);
-
-        if (savedMatch) {
-          setMatchTitle(savedMatch.matchTitle || "");
-          setOpponent(savedMatch.opponent || "");
-          setMatchDate(savedMatch.matchDate || "");
-          setRosterRows(hydrateRosterRows(savedMatch.rosterRows));
-          setEvents(
-            Array.isArray(savedMatch.events)
-              ? savedMatch.events.filter((event: EventItem) => !event.isPending)
-              : []
-          );
-          return;
-        }
-      }
-
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-
-      const saved = JSON.parse(raw);
-      setMatchTitle(saved.matchTitle || "");
-      setOpponent(saved.opponent || "");
-      setMatchDate(saved.matchDate || "");
-      setRosterRows(hydrateRosterRows(saved.rosterRows));
-      setEvents(
-        Array.isArray(saved.events)
-          ? saved.events.filter((event: EventItem) => !event.isPending)
-          : []
-      );
-    } catch (error) {
-      console.error("Failed to load insights session", error);
-    }
-
-    try {
-      setAllMatches(getSavedMatches());
-    } catch (error) {
-      console.error("Failed to load saved matches for trends", error);
-    }
-  }, []);
-
   return (
     <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1900px] space-y-5">
 
         {/* Header */}
         <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <div className="max-w-3xl">
-            <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-              Insights
-            </h1>
-            <p className="mt-2 text-sm text-muted">
-              Team analytics, player output, unit trends, and match-level
-              takeaways. Use after tagging is complete.
-            </p>
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div className="max-w-3xl">
+              <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
+                Insights
+              </h1>
+              <p className="mt-2 text-sm text-muted">
+                Team analytics, player output, unit trends, and match-level
+                takeaways. Built from resolved tagged events only.
+              </p>
+            </div>
+            <div
+              className={`rounded-xl border px-3 py-2 text-xs ${
+                confidence.readyTone === "ready"
+                  ? "border-success/40 bg-success/10 text-success"
+                  : "border-warning/40 bg-warning/10 text-warning"
+              }`}
+            >
+              {confidence.readyLabel}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">
+                Current match context
+              </div>
+              <h2 className="mt-2 text-xl font-semibold text-foreground-strong">
+                {confidence.title}
+              </h2>
+              <p className="mt-1 text-sm text-muted">{confidence.subtitle}</p>
+              <p className="mt-2 text-xs text-muted">
+                Last saved {confidence.updatedLabel}. Data is local to this browser and device.
+              </p>
+            </div>
+            <div className="grid w-full grid-cols-2 gap-3 xl:w-[720px] xl:grid-cols-5">
+              <SummaryTile label="Players" value={`${confidence.namedPlayers}/${confidence.totalPlayers}`} />
+              <SummaryTile label="Minutes" value={`${confidence.minutesComplete}/${confidence.namedPlayers}`} />
+              <SummaryTile label="Events" value={String(confidence.resolvedEvents)} detail="resolved" />
+              <SummaryTile label="Pending" value={String(confidence.pendingEvents)} />
+              <SummaryTile label="Review" value={String(confidence.unresolvedReview)} detail="open" />
+            </div>
           </div>
         </div>
 
@@ -856,5 +913,25 @@ export default function InsightsPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+function SummaryTile({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-panel-2 px-3 py-3">
+      <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
+        {label}
+      </div>
+      <div className="mt-1 text-sm font-semibold text-foreground">{value}</div>
+      {detail && <div className="mt-0.5 text-xs text-muted">{detail}</div>}
+    </div>
   );
 }

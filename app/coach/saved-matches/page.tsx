@@ -9,6 +9,7 @@ import {
   setCurrentMatchId,
   type SavedMatchRecord,
 } from "@/app/rugby-tagging/lib/savedMatches";
+import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfidence";
 import { generateMultiMatchWorkbook } from "@/app/rugby-tagging/lib/exports/multiMatchExport";
 import { downloadWorkbook } from "@/app/rugby-tagging/lib/exports/downloadWorkbook";
 
@@ -58,6 +59,10 @@ export default function CoachSavedMatchesPage() {
       return bTime - aTime;
     });
   }, [savedMatches]);
+  const latestMatch = sortedMatches[0] || null;
+  const latestSummary = latestMatch
+    ? buildMatchConfidenceSummary(latestMatch)
+    : null;
 
   const openMatch = (
     matchId: string,
@@ -123,6 +128,40 @@ export default function CoachSavedMatchesPage() {
 
             <div className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
               Best used on desktop or laptop
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">
+                Saved match context
+              </div>
+              <h2 className="mt-2 text-xl font-semibold text-foreground-strong">
+                {latestSummary ? latestSummary.title : "No saved matches"}
+              </h2>
+              <p className="mt-1 text-sm text-muted">
+                {latestSummary
+                  ? `${latestSummary.subtitle} - last saved ${latestSummary.updatedLabel}`
+                  : "Save a match from Capture to unlock Insights, Review, and Compare."}
+              </p>
+            </div>
+            <div className="grid w-full grid-cols-2 gap-3 xl:w-[620px] xl:grid-cols-4">
+              <ContextTile label="Saved" value={String(savedMatches.length)} />
+              <ContextTile
+                label="Latest events"
+                value={latestSummary ? String(latestSummary.resolvedEvents) : "0"}
+              />
+              <ContextTile
+                label="Open review"
+                value={latestSummary ? String(latestSummary.unresolvedReview) : "0"}
+              />
+              <ContextTile
+                label="Latest report"
+                value={latestSummary?.readyLabel || "Not ready"}
+                tone={latestSummary?.readyTone}
+              />
             </div>
           </div>
         </div>
@@ -198,34 +237,7 @@ export default function CoachSavedMatchesPage() {
               </div>
             )}
             {sortedMatches.map((match: SavedMatchRecord) => {
-              const title =
-                typeof match.matchTitle === "string" && match.matchTitle.trim()
-                  ? match.matchTitle.trim()
-                  : "Untitled match";
-
-              const subtitle = [
-                match.opponent ? `vs ${match.opponent}` : "",
-                match.matchDate || "",
-              ]
-                .filter(Boolean)
-                .join(" • ");
-
-              const updatedLabel = new Date(match.updatedAt).toLocaleString();
-
-              const playerCount = Array.isArray(match.rosterRows)
-                ? match.rosterRows.filter(
-                    (row: { name?: string }) => row.name && row.name.trim()
-                  ).length
-                : 0;
-
-              const eventCount = Array.isArray(match.events) ? match.events.length : 0;
-              const reviewCount = Array.isArray(match.reviewQueue)
-                ? match.reviewQueue.length
-                : 0;
-              const noteCount = Array.isArray(match.coachNotes)
-                ? match.coachNotes.length
-                : 0;
-
+              const confidence = buildMatchConfidenceSummary(match);
               const isSelected = selectedMatchIds.includes(match.id);
 
               return (
@@ -248,15 +260,21 @@ export default function CoachSavedMatchesPage() {
                           <span>Compare</span>
                         </label>
                         <h2 className="text-lg font-semibold text-foreground-strong">
-                          {title}
+                          {confidence.title}
                         </h2>
-                        <span className="rounded-full border border-border bg-panel-2 px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] text-muted">
-                          Saved match
+                        <span
+                          className={`rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] ${
+                            confidence.readyTone === "ready"
+                              ? "border-success/40 bg-success/10 text-success"
+                              : "border-warning/40 bg-warning/10 text-warning"
+                          }`}
+                        >
+                          {confidence.readyLabel}
                         </span>
                       </div>
 
                       <p className="mt-1 text-sm text-muted">
-                        {subtitle || "No opponent or date added"}
+                        {confidence.subtitle}
                       </p>
 
                       <div className="mt-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-5">
@@ -264,35 +282,37 @@ export default function CoachSavedMatchesPage() {
                           <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
                             Updated
                           </div>
-                          <div className="mt-1 text-sm text-foreground">{updatedLabel}</div>
+                          <div className="mt-1 text-sm text-foreground">{confidence.updatedLabel}</div>
                         </div>
 
                         <div className="rounded-xl border border-border bg-panel-2 px-3 py-3">
                           <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
                             Players
                           </div>
-                          <div className="mt-1 text-sm text-foreground">{playerCount}</div>
+                          <div className="mt-1 text-sm text-foreground">
+                            {confidence.namedPlayers}/{confidence.totalPlayers}
+                          </div>
                         </div>
 
                         <div className="rounded-xl border border-border bg-panel-2 px-3 py-3">
                           <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
                             Events
                           </div>
-                          <div className="mt-1 text-sm text-foreground">{eventCount}</div>
+                          <div className="mt-1 text-sm text-foreground">{confidence.resolvedEvents}</div>
                         </div>
 
                         <div className="rounded-xl border border-border bg-panel-2 px-3 py-3">
                           <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
                             Review
                           </div>
-                          <div className="mt-1 text-sm text-foreground">{reviewCount}</div>
+                          <div className="mt-1 text-sm text-foreground">{confidence.unresolvedReview}</div>
                         </div>
 
                         <div className="rounded-xl border border-border bg-panel-2 px-3 py-3">
                           <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
                             Notes
                           </div>
-                          <div className="mt-1 text-sm text-foreground">{noteCount}</div>
+                          <div className="mt-1 text-sm text-foreground">{confidence.notes}</div>
                         </div>
                       </div>
                     </div>
@@ -346,5 +366,31 @@ export default function CoachSavedMatchesPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function ContextTile({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "ready" | "needs-work";
+}) {
+  const toneClass =
+    tone === "ready"
+      ? "text-success"
+      : tone === "needs-work"
+      ? "text-warning"
+      : "text-foreground";
+
+  return (
+    <div className="rounded-xl border border-border bg-panel-2 px-3 py-3">
+      <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
+        {label}
+      </div>
+      <div className={`mt-1 text-sm font-semibold ${toneClass}`}>{value}</div>
+    </div>
   );
 }

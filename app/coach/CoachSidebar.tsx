@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 
 const navItems = [
@@ -109,11 +109,11 @@ const navItems = [
 
 export default function CoachSidebar() {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    setCollapsed(localStorage.getItem("coach-sidebar-collapsed") === "true");
-  }, []);
+  const [collapsed, setCollapsed] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      localStorage.getItem("coach-sidebar-collapsed") === "true"
+  );
 
   const toggle = () => {
     setCollapsed((prev) => {

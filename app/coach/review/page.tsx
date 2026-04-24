@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import GameReviewTimelinePanel from "@/app/rugby-tagging/components/GameReviewTimelinePanel";
 import CoachReviewPanel from "@/app/rugby-tagging/components/CoachReviewPanel";
 import TeamSnapshotPanel from "@/app/rugby-tagging/components/TeamSnapshotPanel";
 import { getMatchVideoUrl } from "@/app/rugby-tagging/lib/matchVideoSession";
+import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfidence";
 import { DEFAULT_ROSTER_ROWS, STORAGE_KEY } from "@/app/rugby-tagging/constants";
 import { formatTime, hydrateRosterRows } from "@/app/rugby-tagging/helpers";
 import type { ClipAnnotation, EventItem, RosterRow } from "@/app/rugby-tagging/types";
@@ -28,65 +29,83 @@ type SavedSession = {
 };
 
 const CLIP_CATEGORIES = ["Breakdown", "Set Piece", "Kick", "Defence", "Attack", "Other"];
+let nextLocalReviewId = 1;
+
+function createLocalReviewId(existingIds: number[]) {
+  const maxExisting = existingIds.reduce((max, id) => Math.max(max, id), 0);
+  nextLocalReviewId = Math.max(nextLocalReviewId, maxExisting + 1);
+  const nextId = nextLocalReviewId;
+  nextLocalReviewId += 1;
+  return nextId;
+}
+
+function loadSavedReviewSession(): SavedSession {
+  if (typeof window === "undefined") return {};
+
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    const saved: SavedSession = JSON.parse(raw);
+    return saved && typeof saved === "object" ? saved : {};
+  } catch (error) {
+    console.error("Failed to load saved session", error);
+    return {};
+  }
+}
+
+function loadSavedReviewVideoSrc() {
+  if (typeof window === "undefined") return "";
+
+  try {
+    return (
+      getMatchVideoUrl() ||
+      sessionStorage.getItem("rugby-tagging-video-src") ||
+      ""
+    );
+  } catch (error) {
+    console.error("Failed to load video source", error);
+    return "";
+  }
+}
 
 export default function ReviewPage() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [savedSession] = useState(loadSavedReviewSession);
 
-  const [matchTitle, setMatchTitle] = useState("");
-  const [opponent, setOpponent] = useState("");
-  const [matchDate, setMatchDate] = useState("");
-  const [rosterRows, setRosterRows] = useState<RosterRow[]>(DEFAULT_ROSTER_ROWS);
-  const [events, setEvents] = useState<EventItem[]>([]);
-  const [coachNotes, setCoachNotes] = useState<CoachReviewNote[]>([]);
-  const [showRawTranscript, setShowRawTranscript] = useState(true);
-  const [videoSrc, setVideoSrc] = useState("");
+  const [matchTitle] = useState(savedSession.matchTitle || "");
+  const [opponent] = useState(savedSession.opponent || "");
+  const [matchDate] = useState(savedSession.matchDate || "");
+  const [rosterRows] = useState<RosterRow[]>(() =>
+    savedSession.rosterRows
+      ? hydrateRosterRows(savedSession.rosterRows)
+      : DEFAULT_ROSTER_ROWS
+  );
+  const [events] = useState<EventItem[]>(() =>
+    Array.isArray(savedSession.events)
+      ? savedSession.events.filter((event) => !event.isPending)
+      : []
+  );
+  const [coachNotes, setCoachNotes] = useState<CoachReviewNote[]>(() =>
+    Array.isArray(savedSession.coachNotes) ? savedSession.coachNotes : []
+  );
+  const [showRawTranscript, setShowRawTranscript] = useState(
+    typeof savedSession.showRawTranscript === "boolean"
+      ? savedSession.showRawTranscript
+      : true
+  );
+  const [videoSrc] = useState(loadSavedReviewVideoSrc);
   const [currentTime, setCurrentTime] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [coachNoteDraft, setCoachNoteDraft] = useState("");
   const [coachRawDraft, setCoachRawDraft] = useState("");
   const [showCoachRawInput, setShowCoachRawInput] = useState(false);
-  const [clips, setClips] = useState<ClipAnnotation[]>([]);
+  const [clips, setClips] = useState<ClipAnnotation[]>(() =>
+    Array.isArray(savedSession.clips) ? savedSession.clips : []
+  );
   const [clipInProgress, setClipInProgress] = useState<number | null>(null);
   const [pendingEndTime, setPendingEndTime] = useState<number | null>(null);
   const [clipLabelDraft, setClipLabelDraft] = useState("");
   const [clipCategoryDraft, setClipCategoryDraft] = useState("");
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-
-      const saved: SavedSession = JSON.parse(raw);
-      const safeEvents = Array.isArray(saved.events)
-        ? saved.events.filter((event) => !event.isPending)
-        : [];
-
-      setMatchTitle(saved.matchTitle || "");
-      setOpponent(saved.opponent || "");
-      setMatchDate(saved.matchDate || "");
-      setRosterRows(hydrateRosterRows(saved.rosterRows));
-      setEvents(safeEvents);
-      setCoachNotes(Array.isArray(saved.coachNotes) ? saved.coachNotes : []);
-      setClips(Array.isArray(saved.clips) ? saved.clips : []);
-      setShowRawTranscript(
-        typeof saved.showRawTranscript === "boolean"
-          ? saved.showRawTranscript
-          : true
-      );
-    } catch (error) {
-      console.error("Failed to load saved session", error);
-    }
-
-    try {
-      const savedVideoSrc =
-        getMatchVideoUrl() ||
-        sessionStorage.getItem("rugby-tagging-video-src") ||
-        "";
-      setVideoSrc(savedVideoSrc);
-    } catch (error) {
-      console.error("Failed to load video source", error);
-    }
-  }, []);
 
   const teamTotals = useMemo(() => {
     const playerEvents = events.filter(
@@ -157,6 +176,18 @@ export default function ReviewPage() {
     teamTotals.tackles + teamTotals.missed > 0
       ? (teamTotals.tackles / (teamTotals.tackles + teamTotals.missed)) * 100
       : 0;
+  const confidence = useMemo(
+    () =>
+      buildMatchConfidenceSummary({
+        matchTitle,
+        opponent,
+        matchDate,
+        rosterRows,
+        events,
+        coachNotes,
+      }),
+    [matchTitle, opponent, matchDate, rosterRows, events, coachNotes]
+  );
 
   const addCoachNote = () => {
     if (!coachNoteDraft.trim() && !coachRawDraft.trim()) return;
@@ -166,7 +197,7 @@ export default function ReviewPage() {
     const nextNotes = [
       ...coachNotes,
       {
-        id: Date.now() + Math.floor(Math.random() * 1000),
+        id: createLocalReviewId(coachNotes.map((note) => note.id)),
         timestamp,
         text: coachNoteDraft.trim() || "Coaching note",
         rawText: coachRawDraft.trim() || undefined,
@@ -242,7 +273,7 @@ export default function ReviewPage() {
     const next = [
       ...clips,
       {
-        id: Date.now() + Math.floor(Math.random() * 1000),
+        id: createLocalReviewId(clips.map((clip) => clip.id)),
         startTime: clipInProgress,
         endTime: pendingEndTime,
         label: clipLabelDraft.trim() || "Clip",
@@ -295,14 +326,46 @@ export default function ReviewPage() {
     <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1900px] space-y-5">
         <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <div className="max-w-3xl">
-            <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-              Review
-            </h1>
-            <p className="mt-2 text-sm text-muted">
-              Film review, timestamped coaching notes, and transcript-based
-              match review. Use after tagging in Capture.
-            </p>
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div className="max-w-3xl">
+              <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
+                Review
+              </h1>
+              <p className="mt-2 text-sm text-muted">
+                Film review, timestamped coaching notes, and transcript-based
+                match review. Use after tagging in Capture.
+              </p>
+            </div>
+            <div className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
+              Film review only - no tagging on this screen
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">
+                Current match context
+              </div>
+              <h2 className="mt-2 text-xl font-semibold text-foreground-strong">
+                {confidence.title}
+              </h2>
+              <p className="mt-1 text-sm text-muted">{confidence.subtitle}</p>
+              <p className="mt-2 text-xs text-muted">
+                Review uses the current browser session video and local match data.
+              </p>
+            </div>
+            <div className="grid w-full grid-cols-2 gap-3 xl:w-[620px] xl:grid-cols-4">
+              <ReviewContextTile label="Players" value={`${confidence.namedPlayers}/${confidence.totalPlayers}`} />
+              <ReviewContextTile label="Events" value={String(confidence.resolvedEvents)} />
+              <ReviewContextTile label="Notes" value={String(confidence.notes)} />
+              <ReviewContextTile
+                label="Report"
+                value={confidence.readyLabel}
+                tone={confidence.readyTone}
+              />
+            </div>
           </div>
         </div>
 
@@ -618,5 +681,31 @@ export default function ReviewPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+function ReviewContextTile({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "ready" | "needs-work";
+}) {
+  const toneClass =
+    tone === "ready"
+      ? "text-success"
+      : tone === "needs-work"
+      ? "text-warning"
+      : "text-foreground";
+
+  return (
+    <div className="rounded-xl border border-border bg-panel-2 px-3 py-3">
+      <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
+        {label}
+      </div>
+      <div className={`mt-1 text-sm font-semibold ${toneClass}`}>{value}</div>
+    </div>
   );
 }

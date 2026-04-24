@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { POSITION_OPTIONS } from "@/app/rugby-tagging/constants";
 import {
   createDefaultSquadProfile,
@@ -24,15 +24,13 @@ const BLANK_FORM = {
 };
 
 export default function TeamSetupPage() {
-  const [profile, setProfile] = useState<SquadProfile | null>(null);
+  const [profile, setProfile] = useState<SquadProfile | null>(() => {
+    const loaded = getSquadProfile();
+    return loaded ?? createDefaultSquadProfile();
+  });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(BLANK_FORM);
-
-  useEffect(() => {
-    const loaded = getSquadProfile();
-    setProfile(loaded ?? createDefaultSquadProfile());
-  }, []);
 
   const persist = (updated: SquadProfile) => {
     saveSquadProfile(updated);
@@ -270,7 +268,7 @@ export default function TeamSetupPage() {
           {sortedPlayers.length === 0 && !showForm && (
             <div className="mt-4 rounded-xl border border-dashed border-border p-6 text-center">
               <p className="text-sm text-muted">
-                No players added yet. Click "+ Add player" to get started.
+                No players added yet. Click &quot;+ Add player&quot; to get started.
               </p>
             </div>
           )}

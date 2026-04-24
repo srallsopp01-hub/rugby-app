@@ -6,6 +6,7 @@ import {
   getSavedMatches,
   type SavedMatchRecord,
 } from "@/app/rugby-tagging/lib/savedMatches";
+import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfidence";
 import {
   buildReportRowsFromMatch,
   buildSetPieceSummary,
@@ -38,6 +39,10 @@ type MatchSnapshot = {
   triesScored: number;
   triesConceded: number;
   penaltiesConceded: number;
+  pendingEvents: number;
+  unresolvedReview: number;
+  readyLabel: string;
+  readyTone: "ready" | "needs-work";
 };
 
 type DeltaMetric = {
@@ -95,6 +100,7 @@ function snapshotForMatch(
   const totals = buildTeamTotals(reportRows);
   const setPieceSummary = buildSetPieceSummary(match.events);
   const teamEventSummary = buildTeamEventSummary(match.events);
+  const confidence = buildMatchConfidenceSummary(match);
   const opponentLabel = [match.opponent ? `vs ${match.opponent}` : "", match.matchDate]
     .filter(Boolean)
     .join(" - ");
@@ -121,6 +127,10 @@ function snapshotForMatch(
     triesScored: teamEventSummary.triesScored,
     triesConceded: teamEventSummary.triesConceded,
     penaltiesConceded: teamEventSummary.penaltiesConceded,
+    pendingEvents: confidence.pendingEvents,
+    unresolvedReview: confidence.unresolvedReview,
+    readyLabel: confidence.readyLabel,
+    readyTone: confidence.readyTone,
   };
 }
 
@@ -182,6 +192,8 @@ function EmptyState({
 
 function SnapshotCard({ snapshot, side }: { snapshot: MatchSnapshot; side: CompareSide }) {
   const title = side === "left" ? "Left match" : "Right match";
+  const readyClass =
+    snapshot.readyTone === "ready" ? "text-success" : "text-warning";
 
   return (
     <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
@@ -213,8 +225,21 @@ function SnapshotCard({ snapshot, side }: { snapshot: MatchSnapshot; side: Compa
         <BigStat label="Scrum %" value={`${snapshot.scrumPct.toFixed(0)}%`} detail="Own scrums" />
       </div>
 
+      <div className="mt-4 grid grid-cols-3 gap-3">
+        <SmallStat label="Pending" value={snapshot.pendingEvents.toString()} />
+        <SmallStat label="Review" value={snapshot.unresolvedReview.toString()} />
+        <div className="rounded-xl border border-border bg-panel-2 px-3 py-3">
+          <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
+            Report
+          </div>
+          <div className={`mt-1 text-sm font-semibold ${readyClass}`}>
+            {snapshot.readyLabel}
+          </div>
+        </div>
+      </div>
+
       <div className="mt-4 rounded-xl border border-border bg-panel-2 px-3 py-3 text-xs text-muted">
-        Last updated {snapshot.updatedLabel || "unknown"}
+        Last updated {snapshot.updatedLabel || "unknown"} - based on resolved tagged events
       </div>
     </section>
   );
@@ -466,9 +491,20 @@ export default function ComparePage() {
     ];
   }, [leftPlayer, rightPlayer]);
 
-  const renderMatchOptions = () =>
+  const isSameMatchSelected =
+    Boolean(leftMatchId) && Boolean(rightMatchId) && leftMatchId === rightMatchId;
+
+  const renderMatchOptions = (side: CompareSide) =>
     snapshots.map((snapshot) => (
-      <option key={snapshot.match.id} value={snapshot.match.id}>
+      <option
+        key={snapshot.match.id}
+        value={snapshot.match.id}
+        disabled={
+          side === "left"
+            ? snapshot.match.id === rightMatchId
+            : snapshot.match.id === leftMatchId
+        }
+      >
         {snapshot.label}
         {snapshot.match.matchDate ? ` - ${snapshot.match.matchDate}` : ""}
       </option>
@@ -500,7 +536,7 @@ export default function ComparePage() {
               </h1>
               <p className="mt-2 text-sm leading-6 text-muted">
                 Side-by-side comparison for saved matches and player output.
-                This screen reads local saved match data only.
+                This screen reads local saved match data only and uses resolved tagged events.
               </p>
             </div>
             <div className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
@@ -554,20 +590,26 @@ export default function ComparePage() {
                     value={leftMatchId}
                     onChange={setLeftMatchId}
                   >
-                    {renderMatchOptions()}
+                    {renderMatchOptions("left")}
                   </SelectField>
                   <SelectField
                     label="Right match"
                     value={rightMatchId}
                     onChange={setRightMatchId}
                   >
-                    {renderMatchOptions()}
+                    {renderMatchOptions("right")}
                   </SelectField>
                 </div>
               </div>
             </section>
 
-            {leftSnapshot && rightSnapshot && activeTab === "match" && (
+            {isSameMatchSelected && (
+              <div className="rounded-2xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
+                Choose two different saved matches to compare. The same match cannot produce a useful delta.
+              </div>
+            )}
+
+            {leftSnapshot && rightSnapshot && !isSameMatchSelected && activeTab === "match" && (
               <>
                 <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
                   <SnapshotCard snapshot={leftSnapshot} side="left" />
@@ -577,7 +619,7 @@ export default function ComparePage() {
               </>
             )}
 
-            {leftSnapshot && rightSnapshot && activeTab === "player" && (
+            {leftSnapshot && rightSnapshot && !isSameMatchSelected && activeTab === "player" && (
               <>
                 <section className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
                   <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
