@@ -1,20 +1,102 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePlayer } from "../PlayerContext";
+import { PlayerPicker } from "../PlayerPicker";
+import { GradeBadge } from "@/app/components/GradeBadge";
+import { getSavedMatches } from "@/app/rugby-tagging/lib/savedMatches";
+import { buildReportRowsFromMatch } from "@/app/rugby-tagging/helpers";
+import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
+import type { ReportRow } from "@/app/rugby-tagging/types";
+import type { SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
+
+function getPlayerMatches(matches: SavedMatchRecord[], player: SquadPlayer) {
+  return matches.filter((m) =>
+    m.rosterRows.some((r) => r.name === player.fullName || r.name === player.preferredName)
+  );
+}
+
+function getPlayerRow(match: SavedMatchRecord, player: SquadPlayer): ReportRow | null {
+  const rows = buildReportRowsFromMatch(match.rosterRows, match.events);
+  return rows.find((r) => r.name === player.fullName || r.name === player.preferredName) ?? null;
+}
+
+function formatDate(dateStr: string): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
 export default function GamesPage() {
+  const { currentPlayer, ready } = usePlayer();
+  const [entries, setEntries] = useState<{ match: SavedMatchRecord; row: ReportRow }[]>([]);
+
+  useEffect(() => {
+    if (!currentPlayer) return;
+    const all = getSavedMatches();
+    const filtered = getPlayerMatches(all, currentPlayer);
+    const pairs = filtered
+      .map((m) => ({ match: m, row: getPlayerRow(m, currentPlayer) }))
+      .filter((p): p is { match: SavedMatchRecord; row: ReportRow } => p.row !== null);
+    setEntries(pairs);
+  }, [currentPlayer]);
+
+  if (!ready) return null;
+  if (!currentPlayer) return <PlayerPicker />;
+
   return (
-    <div className="p-8 max-w-2xl">
-      <div className="mb-6">
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-panel-2 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-warning mb-4">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-warning" />
-          In development
+    <div className="p-8 max-w-2xl space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground-strong">Your Games</h1>
+          <p className="mt-1 text-sm text-muted">Every match you&apos;ve been tagged in</p>
         </div>
-        <h1 className="text-2xl font-semibold text-foreground-strong">Games</h1>
-        <p className="mt-2 text-sm text-muted leading-relaxed">
-          Your match history. Browse every game you&apos;ve been tagged in, view your
-          individual stats, and read coach notes from each outing.
-        </p>
+        {entries.length > 0 && (
+          <span className="rounded-full border border-border bg-panel-2 px-3 py-1 text-xs font-semibold text-muted">
+            {entries.length} {entries.length === 1 ? "game" : "games"}
+          </span>
+        )}
       </div>
-      <div className="rounded-xl border border-dashed border-border bg-panel p-6 text-sm text-muted">
-        Planned for an upcoming release. Will list all tagged matches with per-game stat breakdowns and coach comments.
-      </div>
+
+      {entries.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border p-10 text-center">
+          <p className="text-sm text-muted">No matches found.</p>
+          <p className="mt-1 text-xs text-muted-2">Your coach will add you to the roster when you play.</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {entries.map(({ match, row }) => (
+            <Link
+              key={match.id}
+              href={`/player/games/${match.id}`}
+              className="block rounded-xl border border-border bg-panel p-4 transition-all duration-150 hover:border-border-light hover:bg-panel-2 active:scale-[0.99]"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground-strong">
+                    vs {match.opponent || match.matchTitle || "Opponent"}
+                  </p>
+                  <p className="text-xs text-muted mt-0.5">{formatDate(match.matchDate)}</p>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <GradeBadge grade={row.overallGrade} />
+                  <span className="text-[11px] text-muted-2">
+                    {row.position} · {row.minutes || "—"} min
+                  </span>
+                </div>
+              </div>
+              <div className="flex gap-4 text-xs text-muted border-t border-border pt-3">
+                <span><span className="text-foreground font-medium">{row.tackles}</span> tackles</span>
+                <span><span className="text-foreground font-medium">{row.missed}</span> missed</span>
+                <span><span className="text-foreground font-medium">{row.carries}</span> carries</span>
+                <span><span className="text-foreground font-medium">{row.involvements}</span> inv</span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
+import { usePlayer } from "./PlayerContext";
 
 const navItems = [
   {
@@ -64,11 +65,12 @@ const navItems = [
 
 export default function PlayerSidebar() {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      localStorage.getItem("player-sidebar-collapsed") === "true"
-  );
+  const { currentPlayer } = usePlayer();
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    setCollapsed(localStorage.getItem("player-sidebar-collapsed") === "true");
+  }, []);
 
   const toggle = () => setCollapsed(prev => {
     localStorage.setItem("player-sidebar-collapsed", String(!prev));
@@ -92,10 +94,10 @@ export default function PlayerSidebar() {
         {!collapsed && (
           <div>
             <span className="text-xs font-semibold tracking-tight text-foreground-strong leading-none block">
-              Player
+              {currentPlayer ? currentPlayer.preferredName || currentPlayer.fullName : "Player"}
             </span>
             <span className="text-[10px] text-muted-2 leading-none mt-0.5 block">
-              Your platform
+              {currentPlayer ? currentPlayer.primaryPosition || "Your platform" : "Your platform"}
             </span>
           </div>
         )}

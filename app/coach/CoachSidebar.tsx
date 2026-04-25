@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
 
@@ -110,11 +110,11 @@ const navItems = [
 
 export default function CoachSidebar() {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      localStorage.getItem("coach-sidebar-collapsed") === "true"
-  );
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    setCollapsed(localStorage.getItem("coach-sidebar-collapsed") === "true");
+  }, []);
 
   const toggle = () => {
     setCollapsed((prev) => {

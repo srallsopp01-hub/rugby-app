@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after same-match player comparison on Compare page
+**Last updated:** April 2026 — after Batch M player platform build-out
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -127,9 +127,16 @@ app/
     settings/page.tsx                 ← Stub
 
   player/
-    layout.tsx                        ← Player layout: h-screen, sidebar + scrollable main
-    PlayerSidebar.tsx                 ← Player left sidebar (same pattern as coach)
-    page.tsx + all sub-pages          ← Stubs with "In development" badge
+    layout.tsx                        ← Player layout: h-screen, sidebar + scrollable main (wraps PlayerProvider)
+    PlayerSidebar.tsx                 ← Player left sidebar; shows player name + position when identity set
+    PlayerContext.tsx                 ← Player identity context (localStorage key PLAYER_IDENTITY_KEY)
+    PlayerPicker.tsx                  ← Full-screen squad picker shown when no player identity set
+    page.tsx                          ← Player Home (latest match, season averages, coach comment, focus area)
+    performance/page.tsx              ← Season trends, recharts charts, grade progression table
+    games/page.tsx                    ← All matches player appeared in, sorted newest first
+    games/[gameId]/page.tsx           ← Game detail: stats, event timeline, coach notes
+    review/page.tsx                   ← Playlist of all tagged moments grouped by match
+    settings/page.tsx                 ← Account: player profile, change player, theme toggle
 
   admin/
     layout.tsx                        ← Admin layout: h-screen, sidebar + scrollable main
@@ -320,6 +327,7 @@ All previous CSV downloads have been removed. One polished report.
 - **Current match ID:** `localStorage` (via savedMatches lib)
 - **Saved matches list:** `localStorage` (via savedMatches lib)
 - **Video:** `sessionStorage` blob URL (not persisted across sessions)
+- **Player identity:** `localStorage` key `rugby-player-selected-id` (SquadPlayer.id, via PlayerContext)
 - **No cloud storage yet**
 
 ---
@@ -502,10 +510,25 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
-## Next — Batch M (plan carefully before starting)
+### Batch M (April 2026)
+- ✅ Player platform fully built out — all 5 pages live with real localStorage data
+- ✅ Player identity: localStorage key `rugby-player-selected-id` (SquadPlayer.id); `PlayerContext.tsx` provides `currentPlayer`, `setCurrentPlayer`, `clearCurrentPlayer`; `PlayerPicker.tsx` shown when no player selected
+- ✅ Player Home — latest match card (grade, opponent, stats), season averages strip, coach comment (auto-generated from ReportRow), focus area tip derived from lowest-graded stat
+- ✅ Games — all saved matches where player appears in roster, sorted newest first, clickable cards with grade badge and stat subrow
+- ✅ Game Detail — stat grid (tackle %, carries, involvements, minutes), coach comment, player event timeline, match-level coach notes
+- ✅ Performance — plain English trend bullets (vs season average), season KPI cards, recharts bar charts (tackle % + carries per game), grade progression table; locked state < 2 matches
+- ✅ Review — playlist of all player events grouped by match, action badges + timestamps; note to reopen in Review for video
+- ✅ Account (`/player/settings`) — player profile, "Change player" clears identity, theme toggle
+- ✅ PlayerSidebar shows player name + position when selected
+- ✅ GradeBadge extracted to shared `app/components/GradeBadge.tsx` (was inline in insights)
+- ✅ Hydration fix: both CoachSidebar and PlayerSidebar `collapsed` state now deferred to `useEffect` (was causing SSR mismatch via `localStorage` in lazy useState initialiser)
+
+---
+
+## Next — Batch N (plan carefully before starting)
 
 Idea:
-- Validate Batch L in-browser, then decide on next priority area
+- Validate Batch M player platform in-browser, then decide on next priority area
 
 ---
 

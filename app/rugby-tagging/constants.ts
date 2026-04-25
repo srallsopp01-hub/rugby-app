@@ -4,6 +4,7 @@ export const STORAGE_KEY = "rugby-voice-tagging-mvp-v2";
 export const CORRECTION_MEMORY_KEY = "rugby-voice-tagging-corrections-v2";
 export const SQUAD_PROFILE_KEY = "rugby-tagging-squad-profile-v1";
 export const ONBOARDING_COMPLETE_KEY = "rugby-onboarding-complete";
+export const PLAYER_IDENTITY_KEY = "rugby-player-selected-id";
 export const DEFAULT_LEARNED_CORRECTIONS: Record<string, string> = {};
 
 export const POSITION_OPTIONS = [
