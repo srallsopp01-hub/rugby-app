@@ -111,10 +111,19 @@ export type UnitSummaryRow = {
   avgInvolvementsPerMin: number;
 };
 
+export type VideoAnnotation = {
+  id: number;
+  type: "arrow" | "circle" | "highlight";
+  timestamp: number;
+  points: { x: number; y: number }[];
+  color?: string;
+};
+
 export type ClipAnnotation = {
   id: number;
   startTime: number;
   endTime: number;
   label: string;
   category?: string;
+  annotations?: VideoAnnotation[];
 };

@@ -693,6 +693,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
               coachNotes: Array.isArray(savedMatch.coachNotes)
                 ? savedMatch.coachNotes
                 : [],
+              clips: Array.isArray(savedMatch.clips) ? savedMatch.clips : [],
               showRawTranscript:
                 typeof savedMatch.showRawTranscript === "boolean"
                   ? savedMatch.showRawTranscript
@@ -772,6 +773,8 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
   useEffect(() => {
     try {
       const persistedEvents = events.filter((event) => !event.isPending);
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const existingSession = raw ? JSON.parse(raw) : {};
 
       localStorage.setItem(
         STORAGE_KEY,
@@ -785,6 +788,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
           events: persistedEvents,
           reviewQueue,
           coachNotes,
+          clips: Array.isArray(existingSession.clips) ? existingSession.clips : [],
           showRawTranscript,
         })
       );

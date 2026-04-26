@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after Batch P coach→player clip pipeline
+**Last updated:** April 2026 — after Batch Q Coach Review upgrade
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -262,8 +262,10 @@ Sidebar pattern:
 - Export: Download Full Report (.xlsx, 5 sheets)
 
 ### Coach Review (/coach/review)
-- Video-based film review
-- Timestamped coaching notes
+- Video-based film review with team-meeting layout
+- Persistent clip playlist with flexible start/end ranges
+- Basic video annotation layer (arrows, circles, highlights) saved per clip
+- Timestamped coaching notes with cleaner structured coaching insight display
 - Team snapshot sidebar
 - Game Review Timeline Panel
 - Match context banner shows current match, local storage/video scope, note count, resolved event count, report readiness
@@ -548,7 +550,17 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
-## Next — Batch Q (plan carefully before starting)
+### Batch Q (April 2026) — Coach Review meeting-room upgrade
+- ✅ Review autosave fixed — `/coach/review` now writes coach notes, clips, annotations, and raw-transcript preference through one shared persistence path to both `STORAGE_KEY` and the current saved match record when available
+- ✅ Capture restore/autosave preserves saved `clips` so reopening a saved match in Capture no longer drops Review-created clip data from the active session
+- ✅ Clip workflow upgraded — spacebar start/end is scoped to `/coach/review`, clip ranges are editable with start/end fields, and the right-side playlist remains visible with All / Attack / Defence / Set Piece filters
+- ✅ `VideoAnnotation` added and `ClipAnnotation.annotations?` introduced as optional/backwards-compatible clip data for arrows, circles, and highlights tied to clips
+- ✅ Coach Review layout now feels like a team meeting tool: video and controls on the left, persistent clip playlist on the right, timeline/snapshot retained below the playlist
+- ✅ Coaching notes display improved with a structured, rule-based insight panel that groups tackles, missed tackles, carries, turnovers, set piece, and team events before raw transcript noise
+
+---
+
+## Next — Batch R (plan carefully before starting)
 
 Options (pick one focus per batch):
 
