@@ -23,81 +23,74 @@ const calloutItem = "text-sm leading-6 text-foreground";
 const post1Content = (
   <>
     <p className={p}>
-      You know the pattern. Match ends around 5pm. You&apos;re home by 7. You eat
-      something, spend some time with the family, and then — somewhere around 9
-      or 10pm — you open the laptop.
+      If you coach rugby at club level, you already know the Sunday evening drill.
+      You sit down with the video. You watch a passage of play. You rewind it.
+      You watch it again to confirm what you thought you saw. You open a spreadsheet,
+      type in some numbers, and try to remember whether that carry was in the first
+      half or the second. An hour later you&apos;re still going, and you haven&apos;t
+      even started on set piece yet.
     </p>
     <p className={p}>
-      You&apos;ve got rough notes. A few lines on your phone from halftime. Some
-      mental notes you were going to write up after the game but didn&apos;t because
-      the changing room was chaos and then you got pulled into a conversation with
-      a parent. A couple of things you know happened but can&apos;t quite pin to a
-      player or a timestamp.
-    </p>
-    <p className={p}>
-      And for the next two or three hours, you rebuild the match from memory.
+      It&apos;s not that coaches don&apos;t work hard enough. It&apos;s that the tools they&apos;ve
+      been handed were never built for them.
     </p>
 
-    <h2 className={h2}>What we tried first</h2>
+    <h2 className={h2}>The expensive option and the DIY option</h2>
     <p className={p}>
-      We tried everything the coaching community uses. Clipboards and paper —
-      fine during the game, completely useless by Monday. Excel spreadsheets —
-      powerful if you can keep them updated in real time, which nobody can while
-      also watching the game and making substitution calls. Video analysis apps —
-      mostly built for elite academies or imported from football and basketball,
-      with no concept of what a lineout call is or why you&apos;d care about a
-      carries-per-involvement stat.
+      Professional analysis software exists. It&apos;s genuinely powerful. It&apos;s also
+      priced for professional clubs — the kind with a budget, a performance
+      analyst, and a dedicated film room. That&apos;s not most rugby. Most rugby is
+      run by coaches who volunteer their time, pay their own expenses, and do the
+      analysis at the kitchen table after everyone else has gone to bed.
     </p>
     <p className={p}>
-      The WhatsApp-note-to-yourself approach. The voice memo you never transcribed.
-      The spreadsheet you built two seasons ago and keep meaning to update.
-    </p>
-    <p className={p}>
-      None of it solved the fundamental problem: the data didn&apos;t exist in a
-      useful form until you sat down and created it after the fact.
+      So clubs default to the DIY option: spreadsheets, paper notes, voice memos
+      that never get transcribed. These things work well enough until you actually
+      try to get something useful out of them. By the time you&apos;ve consolidated
+      your notes into a format you can share with players, Monday training is
+      already over.
     </p>
 
-    <h2 className={h2}>The moment we knew</h2>
+    <h2 className={h2}>The assumption nobody questioned</h2>
     <p className={p}>
-      There was a specific Tuesday evening that made us build this properly.
-      It was late. The match report was already a day overdue. And I was rewinding
-      the same passage of play for the third time trying to confirm whether Walsh
-      had made 3 carries or 4. Report due at 8am. Twenty-two players to grade.
-      Confident numbers on maybe eight of them.
+      The assumption baked into every existing tool is that coaching analysis is
+      a technical task — that you need to learn the software, tag events through
+      a complex interface, and invest weeks of time before you get anything back.
     </p>
     <p className={p}>
-      The rest was guesswork dressed up as analysis.
+      But coaches are sports people. They know the game. They can watch a
+      passage of play and tell you immediately what happened, who did it, and
+      why it mattered. That knowledge exists — it&apos;s just never been captured in
+      a way that&apos;s useful.
     </p>
     <p className={p}>
-      That&apos;s the bit that gets you. It&apos;s not that the work is hard — it&apos;s
-      that you spend hours reconstructing something that should already exist. The
-      game happened. You were there. But the data didn&apos;t get captured, so now
-      you&apos;re forensically rebuilding it from a 90-minute video and some notes
-      on your phone.
+      The easiest thing — the most natural thing — is to just say what you see.
     </p>
 
-    <h2 className={h2}>What RugbyCoach does instead</h2>
+    <h2 className={h2}>Watch once. Talk through it. Done.</h2>
     <p className={p}>
-      The premise is simple: tag live, review later, ship Monday morning.
+      That&apos;s the premise behind RugbyCoach. You upload the match video. You watch
+      it back — which you were going to do anyway. As you watch, you hold the
+      spacebar and say what you see.
     </p>
     <p className={p}>
-      During the game, you hold the spacebar and say what you see. &quot;Walsh carry.&quot;
-      &quot;Lineout won throw tight.&quot; &quot;Murphy missed tackle.&quot; The app transcribes it,
-      matches the player name against your squad, and logs the event with a
-      timestamp. Eyes on the pitch the whole time.
+      &quot;Walsh carry.&quot; &quot;Lineout won — throw tight.&quot; &quot;Murphy missed tackle.&quot; The
+      app transcribes what you say, matches the player name against your squad, and
+      logs the event with the video timestamp. You watch the game once, talking
+      through it the way you&apos;d talk through it with another coach, and by the end
+      the analysis has built itself.
     </p>
     <p className={p}>
-      After the game, you open the film review screen. Your tagged events are
-      there, sorted by timestamp, already linked to the video. You can add coaching
-      notes, mark clips for the team meeting, and export a full match report —
-      grades, set piece stats, player output, the lot — as a spreadsheet.
+      No rewinding to count carries. No scrubbing back to find timestamps. No
+      learning a complex system. If you can watch rugby and describe what you see,
+      you can use this.
     </p>
 
     <div className={callout}>
       <div className={calloutLabel}>What Monday looks like now</div>
       <ul className="space-y-2">
         {[
-          "Open saved match",
+          "Upload video, watch once — talk through what you see",
           "Review tagged events — 2 minutes",
           "Check player grades — generated from tagged data",
           "Export .xlsx report",
@@ -112,8 +105,10 @@ const post1Content = (
     </div>
 
     <p className={p}>
-      It&apos;s not magic. You still need to watch the game. You still need to coach.
-      But the admin — the Sunday evening spreadsheet rebuilding — mostly disappears.
+      What you get out the other end is real: tackle percentages, carry counts,
+      set piece win rates, individual player grades, a full coaching plan for each
+      player, and a downloadable match report. Not because you spent three hours
+      building a spreadsheet — because you watched the video and described what happened.
     </p>
 
     <h2 className={h2}>Where we are now</h2>
@@ -121,13 +116,12 @@ const post1Content = (
       RugbyCoach is in active private beta with real clubs and real matches. It&apos;s
       free to use while in beta, runs entirely in your browser, and doesn&apos;t
       require an account or any installation. Everything stays on your machine —
-      no data goes anywhere until we build cloud sync, which is on the roadmap for
-      when the core experience is proven.
+      no data goes anywhere.
     </p>
     <p className={p}>
-      It&apos;s desktop-first, built for the laptop in the film room. If you coach at
-      any level — club, academy, school — and you recognise the Sunday evening
-      problem, it&apos;s worth a look.
+      It&apos;s built for coaches at every level — club, academy, school — who know
+      the game and want the analysis without the admin. If you can describe a
+      rugby match, you can use it.
     </p>
   </>
 );
@@ -282,7 +276,7 @@ export const blogPosts: BlogPost[] = [
     slug: "why-we-built-rugbycoach",
     title: "Why We Built RugbyCoach",
     description:
-      "The Sunday-evening spreadsheet problem that made us build this.",
+      "Built for sports people, not technical people. Watch the video, say what you see, get the analysis.",
     date: "April 2026",
     dateISO: "2026-04-20",
     readingTime: "5 min read",
