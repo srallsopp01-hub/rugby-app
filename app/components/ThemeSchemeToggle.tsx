@@ -20,15 +20,12 @@ export default function ThemeSchemeToggle({
 }: {
   compact?: boolean;
 }) {
-  const [scheme, setScheme] = useState<ThemeScheme>(() => {
-    if (typeof document === "undefined") return "dark";
-    return document.documentElement.getAttribute("data-theme-scheme") === "bright"
-      ? "bright"
-      : "dark";
-  });
+  const [scheme, setScheme] = useState<ThemeScheme>("dark");
 
   useEffect(() => {
-    applyScheme(getStoredScheme());
+    const stored = getStoredScheme();
+    setScheme(stored);
+    applyScheme(stored);
   }, []);
 
   function chooseScheme(nextScheme: ThemeScheme) {

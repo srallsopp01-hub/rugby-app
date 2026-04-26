@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after Batch M player platform build-out
+**Last updated:** April 2026 — after Batch N player platform validation + hydration fixes
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -525,10 +525,58 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
-## Next — Batch N (plan carefully before starting)
+### Batch N (April 2026) — Player platform validation + hydration fixes
+- ✅ Inline theme script added to `app/layout.tsx` — reads `rugbycoach-theme-scheme` from localStorage before React hydrates and sets `data-theme-scheme` on `<html>`; eliminates dark→bright flash on reload for users with bright scheme saved
+- ✅ `app/layout.tsx` has `suppressHydrationWarning` on `<html>` to silence expected attribute mismatch from the inline script
+- ✅ `ThemeSchemeToggle.tsx` updated — state starts as `"dark"`, syncs from localStorage in `useEffect`, `suppressHydrationWarning` on wrapper div
+- ✅ `PlayerSidebar.tsx` — `suppressHydrationWarning` added to `<aside>` to suppress collapsed-state width mismatch during hydration
 
-Idea:
-- Validate Batch M player platform in-browser, then decide on next priority area
+**Browser validation checklist (complete this before Batch O):**
+- [ ] `/player` with no saved player → PlayerPicker shown, squad list populated
+- [ ] Select player → sidebar updates with name + position, all pages show correct data
+- [ ] Refresh → player identity persists
+- [ ] `/player/games` — all matches listed, grade badges, stat subrows correct
+- [ ] `/player/games/[id]` — stats grid, event timeline, coach notes; invalid ID → 404 state
+- [ ] `/player/performance` — charts locked with < 2 matches; full view with 2+ matches
+- [ ] `/player/review` — events grouped by match; empty state if none
+- [ ] `/player/settings` — profile fields, "Change player" works, theme toggle persists
+- [ ] Sidebar collapse/expand persists on reload
+- [ ] Bright theme: no dark flash on reload; toggle button stays in sync
+
+---
+
+## Next — Batch O (plan carefully before starting)
+
+Options (pick one focus per batch):
+
+### Option A — Coach Settings page
+`/coach/settings` is currently a stub. Natural next functional area. Could include:
+- Squad profile editing shortcut (link to `/coach/team-setup`)
+- Voice tagging preferences (confidence threshold, prompt tuning toggle)
+- Export preferences (default sheet selection)
+- Data management: clear current match, reset correction memory, export raw JSON
+- Danger zone: factory reset localStorage
+
+### Option B — Marketing content
+Fill in stub pages that are live but empty:
+- `/pricing` — two or three tiers (Free / Pro / Team); feature comparison table; CTA
+- `/about` — founder story, product philosophy, early beta context
+- `/blog` — index + one or two seed posts (e.g., "Why we built RugbyCoach")
+All marketing pages use the shared marketing layout (`(marketing)/layout.tsx`).
+
+### Option C — Capture quality improvements
+Focus on reducing coach friction in the core tagging loop:
+- **Substitution display** — sub events in transcript show player on/off clearly
+- **Undo last tag** — keyboard shortcut or button to remove the most recent event
+- **Voice confidence display** — show Whisper confidence score on PendingResolution items
+- **Set piece result summary** — live lineout % and scrum % shown in Capture (not just Insights)
+
+### Option D — Player platform enrichment
+Build depth into the existing player pages:
+- `/player/performance` — add comparison line (player vs team average) on charts
+- `/player/games/[id]` — show set piece involvement (was player in lineout/scrum?)
+- `/player/review` — filter events by action type (Tackle / Carry / Turnover)
+- `PlayerPicker` — show player position and last game date in picker list
 
 ---
 

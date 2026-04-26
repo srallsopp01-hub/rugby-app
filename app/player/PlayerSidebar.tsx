@@ -83,7 +83,7 @@ export default function PlayerSidebar() {
   }
 
   return (
-    <aside className={`flex flex-col shrink-0 border-r border-border bg-panel h-full overflow-hidden transition-[width] duration-200 ${collapsed ? "w-[56px]" : "w-[220px]"}`}>
+    <aside suppressHydrationWarning className={`flex flex-col shrink-0 border-r border-border bg-panel h-full overflow-hidden transition-[width] duration-200 ${collapsed ? "w-[56px]" : "w-[220px]"}`}>
       <div className={`pt-5 pb-4 border-b border-border flex items-center ${collapsed ? "justify-center px-0" : "gap-2.5 px-5"}`}>
         <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-panel-3 border border-border shrink-0">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
