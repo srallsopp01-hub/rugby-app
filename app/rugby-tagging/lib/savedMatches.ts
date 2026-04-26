@@ -1,4 +1,4 @@
-import type { EventItem, ReviewItem, RosterRow } from "../types";
+import type { ClipAnnotation, EventItem, ReviewItem, RosterRow } from "../types";
 
 export const SAVED_MATCHES_KEY = "rugby-tagging-saved-matches-v1";
 export const CURRENT_MATCH_ID_KEY = "rugby-tagging-current-match-id";
@@ -23,6 +23,7 @@ export type SavedMatchRecord = {
   events: EventItem[];
   reviewQueue: ReviewItem[];
   coachNotes: SavedCoachReviewNote[];
+  clips?: ClipAnnotation[];
   showRawTranscript: boolean;
 };
 

@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after Batch O player platform depth + video playlist
+**Last updated:** April 2026 — after Batch P coach→player clip pipeline
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -541,7 +541,14 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
-## Next — Batch P (plan carefully before starting)
+### Batch P (April 2026) — Coach → player clip pipeline
+- ✅ `SavedMatchRecord` extended with `clips?: ClipAnnotation[]` — optional, backwards-compatible
+- ✅ `coach/review/page.tsx` — `saveClipsToStorage` now also calls `upsertSavedMatch` via `getCurrentMatchId()` so clips are persisted to the saved match record whenever they are created or deleted
+- ✅ `player/review/page.tsx` — full clip section added above the existing notes section: per-match video loader (blob URL, same UX as games/[gameId]), seekable clip playlist (click to seek to startTime − 3s, auto-scroll), Prev/Next controls, category badges (Attack/Defence/other), active-clip highlight; notes section retained as "Match Notes"; unified empty state
+
+---
+
+## Next — Batch Q (plan carefully before starting)
 
 Options (pick one focus per batch):
 
@@ -566,14 +573,6 @@ Focus on reducing coach friction in the core tagging loop:
 - **Undo last tag** — keyboard shortcut or button to remove the most recent event
 - **Voice confidence display** — show Whisper confidence score on PendingResolution items
 - **Set piece result summary** — live lineout % and scrum % shown in Capture (not just Insights)
-
-### Option D — Complete the coach → player clip pipeline
-Persist coach clips to saved matches so players can watch them on the Review page:
-- Add `clips?: ClipAnnotation[]` to `SavedMatchRecord` type in `savedMatches.ts`
-- Update the save-match flow in `coach/review/page.tsx` to include current clips when saving
-- Update `player/review/page.tsx` to show clip groups (label, category badge, timestamps) per match
-- Player loads the match video on the review page (same blob UX as games/[gameId]) to watch clips
-- This completes the vision: coaches create clips in Review, players watch them on their Review page
 
 ---
 

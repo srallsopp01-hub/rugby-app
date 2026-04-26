@@ -8,6 +8,7 @@ import { getMatchVideoUrl } from "@/app/rugby-tagging/lib/matchVideoSession";
 import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfidence";
 import { DEFAULT_ROSTER_ROWS, STORAGE_KEY } from "@/app/rugby-tagging/constants";
 import { formatTime, hydrateRosterRows } from "@/app/rugby-tagging/helpers";
+import { getCurrentMatchId, getSavedMatchById, upsertSavedMatch } from "@/app/rugby-tagging/lib/savedMatches";
 import type { ClipAnnotation, EventItem, RosterRow } from "@/app/rugby-tagging/types";
 
 type CoachReviewNote = {
@@ -251,6 +252,15 @@ export default function ReviewPage() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...JSON.parse(raw), clips: nextClips }));
     } catch (error) {
       console.error("Failed to save clips", error);
+    }
+    try {
+      const matchId = getCurrentMatchId();
+      if (!matchId) return;
+      const record = getSavedMatchById(matchId);
+      if (!record) return;
+      upsertSavedMatch({ ...record, clips: nextClips });
+    } catch (error) {
+      console.error("Failed to persist clips to saved match", error);
     }
   };
 
