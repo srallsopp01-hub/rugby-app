@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — Player privacy rules and constructive coaching plans added
+**Last updated:** April 2026 — Blog live with two seed posts (Batch V)
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -54,8 +54,8 @@ The app is split into four clearly separated layers with independent layouts and
 | `/pricing` | Live | Premium SaaS pricing page with monthly/yearly toggle, early adopter yearly offer, trial messaging, currency selector, plan cards, comparison table, and FAQ |
 | `/contact` | Placeholder | Organisation demo / pilot contact placeholder for future CRM or sales form |
 | `/about` | Live | Origin story, problem statement, design principles, beta status, CTA |
-| `/blog` | Stub | Blog index |
-| `/blog/[slug]` | Stub | Blog post |
+| `/blog` | Live | Blog index — marquee header, post cards, CTA section |
+| `/blog/[slug]` | Live | Blog post — header, article body, JSON-LD, post-article CTA |
 
 ### Coach platform
 | Route | Status | Purpose |
@@ -113,6 +113,9 @@ app/
     pricing/PricingExperience.tsx     ← Client-side pricing UI: billing toggle, currency selector, cards, comparison, FAQ
     pricing/pricingConfig.ts          ← Multi-currency pricing config and Stripe price ID placeholders
     contact/page.tsx                  ← Organisation demo / pilot placeholder page
+    blog/blogData.tsx                 ← Blog post data: BlogPost type, JSX content, seed posts array
+    blog/page.tsx                     ← Blog index: marquee, hero, post cards, CTA
+    blog/[slug]/page.tsx              ← Blog post: header, article body, JSON-LD, generateStaticParams
 
   components/
     ThemeSchemeToggle.tsx             ← Shared dark / bright scheme toggle
@@ -625,15 +628,18 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
-## Next — Batch V (plan carefully before starting)
+### Batch V (April 2026) — Blog
+- ✅ `blogData.tsx` — shared post data: `BlogPost` type, JSX content, two seed posts
+- ✅ `/blog` — index listing: marquee ticker header, hero panel, post cards (tag, date, reading time, link), CTA section
+- ✅ `/blog/[slug]` — individual post: breadcrumb nav, article header, JSX body, JSON-LD structured data, `generateStaticParams`, post-article CTA
+- ✅ Seed post 1: "Why We Built RugbyCoach" — Sunday-evening spreadsheet problem, voice-tagging workflow, beta status
+- ✅ Seed post 2: "What Good Coaching Feedback Actually Looks Like" — Specific → Contextual → Forward-looking structure, callout examples, lineout example, data as enabler
 
-### Option A — Blog
-Fill in the last empty marketing stub:
-- `/blog` — index listing seed posts
-- `/blog/[slug]` — one or two seed posts (e.g., "Why we built RugbyCoach", "What good coaching looks like")
-All marketing pages use the shared marketing layout (`(marketing)/layout.tsx`).
+---
 
-### Option B — Player settings page
+## Next — Batch W (plan carefully before starting)
+
+### Option A — Player settings page
 `/player/settings` is still a stub. Could include: change player identity, theme toggle, local data info.
 
 ---
