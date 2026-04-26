@@ -615,14 +615,26 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
-## Next — Batch U (plan carefully before starting)
+### Batch U (April 2026) — Constructive coaching plans
+- ✅ `playerCoachingPlan.ts` added — `buildPlayerCoachingPlan(row)` derives what went well, a main focus area, and up to 4 next-week targets from a `ReportRow`
+- ✅ Player Home (`/player`) upgraded from stub to Live — shows latest match coaching plan below season averages
+- ✅ Game Detail (`/player/games/[gameId]`) — per-game coaching plan shown after stats
+- ✅ Compare (`/player/compare`) — coaching plan shown only for the currently selected player (own player only; privacy rule enforced)
+- ✅ Review (`/player/review`) — unscoped match-level notes removed; clips section retained; page describes why notes are hidden
+- ✅ Player privacy rule documented in PROJECT_CONTEXT.md
 
-### Option A — Marketing content
-Fill in stub pages that are live but empty:
-- `/pricing` — two or three tiers (Free / Pro / Team); feature comparison table; CTA
-- `/about` — founder story, product philosophy, early beta context
-- `/blog` — index + one or two seed posts (e.g., "Why we built RugbyCoach")
+---
+
+## Next — Batch V (plan carefully before starting)
+
+### Option A — Blog
+Fill in the last empty marketing stub:
+- `/blog` — index listing seed posts
+- `/blog/[slug]` — one or two seed posts (e.g., "Why we built RugbyCoach", "What good coaching looks like")
 All marketing pages use the shared marketing layout (`(marketing)/layout.tsx`).
+
+### Option B — Player settings page
+`/player/settings` is still a stub. Could include: change player identity, theme toggle, local data info.
 
 ---
 
