@@ -1,18 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import Link from "next/link";
 import { usePlayer } from "../PlayerContext";
 import { PlayerPicker } from "../PlayerPicker";
 import { SAVED_MATCHES_KEY } from "@/app/rugby-tagging/lib/savedMatches";
 import { formatTime } from "@/app/rugby-tagging/helpers";
-import type { SavedMatchRecord, SavedCoachReviewNote } from "@/app/rugby-tagging/lib/savedMatches";
+import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { ClipAnnotation } from "@/app/rugby-tagging/types";
-
-type NoteGroup = {
-  match: SavedMatchRecord;
-  notes: SavedCoachReviewNote[];
-};
 
 type ClipGroup = {
   match: SavedMatchRecord;
@@ -48,20 +42,16 @@ export default function ReviewPage() {
     () => "[]"
   );
 
-  const { groups, totalNotes, clipGroups, totalClips } = useMemo(() => {
+  const { clipGroups, totalClips } = useMemo(() => {
     let all: SavedMatchRecord[];
-    try { all = JSON.parse(matchesRaw); } catch { return { groups: [], totalNotes: 0, clipGroups: [], totalClips: 0 }; }
-    const noteResult: NoteGroup[] = [];
-    let totalN = 0;
+    try { all = JSON.parse(matchesRaw); } catch { return { clipGroups: [], totalClips: 0 }; }
     const clipResult: ClipGroup[] = [];
     let totalC = 0;
     for (const match of all) {
-      const notes = [...(match.coachNotes ?? [])].sort((a, b) => a.timestamp - b.timestamp);
-      if (notes.length > 0) { noteResult.push({ match, notes }); totalN += notes.length; }
       const clips = [...(match.clips ?? [])].sort((a, b) => a.startTime - b.startTime);
       if (clips.length > 0) { clipResult.push({ match, clips }); totalC += clips.length; }
     }
-    return { groups: noteResult, totalNotes: totalN, clipGroups: clipResult, totalClips: totalC };
+    return { clipGroups: clipResult, totalClips: totalC };
   }, [matchesRaw]);
 
   // Revoke all blob URLs on unmount
@@ -105,14 +95,9 @@ export default function ReviewPage() {
       <div>
         <h1 className="text-2xl font-semibold text-foreground-strong">Review</h1>
         <p className="mt-1 text-sm text-muted">
-          {totalClips > 0 || totalNotes > 0
-            ? [
-                totalClips > 0 && `${totalClips} ${totalClips === 1 ? "clip" : "clips"}`,
-                totalNotes > 0 && `${totalNotes} ${totalNotes === 1 ? "note" : "notes"}`,
-              ]
-                .filter(Boolean)
-                .join(" · ")
-            : "Coach clips and match observations from film review"}
+          {totalClips > 0
+            ? `${totalClips} ${totalClips === 1 ? "clip" : "clips"} from film review`
+            : "Coach clips from film review"}
         </p>
       </div>
 
@@ -261,76 +246,8 @@ export default function ReviewPage() {
         </section>
       )}
 
-      {/* ── Coach notes section ── */}
-      {groups.length > 0 && (
-        <section className="space-y-5">
-          <h2 className="text-sm font-semibold text-foreground-strong uppercase tracking-widest">
-            Match Notes
-          </h2>
-
-          {/* What this section is */}
-          <div className="rounded-xl border border-border bg-panel-2 p-4 flex items-start gap-3">
-            <div className="mt-0.5 shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-panel-3 border border-border">
-              <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-                <path d="M8 3v5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="text-muted-2" />
-                <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.25" className="text-muted-2" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-foreground">Timestamped match observations</p>
-              <p className="mt-0.5 text-xs text-muted leading-relaxed">
-                Notes your coach wrote during film review, tagged to moments in the match video.
-                Open a game in{" "}
-                <Link href="/player/games" className="underline underline-offset-2 hover:text-foreground transition-colors">
-                  Games
-                </Link>{" "}
-                to watch the video alongside these notes.
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-5">
-            {groups.map(({ match, notes }) => (
-              <div key={match.id} className="rounded-xl border border-border bg-panel overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-3.5 bg-panel-2 border-b border-border">
-                  <div>
-                    <p className="text-sm font-semibold text-foreground-strong">
-                      vs {match.opponent || match.matchTitle || "Game"}
-                    </p>
-                    {match.matchDate && (
-                      <p className="text-xs text-muted-2 mt-0.5">{match.matchDate}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-muted-2">
-                      {notes.length} {notes.length === 1 ? "note" : "notes"}
-                    </span>
-                    <Link
-                      href={`/player/games/${match.id}`}
-                      className="rounded-lg border border-border bg-panel px-2.5 py-1 text-xs text-muted transition-all duration-150 hover:border-border-light hover:text-foreground"
-                    >
-                      Watch game →
-                    </Link>
-                  </div>
-                </div>
-                <div className="divide-y divide-border">
-                  {notes.map((note) => (
-                    <div key={note.id} className="flex items-start gap-4 px-5 py-3.5">
-                      <span className="shrink-0 mt-0.5 text-[11px] text-muted-2 font-mono tabular-nums bg-panel-2 border border-border rounded px-1.5 py-0.5">
-                        {formatTime(note.timestamp)}
-                      </span>
-                      <p className="text-sm text-foreground leading-relaxed">{note.text}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* Empty state — nothing at all */}
-      {clipGroups.length === 0 && groups.length === 0 && (
+      {clipGroups.length === 0 && (
         <div className="rounded-xl border border-dashed border-border p-12 text-center space-y-3">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-panel-3">
             <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
@@ -341,7 +258,7 @@ export default function ReviewPage() {
           <div>
             <p className="text-sm font-medium text-foreground">No review content yet</p>
             <p className="mt-1 text-xs text-muted">
-              Your coach hasn&apos;t created clips or added film review notes yet.
+              Your coach hasn&apos;t created shared clips yet.
             </p>
           </div>
         </div>

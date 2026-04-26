@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — Player login stability, player Compare, and player Team Analytics added
+**Last updated:** April 2026 — Player privacy rules and constructive coaching plans added
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -75,13 +75,13 @@ The app is split into four clearly separated layers with independent layouts and
 ### Player platform
 | Route | Status | Purpose |
 |---|---|---|
-| `/player` | Stub (in dev) | Player home — recent grades, coach feedback |
+| `/player` | Live | Player home — recent grade, personal stats, constructive coaching plan and next-week targets |
 | `/player/performance` | Live | Season averages, grade profile cards, season bests, trend charts vs team avg |
-| `/player/team-analytics` | Live | Read-only team analytics for players — latest match summary, team stats, player output table, trends |
-| `/player/compare` | Live | Read-only match and player comparison inside the player app |
+| `/player/team-analytics` | Live | Read-only team analytics for players — shared stats only, no other-player grades/coaching comments |
+| `/player/compare` | Live | Read-only match and player comparison inside the player app — shared stats only except own-player coaching plan |
 | `/player/games` | Live | Match history |
-| `/player/games/[gameId]` | Live | Game detail: stats, grade cards, video playlist of player events, set piece, coach notes |
-| `/player/review` | Live | Coach notes from film review — timestamped observations grouped by match |
+| `/player/games/[gameId]` | Live | Game detail: own-player stats/grades, constructive coaching plan, video playlist, set piece |
+| `/player/review` | Live | Shared coach clips from film review; unscoped text notes are hidden until notes can be assigned to a player |
 | `/player/settings` | Stub (in dev) | Account and preferences |
 
 ### Admin panel (internal only)
@@ -138,7 +138,8 @@ app/
     PlayerSidebar.tsx                 ← Player left sidebar; shows player name + position when identity set
     PlayerContext.tsx                 ← Player identity context (localStorage key PLAYER_IDENTITY_KEY)
     PlayerPicker.tsx                  ← Full-screen squad picker shown when no player identity set
-    page.tsx                          ← Player Home (latest match, season averages, coach comment, focus area)
+    playerCoachingPlan.ts             ← Builds player-only constructive feedback and next-week targets from ReportRow
+    page.tsx                          ← Player Home (latest match, season averages, constructive coaching plan)
     performance/page.tsx              ← Season trends, recharts charts, grade progression table
     team-analytics/page.tsx           ← Read-only team analytics shared into the player app
     compare/page.tsx                  ← Read-only match/player comparison for players
@@ -184,6 +185,12 @@ app/
       teamAnalyticsExport.ts          ← .xlsx workbook builder (5 sheets)
       downloadWorkbook.ts             ← Blob download helper
 ```
+
+---
+
+## Player app privacy rule
+
+Player-facing pages may show shared team and teammate stats, but must not show other players' grades, private coach comments, or unscoped coach notes. Grades and coaching plans are only shown for the currently selected player. Match-level free-text coach notes are hidden in the player app until the data model can assign notes to a specific player.
 
 ---
 

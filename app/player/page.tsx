@@ -7,6 +7,7 @@ import { PlayerPicker } from "./PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
 import { SAVED_MATCHES_KEY } from "@/app/rugby-tagging/lib/savedMatches";
 import { buildReportRowsFromMatch } from "@/app/rugby-tagging/helpers";
+import { buildPlayerCoachingPlan } from "./playerCoachingPlan";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { ReportRow } from "@/app/rugby-tagging/types";
 import type { SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
@@ -20,19 +21,6 @@ function getPlayerMatches(matches: SavedMatchRecord[], player: SquadPlayer) {
 function getPlayerRow(match: SavedMatchRecord, player: SquadPlayer): ReportRow | null {
   const rows = buildReportRowsFromMatch(match.rosterRows, match.events);
   return rows.find((r) => r.name === player.fullName || r.name === player.preferredName) ?? null;
-}
-
-const GRADE_ORDER = ["Dominant", "Competitive", "Below", "Poor"];
-
-function focusTip(row: ReportRow): string {
-  const grades = [
-    { grade: row.tacklePctGrade, tip: "Work on your tackle accuracy" },
-    { grade: row.tacklesPerMinGrade, tip: "Increase your tackle work rate" },
-    { grade: row.carriesPerMinGrade, tip: "Look for more carries each game" },
-    { grade: row.workRateGrade, tip: "Boost your overall involvement rate" },
-  ];
-  const sorted = [...grades].sort((a, b) => GRADE_ORDER.indexOf(b.grade) - GRADE_ORDER.indexOf(a.grade));
-  return sorted[0].tip;
 }
 
 function avg(nums: number[]): number {
@@ -75,6 +63,7 @@ export default function PlayerHomePage() {
 
   const latestMatch = playerMatches[0];
   const latestRow = playerRows[0];
+  const coachingPlan = latestRow ? buildPlayerCoachingPlan(latestRow) : null;
 
   const avgTacklePct = avg(playerRows.map((r) => r.tacklePct));
   const avgCarriesPerMin = avg(playerRows.map((r) => r.carriesPerMin));
@@ -150,26 +139,39 @@ export default function PlayerHomePage() {
         </div>
       )}
 
-      {/* Coach comment */}
-      {latestRow && (
+      {/* Personal coaching plan */}
+      {coachingPlan && (
         <div className="rounded-xl border border-border bg-panel p-5">
-          <p className="text-xs text-muted-2 uppercase tracking-wider font-medium mb-2">Coach comment</p>
-          <p className="text-sm text-foreground leading-relaxed italic">&ldquo;{latestRow.coachComment}&rdquo;</p>
-        </div>
-      )}
-
-      {/* Focus area */}
-      {latestRow && (
-        <div className="rounded-xl border border-border bg-panel-2 p-5 flex items-start gap-3">
-          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-panel-3 border border-border">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.25"/>
-              <path d="M8 5v3.5l2 1.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round"/>
-            </svg>
-          </div>
-          <div>
-            <p className="text-xs text-muted-2 uppercase tracking-wider font-medium mb-1">Focus area</p>
-            <p className="text-sm font-medium text-foreground-strong">{focusTip(latestRow)}</p>
+          <p className="text-xs text-muted-2 uppercase tracking-wider font-medium">
+            Your coaching plan
+          </p>
+          <div className="mt-4 space-y-5">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground-strong">What went well</h2>
+              <ul className="mt-2 space-y-2">
+                {coachingPlan.whatWentWell.map((item) => (
+                  <li key={item} className="flex gap-2 text-sm leading-6 text-muted">
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-success" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-xl border border-border bg-panel-2 p-4">
+              <h2 className="text-sm font-semibold text-foreground-strong">Main focus</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">{coachingPlan.mainFocus}</p>
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-foreground-strong">Next week targets</h2>
+              <ul className="mt-2 space-y-2">
+                {coachingPlan.nextWeekTargets.map((target) => (
+                  <li key={target} className="flex gap-2 text-sm leading-6 text-foreground">
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-warning" />
+                    <span>{target}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       )}

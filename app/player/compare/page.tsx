@@ -11,7 +11,9 @@ import {
   buildTeamTotals,
   teamTacklePctFromTotals,
 } from "@/app/rugby-tagging/helpers";
+import { buildPlayerCoachingPlan } from "../playerCoachingPlan";
 import type { ReportRow } from "@/app/rugby-tagging/types";
+import type { SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
 
 type CompareMode = "matches" | "players";
 
@@ -210,7 +212,19 @@ function MatchCard({ snapshot, title }: { snapshot: Snapshot; title: string }) {
   );
 }
 
-function PlayerCard({ row, title }: { row: ReportRow | null; title: string }) {
+function isCurrentPlayerRow(row: ReportRow, player: SquadPlayer) {
+  return row.name === player.fullName || row.name === player.preferredName;
+}
+
+function PlayerCard({
+  row,
+  title,
+  currentPlayer,
+}: {
+  row: ReportRow | null;
+  title: string;
+  currentPlayer: SquadPlayer;
+}) {
   if (!row) {
     return (
       <section className="rounded-xl border border-dashed border-border bg-panel p-5 text-sm text-muted">
@@ -218,6 +232,9 @@ function PlayerCard({ row, title }: { row: ReportRow | null; title: string }) {
       </section>
     );
   }
+
+  const canShowCoachingPlan = isCurrentPlayerRow(row, currentPlayer);
+  const coachingPlan = canShowCoachingPlan ? buildPlayerCoachingPlan(row) : null;
 
   return (
     <section className="rounded-xl border border-border bg-panel p-5">
@@ -232,8 +249,30 @@ function PlayerCard({ row, title }: { row: ReportRow | null; title: string }) {
         <StatCard label="Tackle %" value={`${row.tacklePct.toFixed(0)}%`} detail={`${row.tackles} made / ${row.missed} missed`} />
         <StatCard label="Carries" value={String(row.carries)} detail={`${row.carriesPerMin.toFixed(2)} per min`} />
         <StatCard label="Involvements" value={String(row.involvements)} detail={`${row.involvementsPerMin.toFixed(2)} per min`} />
-        <StatCard label="Grade" value={row.overallGrade} detail="Overall output" />
+        <StatCard label="Turnovers" value={String(row.turnovers)} detail="Breakdown impact" />
       </div>
+
+      {coachingPlan ? (
+        <div className="mt-5 rounded-xl border border-border bg-panel-2 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">
+            Your coaching plan
+          </p>
+          <p className="mt-3 text-sm leading-6 text-muted">{coachingPlan.mainFocus}</p>
+          <div className="mt-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">
+              Next week targets
+            </p>
+            <ul className="mt-2 space-y-2">
+              {coachingPlan.nextWeekTargets.slice(0, 3).map((target) => (
+                <li key={target} className="flex gap-2 text-sm leading-6 text-foreground">
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-warning" />
+                  <span>{target}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -401,8 +440,8 @@ export default function PlayerComparePage() {
                   </div>
                 </section>
                 <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-                  <PlayerCard row={leftPlayer} title="Left player" />
-                  <PlayerCard row={rightPlayer} title="Right player" />
+                  <PlayerCard row={leftPlayer} title="Left player" currentPlayer={currentPlayer} />
+                  <PlayerCard row={rightPlayer} title="Right player" currentPlayer={currentPlayer} />
                 </div>
                 <DeltaTable metrics={playerMetrics} />
               </>

@@ -21,7 +21,6 @@ import {
   buildSetPieceSummary,
   buildTeamEventSummary,
   buildTeamTotals,
-  gradeToScore,
   teamTacklePctFromTotals,
 } from "@/app/rugby-tagging/helpers";
 import type { EventItem, ReportRow } from "@/app/rugby-tagging/types";
@@ -78,7 +77,6 @@ function PlayerTable({ rows }: { rows: ReportRow[] }) {
               <th className="p-2 text-right">Tackles</th>
               <th className="p-2 text-right">Carries</th>
               <th className="p-2 text-right">Inv</th>
-              <th className="p-2 text-right">Grade</th>
             </tr>
           </thead>
           <tbody>
@@ -90,7 +88,6 @@ function PlayerTable({ rows }: { rows: ReportRow[] }) {
                 <td className="p-2 text-right text-muted">{row.tackles}</td>
                 <td className="p-2 text-right text-muted">{row.carries}</td>
                 <td className="p-2 text-right text-muted">{row.involvements}</td>
-                <td className="p-2 text-right text-foreground">{row.overallGrade}</td>
               </tr>
             ))}
           </tbody>
@@ -131,7 +128,7 @@ export default function PlayerTeamAnalyticsPage() {
     () =>
       [...reportRows]
         .filter((row) => row.minutes > 0)
-        .sort((a, b) => gradeToScore(b.overallGrade) - gradeToScore(a.overallGrade))
+        .sort((a, b) => b.involvements - a.involvements)
         .slice(0, 5),
     [reportRows]
   );
