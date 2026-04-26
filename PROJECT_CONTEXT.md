@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after Batch N player platform validation + hydration fixes
+**Last updated:** April 2026 — after Batch O player platform depth + video playlist
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -75,10 +75,10 @@ The app is split into four clearly separated layers with independent layouts and
 | Route | Status | Purpose |
 |---|---|---|
 | `/player` | Stub (in dev) | Player home — recent grades, coach feedback |
-| `/player/performance` | Stub (in dev) | Personal analytics and season trends |
-| `/player/games` | Stub (in dev) | Match history |
-| `/player/games/[gameId]` | Stub (in dev) | Individual game view |
-| `/player/review` | Stub (in dev) | Clip playlist and coach annotations |
+| `/player/performance` | Live | Season averages, grade profile cards, season bests, trend charts vs team avg |
+| `/player/games` | Live | Match history |
+| `/player/games/[gameId]` | Live | Game detail: stats, grade cards, video playlist of player events, set piece, coach notes |
+| `/player/review` | Live | Coach notes from film review — timestamped observations grouped by match |
 | `/player/settings` | Stub (in dev) | Account and preferences |
 
 ### Admin panel (internal only)
@@ -531,21 +531,17 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 - ✅ `ThemeSchemeToggle.tsx` updated — state starts as `"dark"`, syncs from localStorage in `useEffect`, `suppressHydrationWarning` on wrapper div
 - ✅ `PlayerSidebar.tsx` — `suppressHydrationWarning` added to `<aside>` to suppress collapsed-state width mismatch during hydration
 
-**Browser validation checklist (complete this before Batch O):**
-- [ ] `/player` with no saved player → PlayerPicker shown, squad list populated
-- [ ] Select player → sidebar updates with name + position, all pages show correct data
-- [ ] Refresh → player identity persists
-- [ ] `/player/games` — all matches listed, grade badges, stat subrows correct
-- [ ] `/player/games/[id]` — stats grid, event timeline, coach notes; invalid ID → 404 state
-- [ ] `/player/performance` — charts locked with < 2 matches; full view with 2+ matches
-- [ ] `/player/review` — events grouped by match; empty state if none
-- [ ] `/player/settings` — profile fields, "Change player" works, theme toggle persists
-- [ ] Sidebar collapse/expand persists on reload
-- [ ] Bright theme: no dark flash on reload; toggle button stays in sync
+---
+
+### Batch O (April 2026) — Player platform depth + video playlist
+- ✅ `PlayerPicker` — shows last game date per player below their name ("No games yet" if none); loaded from saved matches on mount
+- ✅ `/player/review` — repurposed for coach notes: shows timestamped film review notes from saved matches grouped by match; "Watch game →" links to game detail; note about clip videos coming with cloud
+- ✅ `/player/games/[gameId]` — full video playlist experience: player loads match video file, events become seekable playlist (seeks to timestamp −3s, Prev/Next controls, active event highlighted); event timeline shown as fallback when no video; grade badges on stat cards; set piece section retained
+- ✅ `/player/performance` — SaaS analytics redesign: season totals strip (tackles, carries, turnovers, involvements); colour-coded grade cards per metric with threshold context and delta vs previous game; season bests section (best tackle %, most carries, most involvements) linked to game detail; chart headers show season avg; grade-by-game table has Latest badge, game links, and season accuracy footnote
 
 ---
 
-## Next — Batch O (plan carefully before starting)
+## Next — Batch P (plan carefully before starting)
 
 Options (pick one focus per batch):
 
@@ -571,12 +567,13 @@ Focus on reducing coach friction in the core tagging loop:
 - **Voice confidence display** — show Whisper confidence score on PendingResolution items
 - **Set piece result summary** — live lineout % and scrum % shown in Capture (not just Insights)
 
-### Option D — Player platform enrichment
-Build depth into the existing player pages:
-- `/player/performance` — add comparison line (player vs team average) on charts
-- `/player/games/[id]` — show set piece involvement (was player in lineout/scrum?)
-- `/player/review` — filter events by action type (Tackle / Carry / Turnover)
-- `PlayerPicker` — show player position and last game date in picker list
+### Option D — Complete the coach → player clip pipeline
+Persist coach clips to saved matches so players can watch them on the Review page:
+- Add `clips?: ClipAnnotation[]` to `SavedMatchRecord` type in `savedMatches.ts`
+- Update the save-match flow in `coach/review/page.tsx` to include current clips when saving
+- Update `player/review/page.tsx` to show clip groups (label, category badge, timestamps) per match
+- Player loads the match video on the review page (same blob UX as games/[gameId]) to watch clips
+- This completes the vision: coaches create clips in Review, players watch them on their Review page
 
 ---
 

@@ -2,16 +2,36 @@
 
 import { useEffect, useState } from "react";
 import { getSquadProfile } from "@/app/rugby-tagging/lib/squadProfile";
+import { getSavedMatches } from "@/app/rugby-tagging/lib/savedMatches";
 import { usePlayer } from "./PlayerContext";
 import type { SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
 
 export function PlayerPicker() {
   const { setCurrentPlayer } = usePlayer();
   const [players, setPlayers] = useState<SquadPlayer[]>([]);
+  const [lastGameDates, setLastGameDates] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     const profile = getSquadProfile();
-    setPlayers(profile?.players.filter((p) => p.status === "active") ?? []);
+    const activePlayers = profile?.players.filter((p) => p.status === "active") ?? [];
+    setPlayers(activePlayers);
+
+    const matches = getSavedMatches();
+    const dateMap = new Map<string, string>();
+    for (const player of activePlayers) {
+      for (const m of matches) {
+        const inRoster = m.rosterRows.some(
+          (r) => r.name === player.fullName || r.name === player.preferredName
+        );
+        if (inRoster && m.matchDate) {
+          const current = dateMap.get(player.id);
+          if (!current || m.matchDate > current) {
+            dateMap.set(player.id, m.matchDate);
+          }
+        }
+      }
+    }
+    setLastGameDates(dateMap);
   }, []);
 
   return (
@@ -49,6 +69,11 @@ export function PlayerPicker() {
                   {player.fullName !== (player.preferredName || player.fullName) && (
                     <span className="block text-xs text-muted">{player.fullName}</span>
                   )}
+                  <span className="block text-xs text-muted-2 mt-0.5">
+                    {lastGameDates.get(player.id)
+                      ? `Last game: ${lastGameDates.get(player.id)}`
+                      : "No games yet"}
+                  </span>
                 </div>
                 <span className="text-xs text-muted-2 bg-panel-3 border border-border rounded-full px-2 py-0.5">
                   {player.primaryPosition || "—"}

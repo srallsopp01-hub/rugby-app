@@ -6,125 +6,139 @@ import { usePlayer } from "../PlayerContext";
 import { PlayerPicker } from "../PlayerPicker";
 import { getSavedMatches } from "@/app/rugby-tagging/lib/savedMatches";
 import { formatTime } from "@/app/rugby-tagging/helpers";
-import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
-import type { EventItem } from "@/app/rugby-tagging/types";
+import type { SavedMatchRecord, SavedCoachReviewNote } from "@/app/rugby-tagging/lib/savedMatches";
 
-const ACTION_LABELS: Record<string, string> = {
-  tackle: "Tackle",
-  "missed tackle": "Missed",
-  carry: "Carry",
-  turnover: "Turnover",
-};
-
-const ACTION_COLOURS: Record<string, string> = {
-  tackle: "bg-[#7ea37e]/15 text-[#7ea37e] border-[#7ea37e]/25",
-  "missed tackle": "bg-[#b16e6e]/15 text-[#b16e6e] border-[#b16e6e]/25",
-  carry: "bg-[#b79a63]/15 text-[#b79a63] border-[#b79a63]/25",
-  turnover: "bg-[#b79a63]/15 text-[#b79a63] border-[#b79a63]/25",
-};
-
-type MatchGroup = {
+type NoteGroup = {
   match: SavedMatchRecord;
-  events: EventItem[];
+  notes: SavedCoachReviewNote[];
+};
+
+const CATEGORY_ICONS: Record<string, string> = {
+  "Phase Play": "⬡",
+  "Set Piece": "▲",
+  "Defence": "⬡",
+  "Attack": "→",
+  "Kick": "○",
 };
 
 export default function ReviewPage() {
   const { currentPlayer, ready } = usePlayer();
-  const [groups, setGroups] = useState<MatchGroup[]>([]);
-  const [totalEvents, setTotalEvents] = useState(0);
+  const [groups, setGroups] = useState<NoteGroup[]>([]);
+  const [totalNotes, setTotalNotes] = useState(0);
 
   useEffect(() => {
-    if (!currentPlayer) return;
     const all = getSavedMatches();
-    const result: MatchGroup[] = [];
+    const result: NoteGroup[] = [];
     let total = 0;
     for (const match of all) {
-      const events = match.events
-        .filter(
-          (e) =>
-            e.category === "player" &&
-            (e.playerName === currentPlayer.fullName || e.playerName === currentPlayer.preferredName)
-        )
-        .sort((a, b) => a.timestamp - b.timestamp);
-      if (events.length > 0) {
-        result.push({ match, events });
-        total += events.length;
+      const notes = [...(match.coachNotes ?? [])].sort((a, b) => a.timestamp - b.timestamp);
+      if (notes.length > 0) {
+        result.push({ match, notes });
+        total += notes.length;
       }
     }
     setGroups(result);
-    setTotalEvents(total);
-  }, [currentPlayer]);
+    setTotalNotes(total);
+  }, []);
 
   if (!ready) return null;
   if (!currentPlayer) return <PlayerPicker />;
 
   return (
     <div className="p-8 max-w-2xl space-y-6">
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-foreground-strong">Your Moments</h1>
+        <h1 className="text-2xl font-semibold text-foreground-strong">Coach Notes</h1>
         <p className="mt-1 text-sm text-muted">
-          {totalEvents > 0 ? `${totalEvents} tagged ${totalEvents === 1 ? "action" : "actions"} across ${groups.length} ${groups.length === 1 ? "game" : "games"}` : "Every tagged action you've made"}
+          {totalNotes > 0
+            ? `${totalNotes} coaching ${totalNotes === 1 ? "note" : "notes"} across ${groups.length} ${groups.length === 1 ? "game" : "games"}`
+            : "Coaching insights and match observations from your team"}
         </p>
       </div>
 
-      {/* Video note */}
-      {groups.length > 0 && (
-        <div className="flex items-start gap-3 rounded-xl border border-border bg-panel-2 px-4 py-3">
-          <svg className="mt-0.5 shrink-0 text-muted-2" width="14" height="14" viewBox="0 0 16 16" fill="none">
-            <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.25"/>
-            <path d="M8 5v3.5M8 10.5v.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round"/>
+      {/* What this section is */}
+      <div className="rounded-xl border border-border bg-panel-2 p-4 flex items-start gap-3">
+        <div className="mt-0.5 shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-panel-3 border border-border">
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+            <path d="M8 3v5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="text-muted-2"/>
+            <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.25" className="text-muted-2"/>
           </svg>
-          <p className="text-xs text-muted leading-relaxed">
-            Reopen a match in <Link href="/coach/review" className="underline underline-offset-2 hover:text-foreground transition-colors">Review</Link> to watch video clips alongside these moments.
+        </div>
+        <div>
+          <p className="text-xs font-medium text-foreground">Timestamped match observations</p>
+          <p className="mt-0.5 text-xs text-muted leading-relaxed">
+            These are notes your coach wrote during film review, tagged to moments in the match video.
+            Open a game in <Link href="/player/games" className="underline underline-offset-2 hover:text-foreground transition-colors">Games</Link> to watch the video alongside these notes.
           </p>
         </div>
-      )}
+      </div>
 
+      {/* Empty state */}
       {groups.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-10 text-center">
-          <p className="text-sm text-muted">No tagged moments yet.</p>
-          <p className="mt-1 text-xs text-muted-2">Ask your coach to tag your actions in a game.</p>
+        <div className="rounded-xl border border-dashed border-border p-12 text-center space-y-3">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-panel-3">
+            <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
+              <rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.25" className="text-muted-2"/>
+              <path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" className="text-muted-2"/>
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">No coach notes yet</p>
+            <p className="mt-1 text-xs text-muted">Your coach hasn&apos;t added match notes during film review yet.</p>
+          </div>
         </div>
       ) : (
         <div className="space-y-5">
-          {groups.map(({ match, events }) => (
+          {groups.map(({ match, notes }) => (
             <div key={match.id} className="rounded-xl border border-border bg-panel overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-panel-2">
-                <div>
-                  <span className="text-sm font-medium text-foreground-strong">
-                    vs {match.opponent || match.matchTitle || "Game"}
-                  </span>
-                  {match.matchDate && (
-                    <span className="ml-2 text-xs text-muted-2">{match.matchDate}</span>
-                  )}
-                </div>
-                <span className="text-xs text-muted-2">{events.length} {events.length === 1 ? "action" : "actions"}</span>
-              </div>
-              <div className="p-4 flex flex-col gap-2">
-                {events.map((e) => (
-                  <div key={e.id} className="flex items-start gap-3">
-                    <span className="shrink-0 text-xs text-muted-2 font-mono mt-0.5 w-10 text-right">
-                      {formatTime(e.timestamp)}
-                    </span>
-                    {e.playerAction && (
-                      <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${ACTION_COLOURS[e.playerAction] ?? "border-border text-muted"}`}>
-                        {ACTION_LABELS[e.playerAction] ?? e.playerAction}
-                      </span>
+              {/* Match header */}
+              <div className="flex items-center justify-between px-5 py-3.5 bg-panel-2 border-b border-border">
+                <div className="flex items-center gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground-strong">
+                      vs {match.opponent || match.matchTitle || "Game"}
+                    </p>
+                    {match.matchDate && (
+                      <p className="text-xs text-muted-2 mt-0.5">{match.matchDate}</p>
                     )}
-                    <span className="text-sm text-muted leading-snug">{e.text}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-muted-2">
+                    {notes.length} {notes.length === 1 ? "note" : "notes"}
+                  </span>
+                  <Link
+                    href={`/player/games/${match.id}`}
+                    className="rounded-lg border border-border bg-panel px-2.5 py-1 text-xs text-muted transition-all duration-150 hover:border-border-light hover:text-foreground"
+                  >
+                    Watch game →
+                  </Link>
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div className="divide-y divide-border">
+                {notes.map((note) => (
+                  <div key={note.id} className="flex items-start gap-4 px-5 py-3.5">
+                    <span className="shrink-0 mt-0.5 text-[11px] text-muted-2 font-mono tabular-nums bg-panel-2 border border-border rounded px-1.5 py-0.5">
+                      {formatTime(note.timestamp)}
+                    </span>
+                    <p className="text-sm text-foreground leading-relaxed">{note.text}</p>
                   </div>
                 ))}
               </div>
-              <div className="px-5 py-3 border-t border-border">
-                <Link
-                  href={`/player/games/${match.id}`}
-                  className="text-xs text-muted hover:text-foreground transition-colors"
-                >
-                  View full game stats →
-                </Link>
-              </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Future feature note */}
+      {groups.length > 0 && (
+        <div className="flex items-center gap-2 rounded-xl border border-dashed border-border px-4 py-3">
+          <span className="h-1.5 w-1.5 rounded-full bg-warning shrink-0" />
+          <p className="text-xs text-muted-2">
+            Phase play and set piece analysis videos coming when cloud sharing is added.
+          </p>
         </div>
       )}
     </div>
