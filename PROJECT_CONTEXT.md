@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — Blog live with two seed posts (Batch V)
+**Last updated:** April 2026 — Player settings page live (Batch W)
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -82,7 +82,7 @@ The app is split into four clearly separated layers with independent layouts and
 | `/player/games` | Live | Match history |
 | `/player/games/[gameId]` | Live | Game detail: own-player stats/grades, constructive coaching plan, video playlist, set piece |
 | `/player/review` | Live | Shared coach clips from film review; unscoped text notes are hidden until notes can be assigned to a player |
-| `/player/settings` | Stub (in dev) | Account and preferences |
+| `/player/settings` | Live | Profile, identity switch, theme, local data snapshot, quick nav links |
 
 ### Admin panel (internal only)
 | Route | Status | Purpose |
@@ -149,7 +149,7 @@ app/
     games/page.tsx                    ← All matches player appeared in, sorted newest first
     games/[gameId]/page.tsx           ← Game detail: stats, event timeline, coach notes
     review/page.tsx                   ← Playlist of all tagged moments grouped by match
-    settings/page.tsx                 ← Account: player profile, change player, theme toggle
+    settings/page.tsx                 ← Profile card, identity switch, theme, local data snapshot, quick nav links
 
   admin/
     layout.tsx                        ← Admin layout: h-screen, sidebar + scrollable main
@@ -637,10 +637,19 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
-## Next — Batch W (plan carefully before starting)
+### Batch W (April 2026) — Player settings page
+- ✅ `/player/settings` upgraded from stub to Live — proper polished settings page matching the SaaS design language
+- ✅ Profile card — avatar initial circle, full name, "known as", position pills, status badge, voice nicknames
+- ✅ Playing As — current player display with "Change player" button (`clearCurrentPlayer()`)
+- ✅ Display — colour scheme toggle (`ThemeSchemeToggle`)
+- ✅ Local data — `useSyncExternalStore` reads squad profile (team name, player count) and saved matches count; updates reactively on `player-identity-changed` event
+- ✅ Navigate — 2-column grid of quick-link cards to Home, Games, Performance, Team Analytics
 
-### Option A — Player settings page
-`/player/settings` is still a stub. Could include: change player identity, theme toggle, local data info.
+---
+
+## Next — Batch X (plan carefully before starting)
+
+No defined options yet — review product priorities.
 
 ---
 
