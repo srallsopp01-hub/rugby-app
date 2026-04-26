@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
-import { PageHelp } from "@/components/PageHelp";
+import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "../help-content";
 import {
   CORRECTION_MEMORY_KEY,

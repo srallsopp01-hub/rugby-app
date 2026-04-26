@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { usePlayer } from "../PlayerContext";
-import { PageHelp } from "@/components/PageHelp";
+import { PageHelp } from "@/app/components/PageHelp";
 import { PLAYER_PAGE_HELP } from "../help-content";
 import { PlayerPicker } from "../PlayerPicker";
 import { SAVED_MATCHES_KEY } from "@/app/rugby-tagging/lib/savedMatches";

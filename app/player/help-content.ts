@@ -1,4 +1,4 @@
-import type { PageHelpProps } from "@/components/PageHelp";
+import type { PageHelpProps } from "@/app/components/PageHelp";
 
 export const PLAYER_PAGE_HELP: Record<string, PageHelpProps> = {
   "/player": {

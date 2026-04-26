@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
-import { PageHelp } from "@/components/PageHelp";
+import { PageHelp } from "@/app/components/PageHelp";
 import { PLAYER_PAGE_HELP } from "../help-content";
 import {
   ComposedChart,

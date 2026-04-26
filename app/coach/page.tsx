@@ -21,7 +21,7 @@ import {
   teamTacklePctFromTotals,
 } from "@/app/rugby-tagging/helpers";
 import type { EventItem } from "@/app/rugby-tagging/types";
-import { PageHelp } from "@/components/PageHelp";
+import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "./help-content";
 
 const emptyStorageSnapshot = "[]";

@@ -37,7 +37,7 @@ import {
 import type { EventItem, RosterRow } from "@/app/rugby-tagging/types";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import { GradeBadge } from "@/app/components/GradeBadge";
-import { PageHelp } from "@/components/PageHelp";
+import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "../help-content";
 
 type Tab = "overview" | "game" | "players" | "trends";

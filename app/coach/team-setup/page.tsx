@@ -13,7 +13,7 @@ import {
   type SquadProfile,
 } from "@/app/rugby-tagging/lib/squadProfile";
 import { KpiTargetsSection } from "./KpiTargetsSection";
-import { PageHelp } from "@/components/PageHelp";
+import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "../help-content";
 
 function PositionMultiSelect({

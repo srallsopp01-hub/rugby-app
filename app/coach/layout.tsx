@@ -1,5 +1,5 @@
 import CoachSidebar from "./CoachSidebar";
-import { FloatingHelpChat } from "@/components/FloatingHelpChat";
+import { FloatingHelpChat } from "@/app/components/FloatingHelpChat";
 
 export default function CoachLayout({
   children,

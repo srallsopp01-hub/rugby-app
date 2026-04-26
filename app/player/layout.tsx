@@ -1,6 +1,6 @@
 import PlayerSidebar from "./PlayerSidebar";
 import { PlayerProvider } from "./PlayerContext";
-import { FloatingHelpChat } from "@/components/FloatingHelpChat";
+import { FloatingHelpChat } from "@/app/components/FloatingHelpChat";
 
 export default function PlayerLayout({
   children,

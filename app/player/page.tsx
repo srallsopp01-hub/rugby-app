@@ -3,7 +3,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePlayer } from "./PlayerContext";
-import { PageHelp } from "@/components/PageHelp";
+import { PageHelp } from "@/app/components/PageHelp";
 import { PLAYER_PAGE_HELP } from "./help-content";
 import { PlayerPicker } from "./PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";

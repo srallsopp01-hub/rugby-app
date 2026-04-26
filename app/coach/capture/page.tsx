@@ -16,7 +16,7 @@ import SetPieceLoggingPanel from "@/app/rugby-tagging/components/SetPieceLogging
 import TeamEventsPanel from "@/app/rugby-tagging/components/TeamEventsPanel";
 import MatchMilestonesPanel from "@/app/rugby-tagging/components/MatchMilestonesPanel";
 import PendingResolutionPanel from "@/app/rugby-tagging/components/PendingResolutionPanel";
-import { PageHelp } from "@/components/PageHelp";
+import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "../help-content";
 import {
   clearMatchVideoSession,

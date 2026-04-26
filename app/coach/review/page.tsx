@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
-import { PageHelp } from "@/components/PageHelp";
+import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "../help-content";
 import GameReviewTimelinePanel from "@/app/rugby-tagging/components/GameReviewTimelinePanel";
 import CoachReviewPanel from "@/app/rugby-tagging/components/CoachReviewPanel";

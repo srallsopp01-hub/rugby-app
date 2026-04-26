@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useMemo, useRef, useState } from "react";
-import { PageHelp } from "@/components/PageHelp";
+import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "../help-content";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getMatchVideoUrl } from "@/app/rugby-tagging/lib/matchVideoSession";
