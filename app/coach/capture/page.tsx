@@ -1125,9 +1125,9 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     setStatusMessage("Scrum logged");
   };
 
-  const addTeamEvent = (type: TeamEventType) => {
+  const addTeamEvent = (type: TeamEventType, playerName?: string) => {
     const timestamp = videoRef.current?.currentTime || currentTime;
-    const text = buildTeamEventText(type);
+    const text = buildTeamEventText(type, playerName);
 
     setEvents((prev) => [
       ...prev,
@@ -1137,6 +1137,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
         text,
         category: "team",
         teamEventType: type,
+        ...(playerName ? { playerName } : {}),
       },
     ]);
 
@@ -1824,6 +1825,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
               timestamp: timestampAtRecordingStartRef.current,
               action: parsed!.action as PlayerAction,
               pendingEventId,
+              confidence: parsed?.confidence,
             });
             setResolverCandidates(mergedCandidates);
             setResolverSelection(mergedCandidates[0] || "");
@@ -2365,6 +2367,14 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Ctrl+Z / Cmd+Z: undo last tag
+      if ((event.ctrlKey || event.metaKey) && event.key === "z") {
+        if (isTypingField(event)) return;
+        event.preventDefault();
+        undoLast();
+        return;
+      }
+
       if (!isSpacebar(event)) return;
 
       // If the user is typing in a text field, let spacebar work normally.
@@ -3254,6 +3264,8 @@ Ellie missed tackle"
                     lineoutNotes={lineoutNotes}
                     scrumSide={scrumSide}
                     scrumResult={scrumResult}
+                    lineoutPct={setPieceSummary.eastsLineouts.length > 0 ? setPieceSummary.eastsLineoutSuccessPct : null}
+                    scrumPct={setPieceSummary.eastsScrums.length > 0 ? setPieceSummary.eastsScrumSuccessPct : null}
                     onLineoutSideChange={setLineoutSide}
                     onLineoutResultChange={setLineoutResult}
                     onLineoutNotesChange={setLineoutNotes}
@@ -3269,9 +3281,10 @@ Ellie missed tackle"
                 />
 
                 <TeamEventsPanel
+                  squad={squadProfile?.players ?? []}
                   onAddPenaltyFor={() => addTeamEvent("penalty for")}
-                  onAddPenaltyConceded={() => addTeamEvent("penalty conceded")}
-                  onAddTryScored={() => addTeamEvent("try scored")}
+                  onAddPenaltyConceded={(name) => addTeamEvent("penalty conceded", name)}
+                  onAddTryScored={(name) => addTeamEvent("try scored", name)}
                   onAddTryConceded={() => addTeamEvent("try conceded")}
                 />
 

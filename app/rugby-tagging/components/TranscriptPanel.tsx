@@ -87,33 +87,64 @@ export default function TranscriptPanel({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => onJumpToTimestamp(event.timestamp)}
-                  className="w-14 text-xs font-medium text-muted underline underline-offset-2"
-                  title="Jump to timestamp"
-                >
-                  {formatTime(event.timestamp)}
-                </button>
-
-                <input
-                  value={event.text}
-                  onChange={(e) => onUpdateEvent(event.id, e.target.value)}
-                  className={`flex-1 rounded-lg border border-border bg-panel px-2.5 py-2 text-sm ${
-                    event.isPending ? "text-muted" : "text-foreground"
-                  }`}
-                  readOnly={!!event.isPending}
-                />
-
-                {!event.isPending && (
+              {event.category === "substitution" ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => onJumpToTimestamp(event.timestamp)}
+                    className="w-14 shrink-0 text-xs font-medium text-muted underline underline-offset-2"
+                    title="Jump to timestamp"
+                  >
+                    {formatTime(event.timestamp)}
+                  </button>
+                  <div className="flex-1 text-sm text-foreground">
+                    <span className="text-orange-300">{event.substitutionPlayerOff || "?"}</span>
+                    <span className="mx-1 text-muted">off</span>
+                    {event.substitutionPosition && (
+                      <>
+                        <span className="mx-1 text-muted-2">→</span>
+                        <span className="text-muted">{event.substitutionPosition}</span>
+                        <span className="mx-1 text-muted-2">←</span>
+                      </>
+                    )}
+                    <span className="text-orange-300">{event.substitutionPlayerOn || "?"}</span>
+                    <span className="ml-1 text-muted">on</span>
+                  </div>
                   <button
                     onClick={() => onDeleteEvent(event.id)}
                     className="text-xs font-medium text-muted hover:text-foreground"
                   >
                     delete
                   </button>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => onJumpToTimestamp(event.timestamp)}
+                    className="w-14 text-xs font-medium text-muted underline underline-offset-2"
+                    title="Jump to timestamp"
+                  >
+                    {formatTime(event.timestamp)}
+                  </button>
+
+                  <input
+                    value={event.text}
+                    onChange={(e) => onUpdateEvent(event.id, e.target.value)}
+                    className={`flex-1 rounded-lg border border-border bg-panel px-2.5 py-2 text-sm ${
+                      event.isPending ? "text-muted" : "text-foreground"
+                    }`}
+                    readOnly={!!event.isPending}
+                  />
+
+                  {!event.isPending && (
+                    <button
+                      onClick={() => onDeleteEvent(event.id)}
+                      className="text-xs font-medium text-muted hover:text-foreground"
+                    >
+                      delete
+                    </button>
+                  )}
+                </div>
+              )}
 
               <div className="mt-2 flex flex-wrap gap-2">
                 {event.isPending ? (

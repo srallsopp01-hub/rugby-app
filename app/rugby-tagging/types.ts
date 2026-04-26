@@ -59,6 +59,7 @@ export type PendingResolution = {
   timestamp: number;
   action: PlayerAction;
   pendingEventId?: number;
+  confidence?: "high" | "medium" | "low";
 };
 
 export type ReviewItem = {

@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after Batch R Coach Settings upgrade
+**Last updated:** April 2026 — after Batch S Capture quality improvements
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -573,7 +573,19 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
-## Next — Batch S (plan carefully before starting)
+### Batch S (April 2026) — Capture quality improvements
+- ✅ Try scorer name — clicking "Try Scored" opens inline player picker; squad select dropdown with "Log" / "Skip (no name)"; name included in event text and stored on `playerName` field
+- ✅ Penalty conceded name — same inline picker flow for "Penalty Conceded"
+- ✅ `TeamEventsPanel` now accepts `squad: SquadPlayer[]` prop and has local `pendingNameFor` state for the picker; `onAddTryScored` and `onAddPenaltyConceded` callbacks updated to `(playerName?: string) => void`
+- ✅ `buildTeamEventText()` updated to accept optional `playerName?` — returns `"Try Scored — James Smith"` when name provided
+- ✅ Substitution display in transcript — structured row showing `[PlayerOff] off → [Position] ← [PlayerOn] on` using the existing `substitutionPlayerOn/Off/Position` fields; no text input (read-only)
+- ✅ Voice confidence badge in PendingResolutionPanel — "Low confidence" amber badge for `confidence: "low"`; "Review" muted badge for `"medium"`; nothing for `"high"` or absent; `confidence?` field added to `PendingResolution` type and wired from `parsed?.confidence` in capture page
+- ✅ Live set piece % in Capture — `SetPieceLoggingPanel` now accepts `lineoutPct?` and `scrumPct?` props; shown as `"X% won"` pill badge next to section header; only shown once ≥1 event logged; values sourced from existing `setPieceSummary` useMemo
+- ✅ Ctrl+Z / Cmd+Z keyboard shortcut for undo last tag in Capture (existing `undoLast()` function); respects the typing-field guard so it won't fire inside text inputs
+
+---
+
+## Next — Batch T (plan carefully before starting)
 
 Options (pick one focus per batch):
 
@@ -584,14 +596,7 @@ Fill in stub pages that are live but empty:
 - `/blog` — index + one or two seed posts (e.g., "Why we built RugbyCoach")
 All marketing pages use the shared marketing layout (`(marketing)/layout.tsx`).
 
-### Option B — Capture quality improvements
-Focus on reducing coach friction in the core tagging loop:
-- **Substitution display** — sub events in transcript show player on/off clearly
-- **Undo last tag** — keyboard shortcut or button to remove the most recent event
-- **Voice confidence display** — show Whisper confidence score on PendingResolution items
-- **Set piece result summary** — live lineout % and scrum % shown in Capture (not just Insights)
-
-### Option C — Lint stability cleanup
+### Option B — Lint stability cleanup
 Bring the repo back to a clean full `npm run lint` state after the newer React lint rule started flagging existing client-side localStorage load patterns:
 - CoachSidebar collapsed-state load
 - ThemeSchemeToggle initial stored scheme sync

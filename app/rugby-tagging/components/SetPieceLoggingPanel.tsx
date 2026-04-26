@@ -10,6 +10,8 @@ type SetPieceLoggingPanelProps = {
   lineoutNotes: string;
   scrumSide: SetPieceSide;
   scrumResult: ScrumResult;
+  lineoutPct?: number | null;
+  scrumPct?: number | null;
   onLineoutSideChange: (value: SetPieceSide) => void;
   onLineoutResultChange: (value: LineoutResult) => void;
   onLineoutNotesChange: (value: string) => void;
@@ -33,6 +35,8 @@ export default function SetPieceLoggingPanel({
   lineoutNotes,
   scrumSide,
   scrumResult,
+  lineoutPct,
+  scrumPct,
   onLineoutSideChange,
   onLineoutResultChange,
   onLineoutNotesChange,
@@ -44,9 +48,14 @@ export default function SetPieceLoggingPanel({
   return (
     <div className="grid grid-cols-1 gap-4 2xl:grid-cols-2">
       <div className="rounded-2xl border border-border bg-panel-2 p-4">
-        <h3 className="text-sm font-semibold text-foreground">
-          Log lineout
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-foreground">Log lineout</h3>
+          {lineoutPct != null && (
+            <span className="rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 text-[11px] text-purple-300">
+              {Math.round(lineoutPct)}% won
+            </span>
+          )}
+        </div>
         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
           <select
             value={lineoutSide}
@@ -87,9 +96,14 @@ export default function SetPieceLoggingPanel({
       </div>
 
       <div className="rounded-2xl border border-border bg-panel-2 p-4">
-        <h3 className="text-sm font-semibold text-foreground">
-          Log scrum
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-foreground">Log scrum</h3>
+          {scrumPct != null && (
+            <span className="rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 text-[11px] text-purple-300">
+              {Math.round(scrumPct)}% won
+            </span>
+          )}
+        </div>
         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
           <select
             value={scrumSide}

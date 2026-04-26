@@ -529,8 +529,9 @@ export function buildSetPieceText(event: {
   return event.notes?.trim() ? `${base} - ${event.notes.trim()}` : base;
 }
 
-export function buildTeamEventText(type: TeamEventType) {
-  return titleCase(type);
+export function buildTeamEventText(type: TeamEventType, playerName?: string) {
+  const base = titleCase(type);
+  return playerName ? `${base} — ${playerName}` : base;
 }
 
 export function buildMilestoneEventText(type: MilestoneType) {

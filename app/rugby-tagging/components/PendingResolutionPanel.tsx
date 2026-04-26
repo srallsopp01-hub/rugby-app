@@ -30,8 +30,20 @@ export default function PendingResolutionPanel({
     <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div className="space-y-2">
-          <div className="text-[11px] uppercase tracking-[0.14em] text-muted-2">
-            Confirm player
+          <div className="flex items-center gap-2">
+            <div className="text-[11px] uppercase tracking-[0.14em] text-muted-2">
+              Confirm player
+            </div>
+            {pendingResolution.confidence === "low" && (
+              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-300">
+                Low confidence
+              </span>
+            )}
+            {pendingResolution.confidence === "medium" && (
+              <span className="rounded-full border border-border bg-panel-2 px-2 py-0.5 text-[11px] text-muted">
+                Review
+              </span>
+            )}
           </div>
           <div className="text-sm text-muted">
             Raw:{" "}
