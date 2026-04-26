@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after Batch S Capture quality improvements
+**Last updated:** April 2026 — after Batch T lint stability cleanup
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -585,9 +585,21 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
-## Next — Batch T (plan carefully before starting)
+### Batch T (April 2026) — Lint stability cleanup
+- ✅ Full `npm run lint` now exits 0 with no output (was: 11 errors, 13 warnings)
+- ✅ All `react-hooks/set-state-in-effect` errors eliminated — 11 setState calls in effects replaced with `useSyncExternalStore` + `useMemo` across 10 files
+- ✅ CoachSidebar / PlayerSidebar: collapsed state driven by `useSyncExternalStore` + custom window event; toggle writes to localStorage and dispatches the event
+- ✅ ThemeSchemeToggle: scheme state via `useSyncExternalStore`; `applyScheme` only called in `chooseScheme` (layout inline script handles mount)
+- ✅ PlayerContext: `currentPlayer` + `ready` both via `useSyncExternalStore`; `setCurrentPlayer`/`clearCurrentPlayer` write localStorage and dispatch `player-identity-changed`
+- ✅ PlayerPicker: players from squad profile + lastGameDates derived via `useSyncExternalStore` + `useMemo`
+- ✅ insights/page: `mounted` flag replaced with `useSyncExternalStore(() => () => {}, () => true, () => false)`
+- ✅ player/page, games, games/[gameId], performance, review: saved matches read as JSON snapshot via `useSyncExternalStore`; all derived values in `useMemo`
+- ✅ All unused-var warnings cleared: removed dead imports/functions from capture, stub params from blog/slug and players/[playerId]
+- ✅ `react-hooks/exhaustive-deps` warning in capture silenced with eslint-disable for the intentionally omitted `startPushToTalkRecording` dep
 
-Options (pick one focus per batch):
+---
+
+## Next — Batch U (plan carefully before starting)
 
 ### Option A — Marketing content
 Fill in stub pages that are live but empty:
@@ -595,14 +607,6 @@ Fill in stub pages that are live but empty:
 - `/about` — founder story, product philosophy, early beta context
 - `/blog` — index + one or two seed posts (e.g., "Why we built RugbyCoach")
 All marketing pages use the shared marketing layout (`(marketing)/layout.tsx`).
-
-### Option B — Lint stability cleanup
-Bring the repo back to a clean full `npm run lint` state after the newer React lint rule started flagging existing client-side localStorage load patterns:
-- CoachSidebar collapsed-state load
-- ThemeSchemeToggle initial stored scheme sync
-- Insights mounted flag
-- Player context, picker, sidebar, and player page derived-data effects
-- Keep behavior unchanged while replacing unnecessary state/effect patterns with derived values or external-store patterns
 
 ---
 
