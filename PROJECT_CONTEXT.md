@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after Batch Q Coach Review upgrade
+**Last updated:** April 2026 — after Batch R Coach Settings upgrade
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -69,7 +69,7 @@ The app is split into four clearly separated layers with independent layouts and
 | `/coach/players/[playerId]` | Live | Individual player drilldown |
 | `/coach/compare` | Live | Side-by-side saved match and player comparison with confidence cues |
 | `/coach/saved-matches` | Live | Reopen / delete saved matches, local storage context |
-| `/coach/settings` | Stub (in dev) | Account, preferences, permissions |
+| `/coach/settings` | Live | Browser-local coach settings, setup shortcuts, raw JSON export, guarded data management |
 
 ### Player platform
 | Route | Status | Purpose |
@@ -124,7 +124,7 @@ app/
     players/[playerId]/page.tsx       ← Individual player drilldown
     saved-matches/page.tsx            ← Saved match management
     compare/page.tsx                  ← Saved match + player comparison
-    settings/page.tsx                 ← Stub
+    settings/page.tsx                 ← Coach settings: local storage status, shortcuts, JSON export, guarded resets
 
   player/
     layout.tsx                        ← Player layout: h-screen, sidebar + scrollable main (wraps PlayerProvider)
@@ -561,31 +561,43 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
-## Next — Batch R (plan carefully before starting)
+### Batch R (April 2026) — Coach Settings local data controls
+- ✅ `/coach/settings` upgraded from stub to live browser-local settings page
+- ✅ Settings now shows saved match count, current match presence, squad/team profile status, correction memory count, onboarding state, selected player identity, and known local data size
+- ✅ Quick links added for Team Setup, Onboarding, Saved Matches, and Player Platform
+- ✅ Shared `ThemeSchemeToggle` added to Settings
+- ✅ Raw JSON export added for known RugbyCoach localStorage keys
+- ✅ Guarded data controls added: clear current match, reset correction memory, clear player identity, and factory reset known RugbyCoach local data only
+- ✅ Settings storage snapshot uses `useSyncExternalStore` to avoid the new React lint rule against synchronous state writes in effects
+- ✅ Verification: focused lint passed for `app/coach/settings/page.tsx`; `npm run build` passed; `/coach/settings` returned 200 locally; full repo lint still fails on pre-existing `react-hooks/set-state-in-effect` errors in other coach/player files
+
+---
+
+## Next — Batch S (plan carefully before starting)
 
 Options (pick one focus per batch):
 
-### Option A — Coach Settings page
-`/coach/settings` is currently a stub. Natural next functional area. Could include:
-- Squad profile editing shortcut (link to `/coach/team-setup`)
-- Voice tagging preferences (confidence threshold, prompt tuning toggle)
-- Export preferences (default sheet selection)
-- Data management: clear current match, reset correction memory, export raw JSON
-- Danger zone: factory reset localStorage
-
-### Option B — Marketing content
+### Option A — Marketing content
 Fill in stub pages that are live but empty:
 - `/pricing` — two or three tiers (Free / Pro / Team); feature comparison table; CTA
 - `/about` — founder story, product philosophy, early beta context
 - `/blog` — index + one or two seed posts (e.g., "Why we built RugbyCoach")
 All marketing pages use the shared marketing layout (`(marketing)/layout.tsx`).
 
-### Option C — Capture quality improvements
+### Option B — Capture quality improvements
 Focus on reducing coach friction in the core tagging loop:
 - **Substitution display** — sub events in transcript show player on/off clearly
 - **Undo last tag** — keyboard shortcut or button to remove the most recent event
 - **Voice confidence display** — show Whisper confidence score on PendingResolution items
 - **Set piece result summary** — live lineout % and scrum % shown in Capture (not just Insights)
+
+### Option C — Lint stability cleanup
+Bring the repo back to a clean full `npm run lint` state after the newer React lint rule started flagging existing client-side localStorage load patterns:
+- CoachSidebar collapsed-state load
+- ThemeSchemeToggle initial stored scheme sync
+- Insights mounted flag
+- Player context, picker, sidebar, and player page derived-data effects
+- Keep behavior unchanged while replacing unnecessary state/effect patterns with derived values or external-store patterns
 
 ---
 
