@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — About page built
+**Last updated:** April 2026 — Pricing page and organisation contact placeholder built
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -51,7 +51,8 @@ The app is split into four clearly separated layers with independent layouts and
 | Route | Status | Purpose |
 |---|---|---|
 | `/` | Live | Bold sport marketing homepage — product-first hero, interactive app-page slider, feature matrix, quote, CTA |
-| `/pricing` | Stub | Pricing tiers |
+| `/pricing` | Live | Premium SaaS pricing page with monthly/yearly toggle, early adopter yearly offer, trial messaging, currency selector, plan cards, comparison table, and FAQ |
+| `/contact` | Placeholder | Organisation demo / pilot contact placeholder for future CRM or sales form |
 | `/about` | Live | Origin story, problem statement, design principles, beta status, CTA |
 | `/blog` | Stub | Blog index |
 | `/blog/[slug]` | Stub | Blog post |
@@ -106,6 +107,10 @@ app/
     layout.tsx                        ← Marketing header + footer
     page.tsx                          ← Marketing homepage
     MarketingProductSlider.tsx        ← Client-side homepage app tour slider
+    pricing/page.tsx                  ← Pricing route shell
+    pricing/PricingExperience.tsx     ← Client-side pricing UI: billing toggle, currency selector, cards, comparison, FAQ
+    pricing/pricingConfig.ts          ← Multi-currency pricing config and Stripe price ID placeholders
+    contact/page.tsx                  ← Organisation demo / pilot placeholder page
 
   components/
     ThemeSchemeToggle.tsx             ← Shared dark / bright scheme toggle
