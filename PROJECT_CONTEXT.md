@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — after Batch T lint stability cleanup
+**Last updated:** April 2026 — About page built
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -52,7 +52,7 @@ The app is split into four clearly separated layers with independent layouts and
 |---|---|---|
 | `/` | Live | Bold sport marketing homepage — product-first hero, interactive app-page slider, feature matrix, quote, CTA |
 | `/pricing` | Stub | Pricing tiers |
-| `/about` | Stub | Founder / product story |
+| `/about` | Live | Origin story, problem statement, design principles, beta status, CTA |
 | `/blog` | Stub | Blog index |
 | `/blog/[slug]` | Stub | Blog post |
 
