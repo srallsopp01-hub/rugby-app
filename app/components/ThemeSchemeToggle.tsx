@@ -1,18 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 type ThemeScheme = "dark" | "bright";
 
 const STORAGE_KEY = "rugbycoach-theme-scheme";
+const SCHEME_EVENT = "rugbycoach-scheme-changed";
 
 function applyScheme(scheme: ThemeScheme) {
   document.documentElement.setAttribute("data-theme-scheme", scheme);
 }
 
 function getStoredScheme(): ThemeScheme {
-  if (typeof window === "undefined") return "dark";
   return localStorage.getItem(STORAGE_KEY) === "bright" ? "bright" : "dark";
+}
+
+function subscribeScheme(cb: () => void) {
+  window.addEventListener(SCHEME_EVENT, cb);
+  return () => window.removeEventListener(SCHEME_EVENT, cb);
 }
 
 export default function ThemeSchemeToggle({
@@ -20,18 +25,12 @@ export default function ThemeSchemeToggle({
 }: {
   compact?: boolean;
 }) {
-  const [scheme, setScheme] = useState<ThemeScheme>("dark");
-
-  useEffect(() => {
-    const stored = getStoredScheme();
-    setScheme(stored);
-    applyScheme(stored);
-  }, []);
+  const scheme = useSyncExternalStore(subscribeScheme, getStoredScheme, () => "dark" as ThemeScheme);
 
   function chooseScheme(nextScheme: ThemeScheme) {
-    setScheme(nextScheme);
     localStorage.setItem(STORAGE_KEY, nextScheme);
     applyScheme(nextScheme);
+    window.dispatchEvent(new Event(SCHEME_EVENT));
   }
 
   return (

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TeamSheetModal from "@/app/rugby-tagging/components/TeamSheetModal";
 import MatchdayRosterPanel from "@/app/rugby-tagging/components/MatchdayRosterPanel";
@@ -19,7 +18,6 @@ import MatchMilestonesPanel from "@/app/rugby-tagging/components/MatchMilestones
 import PendingResolutionPanel from "@/app/rugby-tagging/components/PendingResolutionPanel";
 import {
   clearMatchVideoSession,
-  getMatchVideoUrl,
   setMatchVideoFile,
 } from "@/app/rugby-tagging/lib/matchVideoSession";
 import {
@@ -49,7 +47,6 @@ import {
   buildTeamEventText,
   cleanTranscriptText,
   copyTextToClipboard,
-  csvEscape,
   downloadFile,
   findMatchingPlayer,
   formatTime,
@@ -58,7 +55,6 @@ import {
   getSessionStateLabel,
   getUnitFromPosition,
   gradeCarriesPerMin,
-  gradeClassName,
   gradeInvPerMin,
   gradeTacklePct,
   gradeTacklesPerMin,
@@ -66,7 +62,6 @@ import {
   gradeTurnovers,
   hydrateRosterRows,
   isForwardPosition,
-  isInteractiveElement,
   mergeUniqueCandidates,
   normalizeCorrectionKey,
   normalizeForMatch,
@@ -182,12 +177,6 @@ export default function RugbyVoiceTaggingMVP() {
 const [showTranscriptImport, setShowTranscriptImport] = useState(false);
 
   const players = rosterRows.map((row) => row.name.trim()).filter(Boolean);
-  // Remove focus from any element after it's clicked, so spacebar
-  // can never re-trigger it later.
-  const blurAfterClick = (event: React.MouseEvent<HTMLElement>) => {
-    (event.currentTarget as HTMLElement).blur();
-  };
-  const playersText = players.join("\n");
   const playersReady = players.length > 0;
 
   // Enhanced player name list for the transcribe API: includes preferred names
@@ -1556,28 +1545,6 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     setStatusMessage("Voice mode ended");
   };
 
-  const switchMode = (nextMode: AppMode) => {
-    if (nextMode === activeMode) return;
-
-    if (recording || transcribing) {
-      setStatusMessage(
-        "Wait for the current voice tag to finish before switching modes"
-      );
-      return;
-    }
-
-    if (nextMode === "game-review" && voiceModeEnabled) {
-      endVoiceMode();
-    }
-
-    blurActiveElement();
-    pageShellRef.current?.focus();
-    setActiveMode(nextMode);
-    setStatusMessage(
-      nextMode === "stat" ? "Stat Mode active" : "Game Review Mode active"
-    );
-  };
-
   const commitResolvedTag = () => {
     if (!pendingResolution) return;
 
@@ -2431,15 +2398,8 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
       window.removeEventListener("keyup", handleKeyUp, true);
       window.removeEventListener("blur", handleWindowBlur);
     };
-  }, [
-    activeMode,
-    voiceModeEnabled,
-    showTeamSheetModal,
-    showReportSetupModal,
-    recording,
-    transcribing,
-    pendingResolution,
-  ]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMode, voiceModeEnabled, showTeamSheetModal, showReportSetupModal, recording, transcribing, pendingResolution]);
 
   return (
     <main

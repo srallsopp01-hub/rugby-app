@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
 
@@ -108,19 +108,24 @@ const navItems = [
   },
 ];
 
+const COACH_SIDEBAR_EVENT = "coach-sidebar-collapsed-changed";
+
+function subscribeCoachCollapsed(cb: () => void) {
+  window.addEventListener(COACH_SIDEBAR_EVENT, cb);
+  return () => window.removeEventListener(COACH_SIDEBAR_EVENT, cb);
+}
+
 export default function CoachSidebar() {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    setCollapsed(localStorage.getItem("coach-sidebar-collapsed") === "true");
-  }, []);
+  const collapsed = useSyncExternalStore(
+    subscribeCoachCollapsed,
+    () => localStorage.getItem("coach-sidebar-collapsed") === "true",
+    () => false
+  );
 
   const toggle = () => {
-    setCollapsed((prev) => {
-      localStorage.setItem("coach-sidebar-collapsed", String(!prev));
-      return !prev;
-    });
+    localStorage.setItem("coach-sidebar-collapsed", String(!collapsed));
+    window.dispatchEvent(new Event(COACH_SIDEBAR_EVENT));
   };
 
   function isActive(href: string, exact: boolean) {

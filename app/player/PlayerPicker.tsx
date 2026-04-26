@@ -1,38 +1,52 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { getSquadProfile } from "@/app/rugby-tagging/lib/squadProfile";
-import { getSavedMatches } from "@/app/rugby-tagging/lib/savedMatches";
+import { SQUAD_PROFILE_KEY } from "@/app/rugby-tagging/constants";
+import { SAVED_MATCHES_KEY } from "@/app/rugby-tagging/lib/savedMatches";
 import { usePlayer } from "./PlayerContext";
 import type { SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
 
+const noSubscribe = () => () => {};
+
 export function PlayerPicker() {
   const { setCurrentPlayer } = usePlayer();
-  const [players, setPlayers] = useState<SquadPlayer[]>([]);
-  const [lastGameDates, setLastGameDates] = useState<Map<string, string>>(new Map());
 
-  useEffect(() => {
+  const squadRaw = useSyncExternalStore(
+    noSubscribe,
+    () => localStorage.getItem(SQUAD_PROFILE_KEY) ?? "",
+    () => ""
+  );
+  const matchesRaw = useSyncExternalStore(
+    noSubscribe,
+    () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
+    () => "[]"
+  );
+
+  const players = useMemo<SquadPlayer[]>(() => {
+    void squadRaw; // depend on snapshot so memo re-runs if store changes
     const profile = getSquadProfile();
-    const activePlayers = profile?.players.filter((p) => p.status === "active") ?? [];
-    setPlayers(activePlayers);
+    return profile?.players.filter((p) => p.status === "active") ?? [];
+  }, [squadRaw]);
 
-    const matches = getSavedMatches();
+  const lastGameDates = useMemo<Map<string, string>>(() => {
     const dateMap = new Map<string, string>();
-    for (const player of activePlayers) {
+    let matches;
+    try { matches = JSON.parse(matchesRaw); } catch { return dateMap; }
+    if (!Array.isArray(matches)) return dateMap;
+    for (const player of players) {
       for (const m of matches) {
-        const inRoster = m.rosterRows.some(
-          (r) => r.name === player.fullName || r.name === player.preferredName
+        const inRoster = m.rosterRows?.some(
+          (r: { name: string }) => r.name === player.fullName || r.name === player.preferredName
         );
         if (inRoster && m.matchDate) {
           const current = dateMap.get(player.id);
-          if (!current || m.matchDate > current) {
-            dateMap.set(player.id, m.matchDate);
-          }
+          if (!current || m.matchDate > current) dateMap.set(player.id, m.matchDate);
         }
       }
     }
-    setLastGameDates(dateMap);
-  }, []);
+    return dateMap;
+  }, [players, matchesRaw]);
 
   return (
     <div className="flex h-full items-center justify-center p-8">

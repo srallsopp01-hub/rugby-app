@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePlayer } from "../PlayerContext";
 import { PlayerPicker } from "../PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
-import { getSavedMatches } from "@/app/rugby-tagging/lib/savedMatches";
+import { SAVED_MATCHES_KEY } from "@/app/rugby-tagging/lib/savedMatches";
 import { buildReportRowsFromMatch } from "@/app/rugby-tagging/helpers";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { ReportRow } from "@/app/rugby-tagging/types";
@@ -29,19 +29,25 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
+const noSubscribe = () => () => {};
+
 export default function GamesPage() {
   const { currentPlayer, ready } = usePlayer();
-  const [entries, setEntries] = useState<{ match: SavedMatchRecord; row: ReportRow }[]>([]);
 
-  useEffect(() => {
-    if (!currentPlayer) return;
-    const all = getSavedMatches();
-    const filtered = getPlayerMatches(all, currentPlayer);
-    const pairs = filtered
+  const matchesRaw = useSyncExternalStore(
+    noSubscribe,
+    () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
+    () => "[]"
+  );
+
+  const entries = useMemo<{ match: SavedMatchRecord; row: ReportRow }[]>(() => {
+    if (!currentPlayer) return [];
+    let all: SavedMatchRecord[];
+    try { all = JSON.parse(matchesRaw); } catch { return []; }
+    return getPlayerMatches(all, currentPlayer)
       .map((m) => ({ match: m, row: getPlayerRow(m, currentPlayer) }))
       .filter((p): p is { match: SavedMatchRecord; row: ReportRow } => p.row !== null);
-    setEntries(pairs);
-  }, [currentPlayer]);
+  }, [matchesRaw, currentPlayer]);
 
   if (!ready) return null;
   if (!currentPlayer) return <PlayerPicker />;

@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { usePlayer } from "../../PlayerContext";
 import { PlayerPicker } from "../../PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
-import { getSavedMatchById } from "@/app/rugby-tagging/lib/savedMatches";
+import { SAVED_MATCHES_KEY } from "@/app/rugby-tagging/lib/savedMatches";
 import { buildReportRowsFromMatch, formatTime } from "@/app/rugby-tagging/helpers";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
-import type { ReportRow, EventItem } from "@/app/rugby-tagging/types";
+import type { EventItem } from "@/app/rugby-tagging/types";
 import type { SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
 
 const ACTION_LABELS: Record<string, string> = {
@@ -50,33 +50,37 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
+const noSubscribe = () => () => {};
+
 export default function GameDetailPage() {
   const params = useParams();
   const gameId = typeof params.gameId === "string" ? params.gameId : "";
   const { currentPlayer, ready } = usePlayer();
-  const [match, setMatch] = useState<SavedMatchRecord | null>(null);
-  const [row, setRow] = useState<ReportRow | null>(null);
-  const [events, setEvents] = useState<EventItem[]>([]);
-  const [notFound, setNotFound] = useState(false);
+
+  const matchesRaw = useSyncExternalStore(
+    noSubscribe,
+    () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
+    () => "[]"
+  );
+
+  const { match, row, events, notFound } = useMemo(() => {
+    if (!currentPlayer || !gameId) return { match: null, row: null, events: [], notFound: false };
+    let all: SavedMatchRecord[];
+    try { all = JSON.parse(matchesRaw); } catch { return { match: null, row: null, events: [], notFound: true }; }
+    const m = all.find((s) => s.id === gameId) ?? null;
+    if (!m) return { match: null, row: null, events: [], notFound: true };
+    const rows = buildReportRowsFromMatch(m.rosterRows, m.events);
+    const playerRow = rows.find(
+      (r) => r.name === currentPlayer.fullName || r.name === currentPlayer.preferredName
+    ) ?? null;
+    if (!playerRow) return { match: null, row: null, events: [], notFound: true };
+    return { match: m, row: playerRow, events: playerEvents(m, currentPlayer), notFound: false };
+  }, [matchesRaw, currentPlayer, gameId]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoUrl, setVideoUrl] = useState("");
   const [activeEventIdx, setActiveEventIdx] = useState<number | null>(null);
   const playlistRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!currentPlayer || !gameId) return;
-    const m = getSavedMatchById(gameId);
-    if (!m) { setNotFound(true); return; }
-    const rows = buildReportRowsFromMatch(m.rosterRows, m.events);
-    const playerRow = rows.find(
-      (r) => r.name === currentPlayer.fullName || r.name === currentPlayer.preferredName
-    ) ?? null;
-    if (!playerRow) { setNotFound(true); return; }
-    setMatch(m);
-    setRow(playerRow);
-    setEvents(playerEvents(m, currentPlayer));
-  }, [currentPlayer, gameId]);
 
   useEffect(() => {
     return () => { if (videoUrl) URL.revokeObjectURL(videoUrl); };

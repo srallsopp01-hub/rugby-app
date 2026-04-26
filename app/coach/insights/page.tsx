@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import {
   BarChart,
@@ -83,21 +83,12 @@ function trendArrow(values: number[]): "up" | "down" | "flat" {
   return "flat";
 }
 
-function gradeColor(grade: string) {
-  if (grade === "Dominant") return "#7ea37e";
-  if (grade === "Competitive") return "#b79a63";
-  if (grade === "Below") return "#b16e6e";
-  return "#b16e6e";
-}
-
 export default function InsightsPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [playerFilter, setPlayerFilter] = useState<PlayerFilter>("all");
   const [expandedTrendPlayer, setExpandedTrendPlayer] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
 
   const savedMatchesSnapshot = useSyncExternalStore(
     subscribeToStorage,

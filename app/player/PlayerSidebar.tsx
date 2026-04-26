@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
@@ -63,19 +63,26 @@ const navItems = [
   },
 ];
 
+const PLAYER_SIDEBAR_EVENT = "player-sidebar-collapsed-changed";
+
+function subscribePlayerCollapsed(cb: () => void) {
+  window.addEventListener(PLAYER_SIDEBAR_EVENT, cb);
+  return () => window.removeEventListener(PLAYER_SIDEBAR_EVENT, cb);
+}
+
 export default function PlayerSidebar() {
   const pathname = usePathname();
   const { currentPlayer } = usePlayer();
-  const [collapsed, setCollapsed] = useState(false);
+  const collapsed = useSyncExternalStore(
+    subscribePlayerCollapsed,
+    () => localStorage.getItem("player-sidebar-collapsed") === "true",
+    () => false
+  );
 
-  useEffect(() => {
-    setCollapsed(localStorage.getItem("player-sidebar-collapsed") === "true");
-  }, []);
-
-  const toggle = () => setCollapsed(prev => {
-    localStorage.setItem("player-sidebar-collapsed", String(!prev));
-    return !prev;
-  });
+  const toggle = () => {
+    localStorage.setItem("player-sidebar-collapsed", String(!collapsed));
+    window.dispatchEvent(new Event(PLAYER_SIDEBAR_EVENT));
+  };
 
   function isActive(href: string, exact: boolean) {
     if (exact) return pathname === href;

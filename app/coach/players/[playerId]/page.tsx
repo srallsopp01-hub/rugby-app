@@ -1,8 +1,4 @@
-export default function PlayerDetailPage({
-  params,
-}: {
-  params: { playerId: string };
-}) {
+export default function PlayerDetailPage() {
   return (
     <div className="p-8">
       <h1 className="text-2xl font-semibold text-foreground-strong mb-2">

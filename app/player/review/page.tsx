@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePlayer } from "../PlayerContext";
 import { PlayerPicker } from "../PlayerPicker";
-import { getSavedMatches } from "@/app/rugby-tagging/lib/savedMatches";
+import { SAVED_MATCHES_KEY } from "@/app/rugby-tagging/lib/savedMatches";
 import { formatTime } from "@/app/rugby-tagging/helpers";
 import type { SavedMatchRecord, SavedCoachReviewNote } from "@/app/rugby-tagging/lib/savedMatches";
 import type { ClipAnnotation } from "@/app/rugby-tagging/types";
@@ -29,15 +29,12 @@ function categoryClass(cat: string | undefined) {
   return CATEGORY_COLOUR[cat] ?? "text-muted-2 border-border bg-panel-2";
 }
 
+const noSubscribe = () => () => {};
+
 export default function ReviewPage() {
   const { currentPlayer, ready } = usePlayer();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playlistRef = useRef<HTMLDivElement | null>(null);
-
-  const [groups, setGroups] = useState<NoteGroup[]>([]);
-  const [totalNotes, setTotalNotes] = useState(0);
-  const [clipGroups, setClipGroups] = useState<ClipGroup[]>([]);
-  const [totalClips, setTotalClips] = useState(0);
 
   // Per-match video blob URLs and active clip indices
   const [videoUrls, setVideoUrls] = useState<Record<string, string>>({});
@@ -45,32 +42,27 @@ export default function ReviewPage() {
   // Track which match's video is currently in the video element
   const [activeVideoMatchId, setActiveVideoMatchId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const all = getSavedMatches();
+  const matchesRaw = useSyncExternalStore(
+    noSubscribe,
+    () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
+    () => "[]"
+  );
 
+  const { groups, totalNotes, clipGroups, totalClips } = useMemo(() => {
+    let all: SavedMatchRecord[];
+    try { all = JSON.parse(matchesRaw); } catch { return { groups: [], totalNotes: 0, clipGroups: [], totalClips: 0 }; }
     const noteResult: NoteGroup[] = [];
     let totalN = 0;
     const clipResult: ClipGroup[] = [];
     let totalC = 0;
-
     for (const match of all) {
       const notes = [...(match.coachNotes ?? [])].sort((a, b) => a.timestamp - b.timestamp);
-      if (notes.length > 0) {
-        noteResult.push({ match, notes });
-        totalN += notes.length;
-      }
+      if (notes.length > 0) { noteResult.push({ match, notes }); totalN += notes.length; }
       const clips = [...(match.clips ?? [])].sort((a, b) => a.startTime - b.startTime);
-      if (clips.length > 0) {
-        clipResult.push({ match, clips });
-        totalC += clips.length;
-      }
+      if (clips.length > 0) { clipResult.push({ match, clips }); totalC += clips.length; }
     }
-
-    setGroups(noteResult);
-    setTotalNotes(totalN);
-    setClipGroups(clipResult);
-    setTotalClips(totalC);
-  }, []);
+    return { groups: noteResult, totalNotes: totalN, clipGroups: clipResult, totalClips: totalC };
+  }, [matchesRaw]);
 
   // Revoke all blob URLs on unmount
   useEffect(() => {

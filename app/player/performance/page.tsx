@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import {
   ComposedChart,
   Bar,
@@ -16,7 +16,7 @@ import Link from "next/link";
 import { usePlayer } from "../PlayerContext";
 import { PlayerPicker } from "../PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
-import { getSavedMatches } from "@/app/rugby-tagging/lib/savedMatches";
+import { SAVED_MATCHES_KEY } from "@/app/rugby-tagging/lib/savedMatches";
 import { buildReportRowsFromMatch } from "@/app/rugby-tagging/helpers";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { Grade, ReportRow } from "@/app/rugby-tagging/types";
@@ -117,13 +117,21 @@ function DeltaBadge({ value, suffix = "" }: { value: number; suffix?: string }) 
   );
 }
 
+const noSubscribe = () => () => {};
+
 export default function PerformancePage() {
   const { currentPlayer, ready } = usePlayer();
-  const [entries, setEntries] = useState<TrendEntry[]>([]);
 
-  useEffect(() => {
-    if (!currentPlayer) return;
-    const all = getSavedMatches();
+  const matchesRaw = useSyncExternalStore(
+    noSubscribe,
+    () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
+    () => "[]"
+  );
+
+  const entries = useMemo<TrendEntry[]>(() => {
+    if (!currentPlayer) return [];
+    let all: SavedMatchRecord[];
+    try { all = JSON.parse(matchesRaw); } catch { return []; }
     const filtered = getPlayerMatches(all, currentPlayer);
     const pairs: TrendEntry[] = [];
     for (const m of filtered) {
@@ -137,8 +145,8 @@ export default function PerformancePage() {
         teamAvgCarries: avg(allRows.map((r) => r.carries)),
       });
     }
-    setEntries(pairs);
-  }, [currentPlayer]);
+    return pairs;
+  }, [matchesRaw, currentPlayer]);
 
   if (!ready) return null;
   if (!currentPlayer) return <PlayerPicker />;
