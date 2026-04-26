@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { PageHelp } from "@/components/PageHelp";
+import { COACH_PAGE_HELP } from "../help-content";
 import {
   getSavedMatches,
   type SavedMatchRecord,
@@ -537,9 +539,12 @@ export default function ComparePage() {
         <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div className="max-w-3xl">
-              <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-                Compare
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
+                  Compare
+                </h1>
+                <PageHelp {...COACH_PAGE_HELP["/coach/compare"]} />
+              </div>
               <p className="mt-2 text-sm leading-6 text-muted">
                 Side-by-side comparison for saved matches and player output.
                 This screen reads local saved match data only and uses resolved tagged events.

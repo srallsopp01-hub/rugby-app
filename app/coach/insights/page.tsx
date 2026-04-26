@@ -16,7 +16,9 @@ import {
   CURRENT_MATCH_ID_KEY,
   SAVED_MATCHES_KEY,
 } from "@/app/rugby-tagging/lib/savedMatches";
-import { STORAGE_KEY } from "@/app/rugby-tagging/constants";
+import { STORAGE_KEY, SQUAD_PROFILE_KEY } from "@/app/rugby-tagging/constants";
+import type { ManualKpi, BuiltinKpiTarget } from "@/app/rugby-tagging/lib/squadProfile";
+import { DEFAULT_BUILTIN_TARGETS } from "@/app/rugby-tagging/lib/squadProfile";
 import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfidence";
 import { generateTeamAnalyticsWorkbook } from "@/app/rugby-tagging/lib/exports/teamAnalyticsExport";
 import { downloadWorkbook } from "@/app/rugby-tagging/lib/exports/downloadWorkbook";
@@ -35,6 +37,8 @@ import {
 import type { EventItem, RosterRow } from "@/app/rugby-tagging/types";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import { GradeBadge } from "@/app/components/GradeBadge";
+import { PageHelp } from "@/components/PageHelp";
+import { COACH_PAGE_HELP } from "../help-content";
 
 type Tab = "overview" | "game" | "players" | "trends";
 type PlayerFilter = "all" | "forwards" | "backs";
@@ -314,6 +318,69 @@ export default function InsightsPage() {
     };
   }, [seasonChartData]);
 
+  const squadProfile = useMemo(() => {
+    if (!mounted) return null;
+    try {
+      const raw = localStorage.getItem(SQUAD_PROFILE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw) as { kpiTargets?: Array<BuiltinKpiTarget | ManualKpi> };
+    } catch { return null; }
+  }, [mounted]);
+
+  const kpiTargets = squadProfile?.kpiTargets ?? [];
+  const manualKpis = kpiTargets.filter((k): k is ManualKpi => k.type === "manual");
+
+  function getBuiltinTarget(id: string): BuiltinKpiTarget {
+    const custom = kpiTargets.find((k): k is BuiltinKpiTarget => k.type === "builtin-target" && k.id === id);
+    return custom ?? DEFAULT_BUILTIN_TARGETS.find((d) => d.id === id)!;
+  }
+
+  const kpiDeltas = useMemo(() => {
+    if (!seasonChartData || seasonChartData.length < 2) return null;
+    const last = seasonChartData[seasonChartData.length - 1];
+    const prev = seasonChartData[seasonChartData.length - 2];
+    return {
+      tacklePct: last.tacklePct - prev.tacklePct,
+      lineoutPct: last.lineoutPct - prev.lineoutPct,
+      triesFor: last.triesFor - prev.triesFor,
+      triesAgainst: last.triesAgainst - prev.triesAgainst,
+    };
+  }, [seasonChartData]);
+
+  const keyTakeaways = useMemo(() => {
+    const items: { tone: "positive" | "warning"; text: string }[] = [];
+    const tacklTarget = getBuiltinTarget("tackle_pct");
+    if (teamTacklePct >= tacklTarget.dominantThreshold) {
+      items.push({ tone: "positive", text: `Tackle rate ${teamTacklePct.toFixed(0)}% — above your Dominant target of ${tacklTarget.dominantThreshold}%.` });
+    } else if (teamTacklePct < tacklTarget.belowThreshold) {
+      items.push({ tone: "warning", text: `Tackle rate ${teamTacklePct.toFixed(0)}% — below the ${tacklTarget.belowThreshold}% floor. Defensive accuracy needs urgent attention.` });
+    } else if (teamTacklePct < tacklTarget.competitiveThreshold) {
+      items.push({ tone: "warning", text: `Tackle rate ${teamTacklePct.toFixed(0)}% — in the Below range. Target is ${tacklTarget.competitiveThreshold}%+.` });
+    }
+    if (kpiDeltas && Math.abs(kpiDeltas.lineoutPct) >= 5) {
+      items.push({
+        tone: kpiDeltas.lineoutPct >= 0 ? "positive" : "warning",
+        text: `Lineout efficiency ${kpiDeltas.lineoutPct >= 0 ? "up" : "down"} ${Math.abs(kpiDeltas.lineoutPct)}% from last match.`,
+      });
+    }
+    if (kpiDeltas && Math.abs(kpiDeltas.tacklePct) >= 5) {
+      items.push({
+        tone: kpiDeltas.tacklePct >= 0 ? "positive" : "warning",
+        text: `Tackle rate ${kpiDeltas.tacklePct >= 0 ? "improved" : "dropped"} ${Math.abs(kpiDeltas.tacklePct)}% from last match.`,
+      });
+    }
+    if (teamEventSummary.penaltiesConceded >= 9) {
+      items.push({ tone: "warning", text: `${teamEventSummary.penaltiesConceded} penalties conceded — high discipline cost, review set piece and breakdown.` });
+    }
+    if (teamEventSummary.triesScored > teamEventSummary.triesConceded && teamEventSummary.triesScored > 0) {
+      items.push({ tone: "positive", text: `Positive try margin: ${teamEventSummary.triesScored} scored vs ${teamEventSummary.triesConceded} conceded.` });
+    } else if (teamEventSummary.triesConceded > teamEventSummary.triesScored) {
+      items.push({ tone: "warning", text: `Negative try margin: ${teamEventSummary.triesScored} scored vs ${teamEventSummary.triesConceded} conceded.` });
+    }
+    return items;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamTacklePct, kpiDeltas, teamEventSummary, kpiTargets]);
+
   const lineoutWon = setPieceSummary.ownLineouts.filter((e) => e.lineoutResult === "Won").length;
   const lineoutLost = setPieceSummary.ownLineouts.filter((e) => e.lineoutResult !== "Won").length;
   const scrumWon = setPieceSummary.ownScrums.filter(
@@ -344,6 +411,7 @@ export default function InsightsPage() {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
+            <PageHelp {...COACH_PAGE_HELP["/coach/insights"]} />
             <div
               className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${
                 confidence.readyTone === "ready"
@@ -462,13 +530,29 @@ export default function InsightsPage() {
                 </div>
               )}
 
+              {/* Key Takeaways */}
+              {keyTakeaways.length > 0 && reportRows.length > 0 && (
+                <div className="rounded-2xl border border-border bg-panel p-5">
+                  <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-2">Key Takeaways</p>
+                  <div className="space-y-2">
+                    {keyTakeaways.map((item, i) => (
+                      <div key={i} className="flex items-start gap-2.5">
+                        <span className={`mt-1 h-2 w-2 flex-shrink-0 rounded-full ${item.tone === "positive" ? "bg-success" : "bg-warning"}`} />
+                        <p className="text-sm text-foreground">{item.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Hero KPI row */}
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 <KpiCard
                   label="Tackle %"
                   value={`${teamTacklePct.toFixed(0)}%`}
                   sub={`${teamTotals.tackles} made · ${teamTotals.missed} missed`}
-                  accent={teamTacklePct >= 90 ? "green" : teamTacklePct >= 80 ? "gold" : "red"}
+                  accent={teamTacklePct >= getBuiltinTarget("tackle_pct").dominantThreshold ? "green" : teamTacklePct >= getBuiltinTarget("tackle_pct").competitiveThreshold ? "gold" : "red"}
+                  trend={kpiDeltas ? { delta: kpiDeltas.tacklePct, suffix: "%" } : undefined}
                 />
                 <KpiCard
                   label="Tries Scored"
@@ -496,13 +580,14 @@ export default function InsightsPage() {
                   label="Lineout %"
                   value={`${setPieceSummary.ownLineoutSuccessPct.toFixed(0)}%`}
                   sub={`${setPieceSummary.ownLineouts.length} own lineouts`}
-                  accent={setPieceSummary.ownLineouts.length === 0 ? "none" : setPieceSummary.ownLineoutSuccessPct >= 80 ? "green" : "gold"}
+                  accent={setPieceSummary.ownLineouts.length === 0 ? "none" : setPieceSummary.ownLineoutSuccessPct >= getBuiltinTarget("lineout_pct").competitiveThreshold ? "green" : "gold"}
+                  trend={kpiDeltas ? { delta: kpiDeltas.lineoutPct, suffix: "%" } : undefined}
                 />
                 <KpiCard
                   label="Scrum %"
                   value={`${setPieceSummary.ownScrumSuccessPct.toFixed(0)}%`}
                   sub={`${setPieceSummary.ownScrums.length} own scrums`}
-                  accent={setPieceSummary.ownScrums.length === 0 ? "none" : setPieceSummary.ownScrumSuccessPct >= 80 ? "green" : "gold"}
+                  accent={setPieceSummary.ownScrums.length === 0 ? "none" : setPieceSummary.ownScrumSuccessPct >= getBuiltinTarget("scrum_pct").competitiveThreshold ? "green" : "gold"}
                 />
                 <KpiCard
                   label="Total Carries"
@@ -634,6 +719,28 @@ export default function InsightsPage() {
                   </div>
                 </div>
               )}
+              {/* Custom Tracking KPIs */}
+              {manualKpis.length > 0 && (
+                <div className="rounded-2xl border border-border bg-panel p-5">
+                  <div className="mb-4 flex items-center justify-between">
+                    <h2 className="text-base font-semibold text-foreground-strong">Custom Tracking KPIs</h2>
+                    <span className="text-xs text-muted-2">Track these manually after each match</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    {manualKpis.map((kpi) => (
+                      <div key={kpi.id} className="rounded-xl border border-dashed border-border bg-panel-2 p-4">
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-2">{kpi.name}</div>
+                        <div className="mt-2 text-xl font-bold text-muted">
+                          Target: {kpi.targetValue}{kpi.unit === "%" ? "%" : kpi.unit === "per_min" ? "/min" : ""}
+                        </div>
+                        {kpi.description && <div className="mt-1 text-xs text-muted-2">{kpi.description}</div>}
+                        <div className="mt-2 text-[10px] text-muted-2">Enter value in match notes</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
             </div>
           )}
 
@@ -1139,11 +1246,13 @@ function KpiCard({
   value,
   sub,
   accent,
+  trend,
 }: {
   label: string;
   value: string;
   sub: string;
   accent: "green" | "gold" | "red" | "none";
+  trend?: { delta: number; suffix?: string; invert?: boolean };
 }) {
   const accentColor = {
     green: "#7ea37e",
@@ -1151,6 +1260,10 @@ function KpiCard({
     red: "#b16e6e",
     none: "transparent",
   }[accent];
+
+  const trendPositive = trend ? (trend.invert ? trend.delta < 0 : trend.delta > 0) : null;
+  const trendColor = trendPositive === true ? "#7ea37e" : trendPositive === false ? "#b16e6e" : undefined;
+
   return (
     <div
       className="rounded-2xl border border-border bg-panel p-5"
@@ -1160,7 +1273,14 @@ function KpiCard({
       <div className="mt-2 text-3xl font-bold" style={{ color: accent !== "none" ? accentColor : undefined }}>
         {value}
       </div>
-      <div className="mt-1 text-xs text-muted">{sub}</div>
+      <div className="mt-1 flex items-center gap-2">
+        <span className="text-xs text-muted">{sub}</span>
+        {trend && trend.delta !== 0 && (
+          <span className="text-[10px] font-semibold" style={{ color: trendColor }}>
+            {trend.delta > 0 ? "↑" : "↓"} {Math.abs(trend.delta).toFixed(0)}{trend.suffix ?? ""} vs prev
+          </span>
+        )}
+      </div>
     </div>
   );
 }

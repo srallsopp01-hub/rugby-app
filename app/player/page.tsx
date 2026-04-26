@@ -3,10 +3,12 @@
 import { useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePlayer } from "./PlayerContext";
+import { PageHelp } from "@/components/PageHelp";
+import { PLAYER_PAGE_HELP } from "./help-content";
 import { PlayerPicker } from "./PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
 import { SAVED_MATCHES_KEY } from "@/app/rugby-tagging/lib/savedMatches";
-import { buildReportRowsFromMatch } from "@/app/rugby-tagging/helpers";
+import { buildReportRowsFromMatch, gradeToScore } from "@/app/rugby-tagging/helpers";
 import { buildPlayerCoachingPlan } from "./playerCoachingPlan";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { ReportRow } from "@/app/rugby-tagging/types";
@@ -69,13 +71,28 @@ export default function PlayerHomePage() {
   const avgCarriesPerMin = avg(playerRows.map((r) => r.carriesPerMin));
   const avgInvPerMin = avg(playerRows.map((r) => r.involvementsPerMin));
 
+  const prevRow = playerRows[1] ?? null;
+  const gradeTrend = latestRow && prevRow
+    ? gradeToScore(latestRow.overallGrade) - gradeToScore(prevRow.overallGrade)
+    : 0;
+
+  const focusChips: string[] = latestRow ? [
+    ...(latestRow.tacklePctGrade === "Below" || latestRow.tacklePctGrade === "Poor" ? ["Tackle Accuracy"] : []),
+    ...(latestRow.carriesPerMinGrade === "Below" || latestRow.carriesPerMinGrade === "Poor" ? ["Carry Volume"] : []),
+    ...(latestRow.workRateGrade === "Below" || latestRow.workRateGrade === "Poor" ? ["Work Rate"] : []),
+    ...(latestRow.tacklesPerMinGrade === "Below" || latestRow.tacklesPerMinGrade === "Poor" ? ["Tackle Frequency"] : []),
+  ] : [];
+
   return (
     <div className="p-8 max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground-strong">
-          Welcome back, {currentPlayer.preferredName || currentPlayer.fullName}
-        </h1>
-        <p className="mt-1 text-sm text-muted">{currentPlayer.primaryPosition}</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground-strong">
+            Welcome back, {currentPlayer.preferredName || currentPlayer.fullName}
+          </h1>
+          <p className="mt-1 text-sm text-muted">{currentPlayer.primaryPosition}</p>
+        </div>
+        <PageHelp {...PLAYER_PAGE_HELP["/player"]} />
       </div>
 
       {/* Latest match */}
@@ -90,8 +107,17 @@ export default function PlayerHomePage() {
               <p className="text-xs text-muted">{formatDate(latestMatch.matchDate)}</p>
             </div>
             <div className="text-right">
-              <GradeBadge grade={latestRow.overallGrade} />
-              <p className="mt-1 text-xs text-muted-2">Overall grade</p>
+              <div className="flex items-center justify-end gap-1.5">
+                <GradeBadge grade={latestRow.overallGrade} />
+                {gradeTrend !== 0 && (
+                  <span className={`text-xs font-semibold ${gradeTrend > 0 ? "text-success" : "text-danger"}`}>
+                    {gradeTrend > 0 ? "↑" : "↓"}
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-muted-2">
+                Overall grade{gradeTrend !== 0 && prevRow ? ` · ${gradeTrend > 0 ? "up" : "down"} from ${prevRow.overallGrade}` : ""}
+              </p>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-3">
@@ -134,6 +160,20 @@ export default function PlayerHomePage() {
                 <p className="text-base font-semibold text-foreground-strong">{value}</p>
                 <p className="text-[11px] text-muted-2 mt-0.5">{label}</p>
               </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Focus Areas */}
+      {focusChips.length > 0 && (
+        <div className="rounded-xl border border-warning/20 bg-warning/5 p-4">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-warning">Focus Areas This Week</p>
+          <div className="flex flex-wrap gap-2">
+            {focusChips.map((chip) => (
+              <span key={chip} className="inline-flex items-center rounded-full border border-warning/30 bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning">
+                {chip}
+              </span>
             ))}
           </div>
         </div>

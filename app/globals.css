@@ -147,6 +147,14 @@ button:active {
   transform: translateY(0);
 }
 
+.card-hover {
+  transition: box-shadow 150ms ease, transform 150ms ease;
+}
+.card-hover:hover {
+  box-shadow: var(--shadow-panel);
+  transform: translateY(-1px);
+}
+
 .marketing-marquee {
   overflow: hidden;
   white-space: nowrap;

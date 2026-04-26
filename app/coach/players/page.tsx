@@ -1,6 +1,8 @@
 "use client";
 
 import { Suspense, useMemo, useRef, useState } from "react";
+import { PageHelp } from "@/components/PageHelp";
+import { COACH_PAGE_HELP } from "../help-content";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getMatchVideoUrl } from "@/app/rugby-tagging/lib/matchVideoSession";
 import {
@@ -248,9 +250,12 @@ function PlayersContent() {
       <div className="mx-auto max-w-[1900px] space-y-5">
         <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
           <div className="max-w-3xl">
-            <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-              Players
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
+                Players
+              </h1>
+              <PageHelp {...COACH_PAGE_HELP["/coach/players"]} />
+            </div>
             <p className="mt-2 text-sm text-muted">
               Single-game player review with video and involvement playlist.
             </p>

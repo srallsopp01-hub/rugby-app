@@ -14,6 +14,15 @@ import {
   buildMatchConfidenceSummary,
   formatUpdatedLabel,
 } from "@/app/rugby-tagging/lib/matchConfidence";
+import {
+  buildReportRowsFromMatch,
+  buildTeamEventSummary,
+  buildTeamTotals,
+  teamTacklePctFromTotals,
+} from "@/app/rugby-tagging/helpers";
+import type { EventItem } from "@/app/rugby-tagging/types";
+import { PageHelp } from "@/components/PageHelp";
+import { COACH_PAGE_HELP } from "./help-content";
 
 const emptyStorageSnapshot = "[]";
 const subscribeToStorage = () => () => {};
@@ -41,7 +50,7 @@ const quickLinks = [
   {
     label: "Capture",
     href: "/coach/capture",
-    description: "Tag a live match",
+    description: "Tag live match events by voice or tap — start here each match day",
     icon: (
       <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
         <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.25"/>
@@ -52,7 +61,7 @@ const quickLinks = [
   {
     label: "Insights",
     href: "/coach/insights",
-    description: "Analyse tagged match data",
+    description: "KPI cards, player grades, set piece, and season trends",
     icon: (
       <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
         <path d="M2 12l3.5-4 3 2.5L12 5l2 2" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"/>
@@ -62,7 +71,7 @@ const quickLinks = [
   {
     label: "Review",
     href: "/coach/review",
-    description: "Film review with notes",
+    description: "Watch clips and add coaching notes linked to players",
     icon: (
       <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
         <rect x="1.5" y="2.5" width="13" height="9" rx="1" stroke="currentColor" strokeWidth="1.25"/>
@@ -74,7 +83,7 @@ const quickLinks = [
   {
     label: "Players",
     href: "/coach/players",
-    description: "Individual player output",
+    description: "Full match history, grades, and metric trends per player",
     icon: (
       <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
         <circle cx="5.5" cy="5" r="2" stroke="currentColor" strokeWidth="1.25"/>
@@ -87,7 +96,7 @@ const quickLinks = [
   {
     label: "Compare",
     href: "/coach/compare",
-    description: "Compare saved matches",
+    description: "Side-by-side KPI and player comparison across two matches",
     icon: (
       <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
         <path d="M5 3H2.5A.5.5 0 002 3.5v9a.5.5 0 00.5.5H5M11 3h2.5a.5.5 0 01.5.5v9a.5.5 0 01-.5.5H11M8 2v12M5 6l-2 2 2 2M11 6l2 2-2 2" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"/>
@@ -97,7 +106,7 @@ const quickLinks = [
   {
     label: "Saved Matches",
     href: "/coach/saved-matches",
-    description: "Reopen local matches",
+    description: "Manage, export, or reopen all your saved matches",
     icon: (
       <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
         <rect x="2" y="2" width="12" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.25"/>
@@ -133,6 +142,26 @@ export default function CoachHomePage() {
     ? buildMatchConfidenceSummary(dashboardMatch)
     : null;
 
+  const seasonStats = savedMatches.length >= 2
+    ? (() => {
+        let totalTackles = 0, totalMissed = 0, totalTriesFor = 0, totalTriesAgainst = 0;
+        for (const m of savedMatches) {
+          const evts = (m.events || []).filter((e: EventItem) => !e.isPending);
+          const rows = buildReportRowsFromMatch(m.rosterRows, evts);
+          const totals = buildTeamTotals(rows);
+          const te = buildTeamEventSummary(evts);
+          totalTackles += totals.tackles;
+          totalMissed += totals.missed;
+          totalTriesFor += te.triesScored;
+          totalTriesAgainst += te.triesConceded;
+        }
+        const avgTacklePct = totalTackles + totalMissed > 0
+          ? Math.round((totalTackles / (totalTackles + totalMissed)) * 100)
+          : 0;
+        return { matches: savedMatches.length, avgTacklePct, totalTriesFor, totalTriesAgainst };
+      })()
+    : null;
+
   useEffect(() => {
     if (shouldStartCoachOnboarding()) {
       router.replace("/coach/onboarding");
@@ -145,9 +174,12 @@ export default function CoachHomePage() {
         <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div className="max-w-3xl">
-              <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-                Coach Home
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
+                  Coach Home
+                </h1>
+                <PageHelp {...COACH_PAGE_HELP["/coach"]} />
+              </div>
               <p className="mt-2 text-sm leading-6 text-muted">
                 Your coaching control centre. Start a match, reopen analysis,
                 or check whether the current saved match is report-ready.
@@ -158,6 +190,45 @@ export default function CoachHomePage() {
             </div>
           </div>
         </section>
+
+        {/* Season at a Glance */}
+        {seasonStats && (
+          <section className="rounded-2xl border border-border bg-panel px-5 py-4 shadow-[var(--shadow-soft)]">
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-muted-2">Season</div>
+                <div className="mt-0.5 text-sm font-semibold text-foreground">{seasonStats.matches} matches</div>
+              </div>
+              <div className="h-8 w-px bg-border" />
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-muted-2">Avg Tackle %</div>
+                <div className={`mt-0.5 text-sm font-semibold ${seasonStats.avgTacklePct >= 90 ? "text-success" : seasonStats.avgTacklePct >= 80 ? "text-warning" : "text-danger"}`}>
+                  {seasonStats.avgTacklePct}%
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-muted-2">Tries For</div>
+                <div className="mt-0.5 text-sm font-semibold text-foreground">{seasonStats.totalTriesFor}</div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-muted-2">Tries Against</div>
+                <div className="mt-0.5 text-sm font-semibold text-foreground">{seasonStats.totalTriesAgainst}</div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-muted-2">Try Margin</div>
+                <div className={`mt-0.5 text-sm font-semibold ${seasonStats.totalTriesFor >= seasonStats.totalTriesAgainst ? "text-success" : "text-danger"}`}>
+                  {seasonStats.totalTriesFor >= seasonStats.totalTriesAgainst ? "+" : ""}{seasonStats.totalTriesFor - seasonStats.totalTriesAgainst}
+                </div>
+              </div>
+              <Link
+                href="/coach/insights"
+                className="ml-auto text-xs text-muted-2 underline-offset-4 hover:text-foreground hover:underline"
+              >
+                View full season →
+              </Link>
+            </div>
+          </section>
+        )}
 
         <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
@@ -243,7 +314,7 @@ export default function CoachHomePage() {
           <Link
             key={link.href}
             href={link.href}
-            className="group rounded-xl border border-border bg-panel p-5 hover:border-border-light hover:bg-panel-2 transition-all duration-150"
+            className="group rounded-xl border border-border bg-panel p-5 hover:border-border-light hover:bg-panel-2 hover:-translate-y-px hover:shadow-[var(--shadow-panel)] transition-all duration-150"
           >
             <div className="mb-3 inline-flex items-center justify-center w-8 h-8 rounded-lg bg-panel-2 text-muted group-hover:text-foreground border border-border transition-colors duration-150">
               {link.icon}

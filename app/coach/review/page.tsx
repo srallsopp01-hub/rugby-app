@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import { PageHelp } from "@/components/PageHelp";
+import { COACH_PAGE_HELP } from "../help-content";
 import GameReviewTimelinePanel from "@/app/rugby-tagging/components/GameReviewTimelinePanel";
 import CoachReviewPanel from "@/app/rugby-tagging/components/CoachReviewPanel";
 import TeamSnapshotPanel from "@/app/rugby-tagging/components/TeamSnapshotPanel";
@@ -639,7 +641,10 @@ export default function ReviewPage() {
         <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div className="max-w-3xl">
-              <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">Coach Review</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">Coach Review</h1>
+                <PageHelp {...COACH_PAGE_HELP["/coach/review"]} />
+              </div>
               <p className="mt-2 text-sm text-muted">
                 Team meeting film room with flexible clips, coaching notes, and lightweight telestration.
               </p>

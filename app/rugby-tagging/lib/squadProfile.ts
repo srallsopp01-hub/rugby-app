@@ -3,6 +3,42 @@ import { levenshtein } from "../helpers";
 
 export type SquadPlayerStatus = "active" | "injured" | "unavailable";
 
+export type BuiltinKpiId =
+  | "tackle_pct"
+  | "tackles_per_min"
+  | "carries_per_min"
+  | "inv_per_min"
+  | "lineout_pct"
+  | "scrum_pct";
+
+export type BuiltinKpiTarget = {
+  type: "builtin-target";
+  id: BuiltinKpiId;
+  dominantThreshold: number;
+  competitiveThreshold: number;
+  belowThreshold: number;
+};
+
+export type ManualKpi = {
+  type: "manual";
+  id: string;
+  name: string;
+  unit: "%" | "number" | "per_min";
+  targetValue: number;
+  description?: string;
+};
+
+export type CustomKpiConfig = BuiltinKpiTarget | ManualKpi;
+
+export const DEFAULT_BUILTIN_TARGETS: BuiltinKpiTarget[] = [
+  { type: "builtin-target", id: "tackle_pct", dominantThreshold: 90, competitiveThreshold: 80, belowThreshold: 70 },
+  { type: "builtin-target", id: "tackles_per_min", dominantThreshold: 0.2, competitiveThreshold: 0.15, belowThreshold: 0.1 },
+  { type: "builtin-target", id: "carries_per_min", dominantThreshold: 0.18, competitiveThreshold: 0.12, belowThreshold: 0.08 },
+  { type: "builtin-target", id: "inv_per_min", dominantThreshold: 0.3, competitiveThreshold: 0.22, belowThreshold: 0.15 },
+  { type: "builtin-target", id: "lineout_pct", dominantThreshold: 90, competitiveThreshold: 80, belowThreshold: 70 },
+  { type: "builtin-target", id: "scrum_pct", dominantThreshold: 90, competitiveThreshold: 80, belowThreshold: 70 },
+];
+
 export type SquadPlayer = {
   id: string;
   fullName: string;
@@ -37,6 +73,7 @@ export type SquadProfile = {
   players: SquadPlayer[];
   actionSamples: ActionSample[];
   correctionMemory: CorrectionMemoryEntry[];
+  kpiTargets?: CustomKpiConfig[];
   createdAt: string;
   updatedAt: string;
 };

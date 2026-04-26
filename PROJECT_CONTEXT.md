@@ -647,9 +647,23 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
-## Next — Batch X (plan carefully before starting)
+### Batch X (April 2026) — Custom KPIs, Help System, AI Chat, QA Polish
+- ✅ **Custom KPI Targets** (`app/coach/team-setup/KpiTargetsSection.tsx`) — new section on Team Setup with two parts: (1) Performance Thresholds: adjust Dominant/Competitive/Below values for 6 built-in KPIs; (2) Manual Tracking KPIs: add/edit/delete coach-defined metrics. Stored as `kpiTargets?: CustomKpiConfig[]` on `SquadProfile`
+- ✅ **New types** (`app/rugby-tagging/lib/squadProfile.ts`) — `BuiltinKpiTarget`, `ManualKpi`, `CustomKpiConfig`, `DEFAULT_BUILTIN_TARGETS` (6 presets); `gradeWithCustomThreshold()` added to `helpers.ts`
+- ✅ **Insights custom thresholds** — Insights KPI cards read coach-set thresholds; Manual KPIs shown as reference cards in a new "Custom Tracking KPIs" section
+- ✅ **PageHelp** (`app/components/PageHelp.tsx`) — `?` button on every page (16 pages); opens a client-side modal with page-specific steps and tips. Content in `app/coach/help-content.ts` and `app/player/help-content.ts`
+- ✅ **FloatingHelpChat** (`app/components/FloatingHelpChat.tsx`) — bottom-right persistent chat button on all coach/player pages; slide-up panel with streaming AI responses. API route: `/api/help-chat/route.ts` (gpt-4o-mini, streaming `ReadableStream`)
+- ✅ **Trend indicators** on Insights KPI cards — `↑/↓ X% vs prev` via new `TrendArrow.tsx` component; `kpiDeltas` useMemo compares last 2 matches
+- ✅ **Key Takeaways box** on Insights Overview — rules-based bullets (colour-coded green/amber) before the KPI grid
+- ✅ **Season at a Glance** on Coach Home — 4-stat strip (matches, avg tackle %, tries for/against, try margin) shown when 2+ matches saved
+- ✅ **Grade trend + Focus Areas chips** on Player Home — `↑/↓` vs previous match next to GradeBadge; amber chips for Below/Poor metric grades
+- ✅ **Visual polish** — `.card-hover` CSS utility in `globals.css`; quick-link descriptions updated to be instructional; button hover lifts throughout
 
-No defined options yet — review product priorities.
+---
+
+## Next — Batch Y (plan carefully before starting)
+
+Options: accounts + auth (Supabase/Clerk), Stripe payments, cloud game storage (DB), mobile support, video annotation.
 
 ---
 
@@ -657,7 +671,6 @@ No defined options yet — review product priorities.
 
 - Cloud storage and coach accounts
 - Player logins and season dashboards
-- Custom KPI systems
 - Video annotation / telestration
 - Cross-match player trends
 - Shared team analysis links

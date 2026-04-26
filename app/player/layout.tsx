@@ -1,5 +1,6 @@
 import PlayerSidebar from "./PlayerSidebar";
 import { PlayerProvider } from "./PlayerContext";
+import { FloatingHelpChat } from "@/components/FloatingHelpChat";
 
 export default function PlayerLayout({
   children,
@@ -11,6 +12,7 @@ export default function PlayerLayout({
       <div className="flex h-screen overflow-hidden">
         <PlayerSidebar />
         <main className="flex-1 overflow-auto">{children}</main>
+        <FloatingHelpChat />
       </div>
     </PlayerProvider>
   );

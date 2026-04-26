@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PageHelp } from "@/components/PageHelp";
+import { COACH_PAGE_HELP } from "../help-content";
 import {
   clearCurrentMatchId,
   getSavedMatches,
@@ -106,9 +108,12 @@ export default function CoachSavedMatchesPage() {
       <div className="mx-auto max-w-[1600px] space-y-5">
         <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
           <div className="max-w-3xl">
-            <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-              Saved Matches
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
+                Saved Matches
+              </h1>
+              <PageHelp {...COACH_PAGE_HELP["/coach/saved-matches"]} />
+            </div>
             <p className="mt-2 text-sm text-muted">
               Reopen a previously saved match in Capture, Review, or Insights.
             </p>

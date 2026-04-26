@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState, useSyncExternalStore } from "react";
+import { PageHelp } from "@/components/PageHelp";
+import { PLAYER_PAGE_HELP } from "../help-content";
 import { PlayerPicker } from "../PlayerPicker";
 import { usePlayer } from "../PlayerContext";
 import { SAVED_MATCHES_KEY, type SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
@@ -351,7 +353,10 @@ export default function PlayerComparePage() {
     <main className="min-h-screen bg-background p-6 text-foreground">
       <div className="mx-auto max-w-[1500px] space-y-5">
         <header className="rounded-xl border border-border bg-panel p-5">
-          <h1 className="text-2xl font-semibold text-foreground-strong">Compare</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold text-foreground-strong">Compare</h1>
+            <PageHelp {...PLAYER_PAGE_HELP["/player/compare"]} />
+          </div>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
             Compare saved matches or player output from the same read-only match data coaches use.
           </p>

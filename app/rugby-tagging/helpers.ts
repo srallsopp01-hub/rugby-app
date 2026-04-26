@@ -328,6 +328,15 @@ export function gradeFromThresholds(
   return "Poor";
 }
 
+export function gradeWithCustomThreshold(
+  value: number,
+  dominantThreshold: number,
+  competitiveThreshold: number,
+  belowThreshold: number
+): Grade {
+  return gradeFromThresholds(value, dominantThreshold, competitiveThreshold, belowThreshold);
+}
+
 export function gradeTacklePct(value: number): Grade {
   if (value >= 90) return "Dominant";
   if (value >= 80) return "Competitive";

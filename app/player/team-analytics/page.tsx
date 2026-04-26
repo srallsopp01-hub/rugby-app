@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState, useSyncExternalStore } from "react";
+import { PageHelp } from "@/components/PageHelp";
+import { PLAYER_PAGE_HELP } from "../help-content";
 import {
   Bar,
   BarChart,
@@ -183,7 +185,10 @@ export default function PlayerTeamAnalyticsPage() {
         <header className="rounded-xl border border-border bg-panel p-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-foreground-strong">Team Analytics</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-semibold text-foreground-strong">Team Analytics</h1>
+                <PageHelp {...PLAYER_PAGE_HELP["/player/team-analytics"]} />
+              </div>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
                 Team-level match analysis shared into the player app. This is read-only and uses saved coach match data.
               </p>

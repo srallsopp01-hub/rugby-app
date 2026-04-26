@@ -12,6 +12,9 @@ import {
   type SquadPlayer,
   type SquadProfile,
 } from "@/app/rugby-tagging/lib/squadProfile";
+import { KpiTargetsSection } from "./KpiTargetsSection";
+import { PageHelp } from "@/components/PageHelp";
+import { COACH_PAGE_HELP } from "../help-content";
 
 function PositionMultiSelect({
   selected,
@@ -192,9 +195,12 @@ export default function TeamSetupPage() {
 
         {/* Header */}
         <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-            Team Setup
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
+              Team Setup
+            </h1>
+            <PageHelp {...COACH_PAGE_HELP["/coach/team-setup"]} />
+          </div>
           <p className="mt-2 text-sm text-muted">
             Manage your squad — names, positions, and voice recognition settings. This data persists across all matches.
           </p>
@@ -449,6 +455,9 @@ export default function TeamSetupPage() {
             </div>
           </div>
         )}
+
+        {/* KPI Targets */}
+        <KpiTargetsSection profile={profile} persist={persist} />
 
       </div>
     </main>

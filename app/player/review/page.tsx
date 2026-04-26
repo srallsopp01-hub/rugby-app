@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { usePlayer } from "../PlayerContext";
+import { PageHelp } from "@/components/PageHelp";
+import { PLAYER_PAGE_HELP } from "../help-content";
 import { PlayerPicker } from "../PlayerPicker";
 import { SAVED_MATCHES_KEY } from "@/app/rugby-tagging/lib/savedMatches";
 import { formatTime } from "@/app/rugby-tagging/helpers";
@@ -93,7 +95,10 @@ export default function ReviewPage() {
     <div className="p-8 max-w-3xl space-y-10">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-foreground-strong">Review</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-semibold text-foreground-strong">Review</h1>
+          <PageHelp {...PLAYER_PAGE_HELP["/player/review"]} />
+        </div>
         <p className="mt-1 text-sm text-muted">
           {totalClips > 0
             ? `${totalClips} ${totalClips === 1 ? "clip" : "clips"} from film review`

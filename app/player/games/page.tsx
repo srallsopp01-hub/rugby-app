@@ -3,6 +3,8 @@
 import { useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePlayer } from "../PlayerContext";
+import { PageHelp } from "@/components/PageHelp";
+import { PLAYER_PAGE_HELP } from "../help-content";
 import { PlayerPicker } from "../PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
 import { SAVED_MATCHES_KEY } from "@/app/rugby-tagging/lib/savedMatches";
@@ -56,7 +58,10 @@ export default function GamesPage() {
     <div className="p-8 max-w-2xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground-strong">Your Games</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold text-foreground-strong">Your Games</h1>
+            <PageHelp {...PLAYER_PAGE_HELP["/player/games"]} />
+          </div>
           <p className="mt-1 text-sm text-muted">Every match you&apos;ve been tagged in</p>
         </div>
         {entries.length > 0 && (
