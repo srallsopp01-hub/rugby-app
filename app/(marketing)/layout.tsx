@@ -1,5 +1,6 @@
 import Link from "next/link";
 import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
+import LoginDropdown from "./LoginDropdown";
 
 export default function MarketingLayout({
   children,
@@ -58,12 +59,7 @@ export default function MarketingLayout({
             >
               Blog
             </Link>
-            <Link
-              href="/coach"
-              className="rounded-md border border-border bg-panel-2 px-4 py-2 text-xs font-black uppercase text-foreground-strong transition hover:border-border-light hover:bg-panel-3"
-            >
-              Coach Login
-            </Link>
+            <LoginDropdown />
             <ThemeSchemeToggle compact />
           </nav>
         </div>
