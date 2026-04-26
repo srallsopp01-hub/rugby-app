@@ -28,6 +28,26 @@ const navItems = [
     ),
   },
   {
+    label: "Team Analytics",
+    href: "/player/team-analytics",
+    exact: false,
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M2 12.5h12M4 10V6M8 10V3.5M12 10V5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+  {
+    label: "Compare",
+    href: "/player/compare",
+    exact: false,
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M5 3H2.5A.5.5 0 002 3.5v9a.5.5 0 00.5.5H5M11 3h2.5a.5.5 0 01.5.5v9a.5.5 0 01-.5.5H11M8 2v12M5 6l-2 2 2 2M11 6l2 2-2 2" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+  },
+  {
     label: "Games",
     href: "/player/games",
     exact: false,

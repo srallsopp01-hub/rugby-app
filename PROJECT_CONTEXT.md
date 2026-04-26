@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — Pricing page and organisation contact placeholder built
+**Last updated:** April 2026 — Player login stability, player Compare, and player Team Analytics added
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -77,6 +77,8 @@ The app is split into four clearly separated layers with independent layouts and
 |---|---|---|
 | `/player` | Stub (in dev) | Player home — recent grades, coach feedback |
 | `/player/performance` | Live | Season averages, grade profile cards, season bests, trend charts vs team avg |
+| `/player/team-analytics` | Live | Read-only team analytics for players — latest match summary, team stats, player output table, trends |
+| `/player/compare` | Live | Read-only match and player comparison inside the player app |
 | `/player/games` | Live | Match history |
 | `/player/games/[gameId]` | Live | Game detail: stats, grade cards, video playlist of player events, set piece, coach notes |
 | `/player/review` | Live | Coach notes from film review — timestamped observations grouped by match |
@@ -138,6 +140,8 @@ app/
     PlayerPicker.tsx                  ← Full-screen squad picker shown when no player identity set
     page.tsx                          ← Player Home (latest match, season averages, coach comment, focus area)
     performance/page.tsx              ← Season trends, recharts charts, grade progression table
+    team-analytics/page.tsx           ← Read-only team analytics shared into the player app
+    compare/page.tsx                  ← Read-only match/player comparison for players
     games/page.tsx                    ← All matches player appeared in, sorted newest first
     games/[gameId]/page.tsx           ← Game detail: stats, event timeline, coach notes
     review/page.tsx                   ← Playlist of all tagged moments grouped by match

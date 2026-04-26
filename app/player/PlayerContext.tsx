@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useSyncExternalStore } from "react";
+import { createContext, useContext, useMemo, useSyncExternalStore } from "react";
 import { getSquadProfile } from "@/app/rugby-tagging/lib/squadProfile";
 import { PLAYER_IDENTITY_KEY } from "@/app/rugby-tagging/constants";
 import type { SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
@@ -21,18 +21,25 @@ function subscribePlayerIdentity(cb: () => void) {
   return () => window.removeEventListener(PLAYER_IDENTITY_EVENT, cb);
 }
 
-function getPlayerFromStorage(): SquadPlayer | null {
-  const storedId = localStorage.getItem(PLAYER_IDENTITY_KEY);
+function getPlayerIdSnapshot(): string {
+  return localStorage.getItem(PLAYER_IDENTITY_KEY) || "";
+}
+
+function getPlayerFromStorage(storedId: string): SquadPlayer | null {
   if (!storedId) return null;
   const profile = getSquadProfile();
   return profile?.players.find((p) => p.id === storedId) ?? null;
 }
 
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
-  const currentPlayer = useSyncExternalStore(
+  const currentPlayerId = useSyncExternalStore(
     subscribePlayerIdentity,
-    getPlayerFromStorage,
-    () => null
+    getPlayerIdSnapshot,
+    () => ""
+  );
+  const currentPlayer = useMemo(
+    () => getPlayerFromStorage(currentPlayerId),
+    [currentPlayerId]
   );
   const ready = useSyncExternalStore(() => () => {}, () => true, () => false);
 
