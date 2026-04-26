@@ -557,6 +557,7 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 - ✅ `VideoAnnotation` added and `ClipAnnotation.annotations?` introduced as optional/backwards-compatible clip data for arrows, circles, and highlights tied to clips
 - ✅ Coach Review layout now feels like a team meeting tool: video and controls on the left, persistent clip playlist on the right, timeline/snapshot retained below the playlist
 - ✅ Coaching notes display improved with a structured, rule-based insight panel that groups tackles, missed tackles, carries, turnovers, set piece, and team events before raw transcript noise
+- ✅ Verification: focused lint passed for touched files with only existing Capture warnings; `npm run build` passed; `/coach/review` returned 200 locally
 
 ---
 
