@@ -133,10 +133,10 @@ export const COACH_PAGE_HELP: Record<string, PageHelpProps> = {
     steps: [
       { title: "Set the team name", body: "Edit the team name here when the squad name changes. It updates the same squad profile used across coach and player screens." },
       { title: "Invite players", body: "Choose Player, then link the invite to an active squad player so the player app opens with the right identity." },
-      { title: "Invite coaches", body: "Choose Coach and add a label such as Head, Forwards, Backs, or 2nd team so access is clear in the member list." },
+      { title: "Invite coaches", body: "Choose Coach and add a label such as Head, Forwards, Backs, or 2nd team. Tick head coach permissions only for coaches who should edit shared team data." },
     ],
     tips: [
-      "Coach labels are display labels only; invited coaches do not become the head coach/data owner.",
+      "Coach labels are display labels by default. Head coach permissions are a separate access switch.",
       "Revoking a member removes them from this workspace without deleting squad or match data.",
     ],
   },

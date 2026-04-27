@@ -7,6 +7,12 @@ type Params = {
   searchParams: Promise<{ token?: string }>;
 };
 
+function formatCoachRoleLabel(label: string | null | undefined, canManageTeam: boolean) {
+  if (!canManageTeam) return `${label ? `${label} ` : ""}coach`;
+  if (!label || label.toLowerCase() === "head") return "head coach";
+  return `${label} head coach`;
+}
+
 export default async function InviteAcceptPage({ searchParams }: Params) {
   const { token } = await searchParams;
 
@@ -40,7 +46,7 @@ export default async function InviteAcceptPage({ searchParams }: Params) {
   // Get the team_member row to show role + coach info
   const { data: member } = await supabase
     .from("team_members")
-    .select("role, email, owner_user_id, coach_label")
+    .select("role, email, owner_user_id, coach_label, can_manage_team")
     .eq("id", tokenRow.team_member_id)
     .single();
 
@@ -90,7 +96,7 @@ export default async function InviteAcceptPage({ searchParams }: Params) {
 
   const roleLabel =
     member?.role === "assistant_coach"
-      ? `${member.coach_label ? `${member.coach_label} ` : ""}coach`
+      ? formatCoachRoleLabel(member.coach_label, Boolean(member.can_manage_team))
       : "player";
   const inviteEmail = member?.email ?? "";
 

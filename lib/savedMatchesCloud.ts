@@ -74,8 +74,7 @@ export async function upsertCloudSavedMatch(
 ): Promise<void> {
   try {
     const ctx = await getMyTeamContext();
-    // Only the data owner (coach) writes match records
-    if (!ctx || ctx.role !== "coach") return;
+    if (!ctx?.canManageTeam) return;
 
     const supabase = createClient();
     await supabase
@@ -91,7 +90,7 @@ export async function upsertCloudSavedMatch(
 export async function deleteCloudSavedMatch(matchId: string): Promise<void> {
   try {
     const ctx = await getMyTeamContext();
-    if (!ctx || ctx.role !== "coach") return;
+    if (!ctx?.canManageTeam) return;
 
     const supabase = createClient();
     await supabase

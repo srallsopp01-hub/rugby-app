@@ -16,6 +16,16 @@ type InviteRole = "coach" | "player";
 
 const COACH_LABEL_OPTIONS = ["Head", "Forwards", "Backs", "2nd team"];
 
+function formatCoachMemberLabel(member: TeamMember) {
+  if (!member.canManageTeam) {
+    return `${member.coachLabel ? `${member.coachLabel} ` : ""}Coach`;
+  }
+  if (!member.coachLabel || member.coachLabel.toLowerCase() === "head") {
+    return "Head Coach";
+  }
+  return `${member.coachLabel} Head Coach`;
+}
+
 export default function TeamPage() {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +37,7 @@ export default function TeamPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<InviteRole>("player");
   const [coachLabel, setCoachLabel] = useState("Forwards");
+  const [canManageTeam, setCanManageTeam] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
   const [inviting, setInviting] = useState(false);
   const [squadPlayers, setSquadPlayers] = useState<SquadPlayer[]>([]);
@@ -62,6 +73,7 @@ export default function TeamPage() {
           email: inviteEmail.trim(),
           role: inviteRole === "coach" ? "assistant_coach" : "player",
           coachLabel: inviteRole === "coach" ? coachLabel.trim() : undefined,
+          canManageTeam: inviteRole === "coach" ? canManageTeam : false,
           playerSquadId: inviteRole === "player" ? selectedPlayerId : undefined,
         }),
       });
@@ -77,6 +89,7 @@ export default function TeamPage() {
       setInviteEmail("");
       setSelectedPlayerId("");
       setCoachLabel("Forwards");
+      setCanManageTeam(false);
 
       const updated = await fetchTeamMembers();
       setMembers(updated);
@@ -239,6 +252,22 @@ export default function TeamPage() {
                     placeholder="Head, Forwards, Backs, 2nd team..."
                     className="rounded-lg border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground-strong outline-none transition focus:border-border-light"
                   />
+                  <label className="mt-1 flex items-start gap-3 rounded-xl border border-border bg-panel-2 px-3 py-3 text-sm text-muted">
+                    <input
+                      type="checkbox"
+                      checked={canManageTeam}
+                      onChange={(event) => setCanManageTeam(event.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded accent-foreground"
+                    />
+                    <span>
+                      <span className="block font-semibold text-foreground-strong">
+                        Give head coach permissions
+                      </span>
+                      <span className="mt-0.5 block text-xs leading-5 text-muted">
+                        Allows this coach to sync and edit squad profiles, saved matches, and cloud videos for this team.
+                      </span>
+                    </span>
+                  </label>
                 </div>
               )}
 
@@ -371,10 +400,13 @@ function MemberRow({
             {member.status}
           </span>
           <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted">
-            {member.role === "assistant_coach"
-              ? `${member.coachLabel ? `${member.coachLabel} ` : ""}Coach`
-              : "Player"}
+            {member.role === "assistant_coach" ? formatCoachMemberLabel(member) : "Player"}
           </span>
+          {member.canManageTeam && (
+            <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success">
+              Head permissions
+            </span>
+          )}
         </div>
         {linkedPlayer && (
           <p className="mt-1 text-xs text-muted">

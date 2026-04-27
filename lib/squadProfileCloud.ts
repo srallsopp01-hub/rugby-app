@@ -86,8 +86,7 @@ export async function upsertCloudSquadProfile(
 ): Promise<void> {
   try {
     const ctx = await getMyTeamContext();
-    // Only the data owner (coach) writes squad profile records
-    if (!ctx || ctx.role !== "coach") return;
+    if (!ctx?.canManageTeam) return;
 
     const supabase = createClient();
     const { error } = await supabase

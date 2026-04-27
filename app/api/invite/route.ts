@@ -4,6 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
+function formatCoachRoleLabel(label: string | null, canManageTeam: boolean) {
+  if (!canManageTeam) return `${label ? `${label} ` : ""}coach`;
+  if (!label || label.toLowerCase() === "head") return "head coach";
+  return `${label} head coach`;
+}
+
 export async function POST(req: Request) {
   const supabase = await createClient();
   const {
@@ -14,7 +20,39 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { email?: string; role?: string; playerSquadId?: string; coachLabel?: string };
+  const { data: membership, error: membershipError } = await supabase
+    .from("team_members")
+    .select("owner_user_id, can_manage_team")
+    .eq("member_user_id", user.id)
+    .eq("status", "accepted")
+    .maybeSingle();
+
+  let resolvedMembership = membership;
+  if (membershipError) {
+    const { data: fallbackMembership } = await supabase
+      .from("team_members")
+      .select("owner_user_id")
+      .eq("member_user_id", user.id)
+      .eq("status", "accepted")
+      .maybeSingle();
+    resolvedMembership = fallbackMembership
+      ? { ...fallbackMembership, can_manage_team: false }
+      : null;
+  }
+
+  if (resolvedMembership && !resolvedMembership.can_manage_team) {
+    return NextResponse.json({ error: "Only head coaches can send invites" }, { status: 403 });
+  }
+
+  const ownerUserId = resolvedMembership?.owner_user_id ?? user.id;
+
+  let body: {
+    email?: string;
+    role?: string;
+    playerSquadId?: string;
+    coachLabel?: string;
+    canManageTeam?: boolean;
+  };
   try {
     body = await req.json();
   } catch {
@@ -24,6 +62,7 @@ export async function POST(req: Request) {
   const { email, playerSquadId } = body;
   const role = body.role === "coach" ? "assistant_coach" : body.role;
   const coachLabel = body.coachLabel?.trim() || null;
+  const canManageTeam = role === "assistant_coach" && Boolean(body.canManageTeam);
 
   if (!email || !role) {
     return NextResponse.json({ error: "email and role are required" }, { status: 400 });
@@ -42,10 +81,11 @@ export async function POST(req: Request) {
     .from("team_members")
     .upsert(
       {
-        owner_user_id: user.id,
+        owner_user_id: ownerUserId,
         email: email.toLowerCase().trim(),
         role,
         coach_label: role === "assistant_coach" ? coachLabel : null,
+        can_manage_team: canManageTeam,
         player_squad_id: playerSquadId ?? null,
         status: "pending",
         invited_at: new Date().toISOString(),
@@ -80,7 +120,7 @@ export async function POST(req: Request) {
   const coachName = user.user_metadata?.coach_name as string | undefined;
   const roleLabel =
     role === "assistant_coach"
-      ? `${coachLabel ? `${coachLabel} ` : ""}coach`
+      ? formatCoachRoleLabel(coachLabel, canManageTeam)
       : "player";
 
   if (resend) {

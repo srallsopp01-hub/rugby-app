@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { getMyTeamContext } from "@/lib/teamContext";
 
 const BUCKET = "match-videos";
 
@@ -51,16 +52,14 @@ export async function uploadMatchVideo(
   const token = sessionData.session?.access_token;
   if (!token) return null;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  const ctx = await getMyTeamContext();
+  if (!ctx?.canManageTeam) return null;
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!supabaseUrl) return null;
 
   const filename = sanitizeFilename(file.name);
-  const storagePath = `${user.id}/${matchId}/${filename}`;
+  const storagePath = `${ctx.ownerUserId}/${matchId}/${filename}`;
   const url = `${supabaseUrl}/storage/v1/object/${BUCKET}/${storagePath}`;
 
   const ok = await xhrUpload(url, token, file, onProgress);
