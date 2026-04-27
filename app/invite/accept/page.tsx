@@ -40,7 +40,7 @@ export default async function InviteAcceptPage({ searchParams }: Params) {
   // Get the team_member row to show role + coach info
   const { data: member } = await supabase
     .from("team_members")
-    .select("role, email, owner_user_id")
+    .select("role, email, owner_user_id, coach_label")
     .eq("id", tokenRow.team_member_id)
     .single();
 
@@ -88,7 +88,10 @@ export default async function InviteAcceptPage({ searchParams }: Params) {
     redirect("/coach");
   }
 
-  const roleLabel = member?.role === "assistant_coach" ? "assistant coach" : "player";
+  const roleLabel =
+    member?.role === "assistant_coach"
+      ? `${member.coach_label ? `${member.coach_label} ` : ""}coach`
+      : "player";
   const inviteEmail = member?.email ?? "";
 
   return (
@@ -102,7 +105,7 @@ export default async function InviteAcceptPage({ searchParams }: Params) {
           <p className="mt-2 text-sm text-muted">
             You&apos;ve been invited to join a RugbyCoach team as{" "}
             <span className="font-medium text-foreground">
-              {roleLabel === "player" ? "a player" : "an assistant coach"}
+              {roleLabel === "player" ? "a player" : roleLabel}
             </span>
             .
           </p>

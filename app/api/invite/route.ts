@@ -14,14 +14,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { email?: string; role?: string; playerSquadId?: string };
+  let body: { email?: string; role?: string; playerSquadId?: string; coachLabel?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { email, role, playerSquadId } = body;
+  const { email, playerSquadId } = body;
+  const role = body.role === "coach" ? "assistant_coach" : body.role;
+  const coachLabel = body.coachLabel?.trim() || null;
 
   if (!email || !role) {
     return NextResponse.json({ error: "email and role are required" }, { status: 400 });
@@ -43,6 +45,7 @@ export async function POST(req: Request) {
         owner_user_id: user.id,
         email: email.toLowerCase().trim(),
         role,
+        coach_label: role === "assistant_coach" ? coachLabel : null,
         player_squad_id: playerSquadId ?? null,
         status: "pending",
         invited_at: new Date().toISOString(),
@@ -75,7 +78,10 @@ export async function POST(req: Request) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const inviteUrl = `${appUrl}/invite/accept?token=${token}`;
   const coachName = user.user_metadata?.coach_name as string | undefined;
-  const roleLabel = role === "assistant_coach" ? "assistant coach" : "player";
+  const roleLabel =
+    role === "assistant_coach"
+      ? `${coachLabel ? `${coachLabel} ` : ""}coach`
+      : "player";
 
   if (resend) {
     await resend.emails.send({

@@ -4,26 +4,40 @@ import { useEffect, useState } from "react";
 import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "../help-content";
 import { fetchTeamMembers, revokeTeamMember, type TeamMember } from "@/lib/teamMembersCloud";
-import { getSquadProfile } from "@/app/rugby-tagging/lib/squadProfile";
-import type { SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
+import {
+  createDefaultSquadProfile,
+  getSquadProfile,
+  saveSquadProfile,
+  type SquadPlayer,
+  type SquadProfile,
+} from "@/app/rugby-tagging/lib/squadProfile";
 
-type InviteRole = "assistant_coach" | "player";
+type InviteRole = "coach" | "player";
+
+const COACH_LABEL_OPTIONS = ["Head", "Forwards", "Backs", "2nd team"];
 
 export default function TeamPage() {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState("Manage your team access");
+  const [profile, setProfile] = useState<SquadProfile | null>(null);
+  const [teamNameDraft, setTeamNameDraft] = useState("");
+  const [savingTeamName, setSavingTeamName] = useState(false);
 
-  // Invite form state
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<InviteRole>("player");
+  const [coachLabel, setCoachLabel] = useState("Forwards");
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
   const [inviting, setInviting] = useState(false);
   const [squadPlayers, setSquadPlayers] = useState<SquadPlayer[]>([]);
 
   useEffect(() => {
-    const profile = getSquadProfile();
-    if (profile) setSquadPlayers(profile.players.filter((p) => p.status === "active"));
+    const loadedProfile = getSquadProfile();
+    if (loadedProfile) {
+      setProfile(loadedProfile);
+      setTeamNameDraft(loadedProfile.teamName);
+      setSquadPlayers(loadedProfile.players.filter((p) => p.status === "active"));
+    }
 
     void fetchTeamMembers().then((data) => {
       setMembers(data);
@@ -46,7 +60,8 @@ export default function TeamPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: inviteEmail.trim(),
-          role: inviteRole,
+          role: inviteRole === "coach" ? "assistant_coach" : "player",
+          coachLabel: inviteRole === "coach" ? coachLabel.trim() : undefined,
           playerSquadId: inviteRole === "player" ? selectedPlayerId : undefined,
         }),
       });
@@ -61,8 +76,8 @@ export default function TeamPage() {
       setStatusMessage(`Invite sent to ${inviteEmail.trim()}`);
       setInviteEmail("");
       setSelectedPlayerId("");
+      setCoachLabel("Forwards");
 
-      // Refresh member list
       const updated = await fetchTeamMembers();
       setMembers(updated);
     } catch {
@@ -70,6 +85,28 @@ export default function TeamPage() {
     } finally {
       setInviting(false);
     }
+  }
+
+  function handleSaveTeamName() {
+    const nextName = teamNameDraft.trim();
+    if (!nextName) {
+      setStatusMessage("Enter a team name first");
+      return;
+    }
+
+    setSavingTeamName(true);
+    const currentProfile = profile ?? createDefaultSquadProfile();
+    const updatedProfile = {
+      ...currentProfile,
+      teamName: nextName,
+      updatedAt: new Date().toISOString(),
+    };
+
+    saveSquadProfile(updatedProfile);
+    setProfile(updatedProfile);
+    setTeamNameDraft(updatedProfile.teamName);
+    setStatusMessage("Team name updated");
+    setSavingTeamName(false);
   }
 
   async function handleRevoke(memberId: string) {
@@ -84,7 +121,6 @@ export default function TeamPage() {
   return (
     <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1500px] space-y-5">
-
         <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div className="max-w-3xl">
@@ -97,7 +133,7 @@ export default function TeamPage() {
                 )}
               </div>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Invite players and assistant coaches to access this team&apos;s RugbyCoach workspace.
+                Invite players and coaches to access this team&apos;s RugbyCoach workspace.
               </p>
             </div>
             <div className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
@@ -106,7 +142,37 @@ export default function TeamPage() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_1fr]">
+        <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+          <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+            <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">
+              Team
+            </div>
+            <h2 className="mt-2 text-lg font-semibold text-foreground-strong">
+              Team name
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-muted">
+              This name appears across coach and player screens.
+            </p>
+
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <input
+                type="text"
+                value={teamNameDraft}
+                onChange={(event) => setTeamNameDraft(event.target.value)}
+                placeholder="Enter team name"
+                className="min-w-0 flex-1 rounded-lg border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground-strong outline-none transition focus:border-border-light"
+              />
+              <button
+                type="button"
+                onClick={handleSaveTeamName}
+                disabled={savingTeamName}
+                className="rounded-xl border border-border bg-foreground-strong px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {savingTeamName ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+
           <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
             <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">
               Invite
@@ -144,12 +210,37 @@ export default function TeamPage() {
                     onClick={() => setInviteRole("player")}
                   />
                   <RolePill
-                    label="Assistant coach"
-                    active={inviteRole === "assistant_coach"}
-                    onClick={() => setInviteRole("assistant_coach")}
+                    label="Coach"
+                    active={inviteRole === "coach"}
+                    onClick={() => setInviteRole("coach")}
                   />
                 </div>
               </div>
+
+              {inviteRole === "coach" && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-mono text-[11px] font-bold uppercase text-muted-2">
+                    Coach label
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {COACH_LABEL_OPTIONS.map((label) => (
+                      <RolePill
+                        key={label}
+                        label={label}
+                        active={coachLabel === label}
+                        onClick={() => setCoachLabel(label)}
+                      />
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    value={coachLabel}
+                    onChange={(event) => setCoachLabel(event.target.value)}
+                    placeholder="Head, Forwards, Backs, 2nd team..."
+                    className="rounded-lg border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground-strong outline-none transition focus:border-border-light"
+                  />
+                </div>
+              )}
 
               {inviteRole === "player" && (
                 <div className="flex flex-col gap-1.5">
@@ -166,11 +257,11 @@ export default function TeamPage() {
                       onChange={(e) => setSelectedPlayerId(e.target.value)}
                       className="rounded-lg border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground-strong outline-none transition focus:border-border-light"
                     >
-                      <option value="">Select player…</option>
+                      <option value="">Select player...</option>
                       {squadPlayers.map((p) => (
                         <option key={p.id} value={p.id}>
-                          {p.fullName}{p.primaryPosition ? ` — ${p.primaryPosition}` : ""}
-                          {p.linkedUserId ? " ✓" : ""}
+                          {p.fullName}{p.primaryPosition ? ` - ${p.primaryPosition}` : ""}
+                          {p.linkedUserId ? " joined" : ""}
                         </option>
                       ))}
                     </select>
@@ -183,43 +274,42 @@ export default function TeamPage() {
                 disabled={inviting}
                 className="w-full rounded-xl border border-border bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {inviting ? "Sending…" : "Send invite"}
+                {inviting ? "Sending..." : "Send invite"}
               </button>
             </form>
           </div>
-
-          <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-            <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">
-              Members
-            </div>
-            <h2 className="mt-2 text-lg font-semibold text-foreground-strong">
-              Team access
-            </h2>
-            <p className="mt-1 text-sm leading-6 text-muted">
-              Active and pending invites for this workspace.
-            </p>
-
-            <div className="mt-5 space-y-3">
-              {loading && (
-                <p className="text-sm text-muted">Loading…</p>
-              )}
-              {!loading && members.length === 0 && (
-                <p className="rounded-xl border border-border bg-panel-2 px-4 py-4 text-sm text-muted">
-                  No team members yet. Send your first invite.
-                </p>
-              )}
-              {members.map((member) => (
-                <MemberRow
-                  key={member.id}
-                  member={member}
-                  squadPlayers={squadPlayers}
-                  onRevoke={() => void handleRevoke(member.id)}
-                />
-              ))}
-            </div>
-          </div>
         </section>
 
+        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+          <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">
+            Members
+          </div>
+          <h2 className="mt-2 text-lg font-semibold text-foreground-strong">
+            Team access
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Active and pending invites for this workspace.
+          </p>
+
+          <div className="mt-5 space-y-3">
+            {loading && (
+              <p className="text-sm text-muted">Loading...</p>
+            )}
+            {!loading && members.length === 0 && (
+              <p className="rounded-xl border border-border bg-panel-2 px-4 py-4 text-sm text-muted">
+                No team members yet. Send your first invite.
+              </p>
+            )}
+            {members.map((member) => (
+              <MemberRow
+                key={member.id}
+                member={member}
+                squadPlayers={squadPlayers}
+                onRevoke={() => void handleRevoke(member.id)}
+              />
+            ))}
+          </div>
+        </section>
       </div>
     </main>
   );
@@ -281,13 +371,15 @@ function MemberRow({
             {member.status}
           </span>
           <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted">
-            {member.role === "assistant_coach" ? "Asst. coach" : "Player"}
+            {member.role === "assistant_coach"
+              ? `${member.coachLabel ? `${member.coachLabel} ` : ""}Coach`
+              : "Player"}
           </span>
         </div>
         {linkedPlayer && (
           <p className="mt-1 text-xs text-muted">
             Linked to {linkedPlayer.fullName}
-            {linkedPlayer.linkedUserId ? " · joined" : " · invite pending"}
+            {linkedPlayer.linkedUserId ? " - joined" : " - invite pending"}
           </p>
         )}
       </div>

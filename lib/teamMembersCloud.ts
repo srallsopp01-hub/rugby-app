@@ -6,6 +6,7 @@ export type TeamMember = {
   memberUserId: string | null;
   email: string;
   role: "assistant_coach" | "player";
+  coachLabel: string | null;
   playerSquadId: string | null;
   status: "pending" | "accepted" | "revoked";
   invitedAt: string;
@@ -18,6 +19,7 @@ type TeamMemberRow = {
   member_user_id: string | null;
   email: string;
   role: "assistant_coach" | "player";
+  coach_label: string | null;
   player_squad_id: string | null;
   status: "pending" | "accepted" | "revoked";
   invited_at: string;
@@ -31,6 +33,7 @@ function rowToMember(row: TeamMemberRow): TeamMember {
     memberUserId: row.member_user_id,
     email: row.email,
     role: row.role,
+    coachLabel: row.coach_label,
     playerSquadId: row.player_squad_id,
     status: row.status,
     invitedAt: row.invited_at,
