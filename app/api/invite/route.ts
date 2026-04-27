@@ -10,6 +10,18 @@ function formatCoachRoleLabel(label: string | null, canManageTeam: boolean) {
   return `${label} head coach`;
 }
 
+function isMissingInviteColumnError(error: { code?: string; message?: string } | null) {
+  if (!error) return false;
+  const message = error.message?.toLowerCase() ?? "";
+  return (
+    error.code === "PGRST204" ||
+    error.code === "42703" ||
+    message.includes("coach_label") ||
+    message.includes("can_manage_team") ||
+    message.includes("schema cache")
+  );
+}
+
 export async function POST(req: Request) {
   const supabase = await createClient();
   const {
@@ -76,27 +88,41 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "playerSquadId required for player invites" }, { status: 400 });
   }
 
-  // Upsert team_members row
-  const { data: member, error: memberError } = await supabase
+  const baseInvitePayload = {
+    owner_user_id: ownerUserId,
+    email: email.toLowerCase().trim(),
+    role,
+    player_squad_id: playerSquadId ?? null,
+    status: "pending",
+    invited_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  const fullInvitePayload = {
+    ...baseInvitePayload,
+    coach_label: role === "assistant_coach" ? coachLabel : null,
+    can_manage_team: canManageTeam,
+  };
+
+  let usedLegacyInvitePayload = false;
+  let memberResult = await supabase
     .from("team_members")
-    .upsert(
-      {
-        owner_user_id: ownerUserId,
-        email: email.toLowerCase().trim(),
-        role,
-        coach_label: role === "assistant_coach" ? coachLabel : null,
-        can_manage_team: canManageTeam,
-        player_squad_id: playerSquadId ?? null,
-        status: "pending",
-        invited_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "owner_user_id,email" }
-    )
+    .upsert(fullInvitePayload, { onConflict: "owner_user_id,email" })
     .select("id")
     .single();
 
+  if (isMissingInviteColumnError(memberResult.error)) {
+    console.warn("Invite creation falling back to legacy team_members payload", memberResult.error);
+    usedLegacyInvitePayload = true;
+    memberResult = await supabase
+      .from("team_members")
+      .upsert(baseInvitePayload, { onConflict: "owner_user_id,email" })
+      .select("id")
+      .single();
+  }
+
+  const { data: member, error: memberError } = memberResult;
   if (memberError || !member) {
+    console.error("Failed to create invite", memberError);
     return NextResponse.json({ error: "Failed to create invite" }, { status: 500 });
   }
 
@@ -142,5 +168,10 @@ export async function POST(req: Request) {
     });
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({
+    success: true,
+    warning: usedLegacyInvitePayload
+      ? "Invite sent, but coach labels/head permissions need the latest Supabase migration."
+      : undefined,
+  });
 }

@@ -85,7 +85,8 @@ export default function TeamPage() {
         return;
       }
 
-      setStatusMessage(`Invite sent to ${inviteEmail.trim()}`);
+      const data = (await res.json().catch(() => ({}))) as { warning?: string };
+      setStatusMessage(data.warning ?? `Invite sent to ${inviteEmail.trim()}`);
       setInviteEmail("");
       setSelectedPlayerId("");
       setCoachLabel("Forwards");

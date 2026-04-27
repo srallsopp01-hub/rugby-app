@@ -710,6 +710,7 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 - ✅ Team invite migration added for `team_members` and `invite_tokens` with RLS for coach ownership and accepted-member read access to squad profiles, saved matches, and coach videos
 - ✅ Invite flow added: `/api/invite`, `/api/invite/redeem`, `/invite/accept`, token-aware `/login` and `/signup`, and auth callback redemption after email confirmation
 - ✅ `/coach/team` added with player/coach invite form, optional coach labels (Head / Forwards / Backs / 2nd team / custom), optional head-coach permissions for invited coaches, squad-player linking, member list, revoke action, editable team name, and Coach sidebar link
+- ✅ Invite creation falls back to the legacy `team_members` payload if production Supabase is missing `coach_label` / `can_manage_team`; invite still sends, but labels/head permissions require migrations `20260427000003` and `20260427000004`
 - ✅ Player auth identity now syncs through `SyncPlayerData`: accepted player members auto-set `rugby-player-selected-id`, fetch the coach's squad profile and saved matches, and skip manual player picking
 - ✅ Cloud write guards added so only head coach/data-owner accounts upsert or delete saved matches and squad profiles; player and assistant accounts read shared data only
 - ✅ Server-only `SUPABASE_SERVICE_ROLE_KEY` support added for safely writing `SquadPlayer.linkedUserId` back to the coach-owned squad profile after invite acceptance
