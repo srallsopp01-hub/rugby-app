@@ -18,11 +18,16 @@ import {
   CURRENT_MATCH_ID_KEY,
   SAVED_MATCHES_KEY,
 } from "@/app/rugby-tagging/lib/savedMatches";
+import { syncAllLocalMatchesToCloud } from "@/lib/savedMatchesCloud";
+import { syncLocalSquadProfileToCloud } from "@/lib/squadProfileCloud";
 
 const THEME_SCHEME_KEY = "rugbycoach-theme-scheme";
 const COACH_SIDEBAR_KEY = "coach-sidebar-collapsed";
 const PLAYER_SIDEBAR_KEY = "player-sidebar-collapsed";
 const HELP_DISMISSED_KEY = "rugby-tagging-help-dismissed";
+const CLOUD_SYNC_LAST_AT_KEY = "rugby-cloud-sync-last-at";
+
+type SyncStatus = "idle" | "syncing" | "synced" | "error";
 
 const KNOWN_LOCAL_STORAGE_KEYS = [
   STORAGE_KEY,
@@ -36,6 +41,7 @@ const KNOWN_LOCAL_STORAGE_KEYS = [
   COACH_SIDEBAR_KEY,
   PLAYER_SIDEBAR_KEY,
   HELP_DISMISSED_KEY,
+  CLOUD_SYNC_LAST_AT_KEY,
 ];
 
 type StorageSnapshot = Record<string, string | null>;
@@ -97,6 +103,30 @@ function buildDownloadFilename() {
 
 export default function CoachSettingsPage() {
   const router = useRouter();
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
+  const [syncedCount, setSyncedCount] = useState<number | null>(null);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(() =>
+    typeof window !== "undefined" ? localStorage.getItem(CLOUD_SYNC_LAST_AT_KEY) : null
+  );
+
+  async function handleSyncNow() {
+    setSyncStatus("syncing");
+    try {
+      const [{ count }] = await Promise.all([
+        syncAllLocalMatchesToCloud(),
+        syncLocalSquadProfileToCloud(),
+      ]);
+      const now = new Date().toISOString();
+      localStorage.setItem(CLOUD_SYNC_LAST_AT_KEY, now);
+      setLastSyncedAt(now);
+      setSyncedCount(count);
+      setSyncStatus("synced");
+      emitStorageChanged();
+    } catch {
+      setSyncStatus("error");
+    }
+  }
+
   const snapshotJson = useSyncExternalStore(
     subscribeToStorage,
     getKnownStorageSnapshotJson,
@@ -349,6 +379,44 @@ export default function CoachSettingsPage() {
           </div>
         </section>
 
+        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">
+                Cloud
+              </div>
+              <h2 className="mt-2 text-lg font-semibold text-foreground-strong">
+                Cloud sync
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-muted">
+                Pushes saved matches and squad profile to your coach account.
+                Runs automatically on login — use this to force a sync now.
+              </p>
+              {lastSyncedAt && (
+                <p className="mt-1 text-xs text-muted">
+                  Last synced:{" "}
+                  {new Date(lastSyncedAt).toLocaleString(undefined, {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}
+                  {syncedCount !== null && ` — ${syncedCount} match${syncedCount === 1 ? "" : "es"}`}
+                </p>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-3">
+              <SyncStatusPill status={syncStatus} />
+              <button
+                type="button"
+                onClick={handleSyncNow}
+                disabled={syncStatus === "syncing"}
+                className="rounded-xl border border-border bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {syncStatus === "syncing" ? "Syncing…" : "Sync Now"}
+              </button>
+            </div>
+          </div>
+        </section>
+
         <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_1fr]">
           <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -513,6 +581,29 @@ function StorageRow({
       </div>
       <div className="text-sm font-semibold text-foreground">{value}</div>
     </div>
+  );
+}
+
+function SyncStatusPill({ status }: { status: SyncStatus }) {
+  if (status === "idle") return null;
+
+  const styles: Record<SyncStatus, string> = {
+    idle: "",
+    syncing: "bg-amber-500/10 text-amber-400 border border-amber-500/30",
+    synced: "bg-success/10 text-success border border-success/30",
+    error: "bg-danger/10 text-danger border border-danger/30",
+  };
+  const labels: Record<SyncStatus, string> = {
+    idle: "",
+    syncing: "Syncing…",
+    synced: "Synced",
+    error: "Sync failed",
+  };
+
+  return (
+    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${styles[status]}`}>
+      {labels[status]}
+    </span>
   );
 }
 

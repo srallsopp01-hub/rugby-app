@@ -1,14 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function SignupPage() {
+  return (
+    <Suspense fallback={<AuthFormFallback title="Create account" />}>
+      <SignupContent />
+    </Suspense>
+  );
+}
+
+function SignupContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get("token");
+  const prefillEmail = searchParams.get("email") ?? "";
+
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(prefillEmail);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -20,10 +32,20 @@ export default function SignupPage() {
     setLoading(true);
 
     const supabase = createClient();
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
+
+    // Build redirect URL — if invite token present, forward it through email confirmation
+    const redirectTo = inviteToken
+      ? `${appUrl}/auth/callback?invite_token=${inviteToken}`
+      : `${appUrl}/auth/callback`;
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { coach_name: name } },
+      options: {
+        data: { coach_name: name },
+        emailRedirectTo: redirectTo,
+      },
     });
 
     if (error) {
@@ -32,9 +54,28 @@ export default function SignupPage() {
       return;
     }
 
-    // If session is present, email confirm is disabled — go straight to onboarding
+    // If session is present, email confirm is disabled — go straight
     if (data.session) {
-      router.push("/coach/onboarding");
+      if (inviteToken) {
+        try {
+          const res = await fetch("/api/invite/redeem", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: inviteToken }),
+          });
+          const result = (await res.json()) as { role?: string };
+          if (result.role === "player") {
+            router.push("/player");
+            router.refresh();
+            return;
+          }
+        } catch {
+          // fall through to /coach on error
+        }
+        router.push("/coach");
+      } else {
+        router.push("/coach/onboarding");
+      }
       router.refresh();
       return;
     }
@@ -166,6 +207,19 @@ export default function SignupPage() {
           Sign in
         </Link>
       </p>
+    </div>
+  );
+}
+
+function AuthFormFallback({ title }: { title: string }) {
+  return (
+    <div className="w-full max-w-sm">
+      <div className="rounded-2xl border border-border bg-panel p-8 shadow-[0_20px_44px_rgba(0,0,0,0.24)]">
+        <h1 className="text-xl font-black uppercase text-foreground-strong">
+          {title}
+        </h1>
+        <p className="mt-2 text-sm text-muted">Loading…</p>
+      </div>
     </div>
   );
 }

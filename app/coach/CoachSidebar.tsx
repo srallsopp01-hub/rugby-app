@@ -96,6 +96,19 @@ const navItems = [
     ),
   },
   {
+    label: "Team",
+    href: "/coach/team",
+    exact: false,
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="6" cy="5" r="2" stroke="currentColor" strokeWidth="1.25"/>
+        <circle cx="11" cy="6" r="1.5" stroke="currentColor" strokeWidth="1.25"/>
+        <path d="M2 13c0-2.2 1.8-4 4-4s4 1.8 4 4" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round"/>
+        <path d="M11 9.5c1.4.3 2.5 1.5 2.5 3" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+  {
     label: "Settings",
     href: "/coach/settings",
     exact: false,

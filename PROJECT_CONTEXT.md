@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — cloud data foundation live (Batch Z Part 2)
+**Last updated:** April 2026 — cloud video, team invites, and player sync live (Batch Z Part 3)
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -25,7 +25,7 @@ It is currently a **coach-first MVP / early private beta**, best used on desktop
 - Next.js 16 (App Router, Turbopack)
 - React + TypeScript
 - Tailwind CSS v4 (custom design tokens via CSS variables in `globals.css`)
-- localStorage-first match persistence with Supabase cloud sync for saved match records
+- localStorage-first match persistence with Supabase cloud sync for saved match records and cloud video storage paths
 - localStorage for browser-local colour scheme preference (`dark` / `bright`)
 - Anthropic API for voice transcription (`/api/transcribe`)
 - ExcelJS for `.xlsx` report generation
@@ -333,9 +333,9 @@ All previous CSV downloads have been removed. One polished report.
 
 **SquadProfile** (lib/squadProfile.ts — cross-match, persistent): `id`, `teamName`, `coachName`, `primaryColour`, `secondaryColour`, `logoUrl`, `players[]`, `actionSamples[]`, `correctionMemory[]`
 
-**SavedMatchRecord** (lib/savedMatches.ts — local-first, cloud synced): `id`, `createdAt`, `updatedAt`, `matchTitle`, `opponent`, `matchDate`, `activeMode`, `rosterRows[]`, `selectedPlayer`, `events[]`, `reviewQueue[]`, `coachNotes[]`, `clips?`, `showRawTranscript`
+**SavedMatchRecord** (lib/savedMatches.ts — local-first, cloud synced): `id`, `createdAt`, `updatedAt`, `matchTitle`, `opponent`, `matchDate`, `activeMode`, `rosterRows[]`, `selectedPlayer`, `events[]`, `reviewQueue[]`, `coachNotes[]`, `clips?`, `showRawTranscript`, `videoStoragePath?`
 
-**SquadPlayer**: `id`, `fullName`, `preferredName`, `nicknames[]`, `primaryPosition`, `secondaryPositions[]`, `jerseyNumber`, `voiceSamples[]`, `status`
+**SquadPlayer**: `id`, `fullName`, `preferredName`, `nicknames[]`, `primaryPosition`, `secondaryPositions[]`, `jerseyNumber`, `voiceSamples[]`, `status`, `email?`, `linkedUserId?`
 
 **CorrectionMemoryEntry**: `rawWhisperText`, `resolvedPlayerName`, `resolvedAction`, `count`
 
@@ -348,10 +348,10 @@ All previous CSV downloads have been removed. One polished report.
 - **Squad Profile (cross-match):** `localStorage` key `SQUAD_PROFILE_KEY` (via lib/squadProfile.ts)
 - **Onboarding completion:** `localStorage` key `ONBOARDING_COMPLETE_KEY`
 - **Current match ID:** `localStorage` (via savedMatches lib)
-- **Saved matches list:** `localStorage` first + Supabase `saved_matches` sync (via savedMatches lib and `lib/savedMatchesCloud.ts`)
-- **Video:** `sessionStorage` blob URL (not persisted across sessions)
-- **Player identity:** `localStorage` key `rugby-player-selected-id` (SquadPlayer.id, via PlayerContext)
-- **Cloud storage:** Supabase auth, `squad_profiles`, and `saved_matches` records. Match video files are not cloud-stored yet.
+- **Saved matches list:** `localStorage` first + Supabase `saved_matches` sync (via savedMatches lib and `lib/savedMatchesCloud.ts`), including optional `video_storage_path`
+- **Video:** current-device `sessionStorage` blob URL for immediate playback; authenticated coaches can upload match files to private Supabase Storage bucket `match-videos`
+- **Player identity:** `localStorage` key `rugby-player-selected-id` (SquadPlayer.id, via PlayerContext). Authenticated player members are auto-linked from `team_members.player_squad_id`.
+- **Cloud storage:** Supabase auth, `squad_profiles`, `saved_matches`, `team_members`, `invite_tokens`, and private `match-videos` storage.
 
 ---
 
@@ -361,8 +361,8 @@ All previous CSV downloads have been removed. One polished report.
 2. **Capture page is tagging only** — do not add analytics or clip review to it
 3. **Insights is analytics only** — do not add clip review or tagging to it
 4. **Review is teaching/review only** — do not add tagging to it
-5. **No player logins yet** — player platform is UI scaffold only; coach-facing analysis only
-6. **Local-first persistence** — saved match records and squad profiles sync to Supabase; match videos still stay on the current device/session
+5. **Player logins are scoped by invite** — authenticated player members load their coach's shared team data and only see their own private grades/coaching plan.
+6. **Local-first persistence with cloud sync** — saved match records and squad profiles remain local-first; coach accounts sync data to Supabase, and match videos can be stored in private Supabase Storage.
 7. **Desktop-first** — not optimised for mobile
 8. **Spacebar = voice recording only** — must never trigger a focused button
 9. **Transcript always sorted by timestamp** — oldest at top, newest at bottom
@@ -698,21 +698,36 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 - ✅ `savedMatches.ts` remains localStorage-first and now fire-and-forget upserts/deletes cloud records without blocking the UI
 - ✅ Saved Matches delete now removes local data immediately and requests cloud deletion in the background
 - ✅ Stale no-account/no-cloud copy updated across coach settings/help, help chat, saved matches, coach home, compare, and marketing/about/blog CTAs
-- ✅ Video remains out of scope: clips/annotations sync as match metadata, video files still need to be loaded locally
+- ✅ Video remained out of scope for Part 2: clips/annotations sync as match metadata; file storage landed in Part 3
+
+---
+
+### Batch Z, Part 3 (April 2026) — Cloud Video, Team Invites, Player Sync
+- ✅ Cloud sync helpers added: `syncAllLocalMatchesToCloud()` and `syncLocalSquadProfileToCloud()` power automatic sync and the Coach Settings "Sync Now" panel
+- ✅ Supabase Storage migration added for private `match-videos` bucket plus `saved_matches.video_storage_path`; `lib/matchVideoCloud.ts` handles upload progress, signed URLs, and deletion helper
+- ✅ Capture video uploads now queue until a match ID exists, then upload to Supabase Storage and save `videoStoragePath` on the saved match record
+- ✅ Coach Review, Player Review, and Player Game Detail can fall back to signed cloud video URLs when no local blob URL exists
+- ✅ Team invite migration added for `team_members` and `invite_tokens` with RLS for coach ownership and accepted-member read access to squad profiles, saved matches, and coach videos
+- ✅ Invite flow added: `/api/invite`, `/api/invite/redeem`, `/invite/accept`, token-aware `/login` and `/signup`, and auth callback redemption after email confirmation
+- ✅ `/coach/team` added with player/assistant-coach invite form, squad-player linking, member list, revoke action, and Coach sidebar link
+- ✅ Player auth identity now syncs through `SyncPlayerData`: accepted player members auto-set `rugby-player-selected-id`, fetch the coach's squad profile and saved matches, and skip manual player picking
+- ✅ Cloud write guards added so only head coach/data-owner accounts upsert or delete saved matches and squad profiles; player and assistant accounts read shared data only
+- ✅ Server-only `SUPABASE_SERVICE_ROLE_KEY` support added for safely writing `SquadPlayer.linkedUserId` back to the coach-owned squad profile after invite acceptance
+- ✅ Verification: `git diff --check`, `npm run lint`, and production `npm run build` passed after wrapping query-param auth pages in Suspense for Next 16
 
 ---
 
 ## Next — Batch Z continuation (plan carefully before starting)
 
-Options: run/verify Supabase SQL in dashboard, add visible cloud sync status/errors, Cloudflare Stream for video, Stripe payments.
+Options: run/verify Supabase SQL in production dashboard, set `SUPABASE_SERVICE_ROLE_KEY` server-side for linked player profile updates, smoke-test invite redemption with real Supabase auth/email settings, harden invite ownership/email matching edge cases, add visible team-member sync errors, evaluate Cloudflare Stream or signed playback strategy for larger video libraries, Stripe payments.
 
 ---
 
 ## Longer-term (don't prioritise yet)
 
-- Cloud match storage and cross-device match history
-- Player logins and authenticated season dashboards
-- Cloud video storage / streaming and video annotation / telestration
+- Production-grade multi-team/member permissions and audit trail
+- Video streaming/transcoding for large match libraries
+- Advanced video annotation / telestration
 - Cross-match player trends backed by cloud data
 - Shared team analysis links
 - Mobile support

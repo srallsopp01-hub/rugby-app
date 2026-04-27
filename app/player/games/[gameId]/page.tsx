@@ -12,6 +12,7 @@ import { buildPlayerCoachingPlan } from "../../playerCoachingPlan";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { EventItem } from "@/app/rugby-tagging/types";
 import type { SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
+import { getMatchVideoSignedUrl } from "@/lib/matchVideoCloud";
 
 const ACTION_LABELS: Record<string, string> = {
   tackle: "Tackle",
@@ -86,6 +87,16 @@ export default function GameDetailPage() {
   useEffect(() => {
     return () => { if (videoUrl) URL.revokeObjectURL(videoUrl); };
   }, [videoUrl]);
+
+  // Auto-load from cloud if match has a stored video path and no local URL yet
+  useEffect(() => {
+    if (videoUrl || !match?.videoStoragePath) return;
+    void getMatchVideoSignedUrl(match.videoStoragePath, 14400).then((url) => {
+      if (url) setVideoUrl(url);
+    });
+  // Run only when the match changes (new game loaded)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [match?.id]);
 
   function handleVideoFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];

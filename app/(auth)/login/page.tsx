@@ -1,13 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<AuthFormFallback title="Sign in" />}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get("token");
+  const prefillEmail = searchParams.get("email") ?? "";
+
+  const [email, setEmail] = useState(prefillEmail);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -24,6 +36,24 @@ export default function LoginPage() {
       setError(error.message);
       setLoading(false);
       return;
+    }
+
+    if (inviteToken) {
+      try {
+        const res = await fetch("/api/invite/redeem", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: inviteToken }),
+        });
+        const data = (await res.json()) as { role?: string };
+        if (data.role === "player") {
+          router.push("/player");
+          router.refresh();
+          return;
+        }
+      } catch {
+        // fall through to /coach on error
+      }
     }
 
     router.push("/coach");
@@ -100,6 +130,19 @@ export default function LoginPage() {
           Sign up
         </Link>
       </p>
+    </div>
+  );
+}
+
+function AuthFormFallback({ title }: { title: string }) {
+  return (
+    <div className="w-full max-w-sm">
+      <div className="rounded-2xl border border-border bg-panel p-8 shadow-[0_20px_44px_rgba(0,0,0,0.24)]">
+        <h1 className="text-xl font-black uppercase text-foreground-strong">
+          {title}
+        </h1>
+        <p className="mt-2 text-sm text-muted">Loading…</p>
+      </div>
     </div>
   );
 }

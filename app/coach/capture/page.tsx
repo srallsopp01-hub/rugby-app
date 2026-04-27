@@ -30,6 +30,7 @@ import {
   setCurrentMatchId as persistCurrentMatchId,
   upsertSavedMatch,
 } from "@/app/rugby-tagging/lib/savedMatches";
+import { uploadMatchVideo } from "@/lib/matchVideoCloud";
 import {
   getSquadProfile,
   resolvePlayerName,
@@ -110,6 +111,7 @@ export default function RugbyVoiceTaggingMVP() {
   const transcriptListRef = useRef<HTMLDivElement | null>(null);
   const pageShellRef = useRef<HTMLDivElement | null>(null);
   const spacebarHeldRef = useRef(false);
+  const pendingVideoFileRef = useRef<File | null>(null);
 
   const [activeMode, setActiveMode] = useState<AppMode>("stat");
 
@@ -177,6 +179,10 @@ export default function RugbyVoiceTaggingMVP() {
   const [coachRawDraft, setCoachRawDraft] = useState("");
   const [showCoachRawInput, setShowCoachRawInput] = useState(false);
 const [showTranscriptImport, setShowTranscriptImport] = useState(false);
+
+  type VideoUploadStatus = "idle" | "uploading" | "uploaded" | "error";
+  const [videoUploadStatus, setVideoUploadStatus] = useState<VideoUploadStatus>("idle");
+  const [videoUploadPercent, setVideoUploadPercent] = useState(0);
 
   const players = rosterRows.map((row) => row.name.trim()).filter(Boolean);
   const playersReady = players.length > 0;
@@ -1321,6 +1327,22 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     setStatusMessage("Review item skipped");
   };
 
+  const triggerVideoUpload = (file: File, matchId: string) => {
+    setVideoUploadStatus("uploading");
+    setVideoUploadPercent(0);
+    void uploadMatchVideo(matchId, file, (p) => setVideoUploadPercent(p.percent))
+      .then((storagePath) => {
+        if (storagePath) {
+          const saved = getSavedMatchById(matchId);
+          if (saved) upsertSavedMatch({ ...saved, videoStoragePath: storagePath });
+          setVideoUploadStatus("uploaded");
+        } else {
+          setVideoUploadStatus("error");
+        }
+      })
+      .catch(() => setVideoUploadStatus("error"));
+  };
+
   const saveCurrentMatchRecord = () => {
     const persistedEvents = events.filter((event) => !event.isPending);
     const matchId = currentMatchId || createMatchId();
@@ -1344,6 +1366,12 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
 
     persistCurrentMatchId(matchId);
     setCurrentMatchId(matchId);
+
+    // Upload pending video file if we now have a matchId and upload hasn't started
+    if (pendingVideoFileRef.current && videoUploadStatus === "idle") {
+      triggerVideoUpload(pendingVideoFileRef.current, matchId);
+      pendingVideoFileRef.current = null;
+    }
 
     return matchId;
   };
@@ -2931,16 +2959,46 @@ Ellie missed tackle"
                         setVideoLoaded(true);
                         setIsVideoPlaying(false);
                         setVideoDuration(0);
+                        setVideoUploadStatus("idle");
+                        setVideoUploadPercent(0);
                         setStatusMessage("Video loaded");
+                        // Upload immediately if match is already saved, otherwise queue
+                        if (currentMatchId) {
+                          triggerVideoUpload(file, currentMatchId);
+                        } else {
+                          pendingVideoFileRef.current = file;
+                        }
                       } else {
                         setVideoLoaded(false);
                         setIsVideoPlaying(false);
                         setVideoDuration(0);
                         setPlaybackRate(1);
+                        setVideoUploadStatus("idle");
                         sessionStorage.removeItem("rugby-tagging-video-src");
                       }
                     }}
                   />
+                  {videoUploadStatus !== "idle" && (
+                    <div className="mt-2 flex items-center gap-2 text-xs">
+                      {videoUploadStatus === "uploading" && (
+                        <>
+                          <span className="text-amber-400">Uploading… {videoUploadPercent}%</span>
+                          <div className="h-1 flex-1 overflow-hidden rounded-full bg-border">
+                            <div
+                              className="h-full rounded-full bg-amber-400 transition-all"
+                              style={{ width: `${videoUploadPercent}%` }}
+                            />
+                          </div>
+                        </>
+                      )}
+                      {videoUploadStatus === "uploaded" && (
+                        <span className="text-success">Synced to cloud</span>
+                      )}
+                      {videoUploadStatus === "error" && (
+                        <span className="text-danger">Upload failed — video not saved to cloud</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 

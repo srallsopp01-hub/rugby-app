@@ -1,5 +1,10 @@
 import { createClient } from "@/lib/supabase/client";
 import type { SquadProfile } from "@/app/rugby-tagging/lib/squadProfile";
+import {
+  getSquadProfile,
+  saveSquadProfile,
+} from "@/app/rugby-tagging/lib/squadProfile";
+import { getMyTeamContext } from "@/lib/teamContext";
 
 type SquadProfileRow = {
   id: string;
@@ -58,16 +63,14 @@ function profileToUpsertPayload(
 
 export async function fetchCloudSquadProfile(): Promise<SquadProfile | null> {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return null;
+    const ctx = await getMyTeamContext();
+    if (!ctx) return null;
 
+    const supabase = createClient();
     const { data, error } = await supabase
       .from("squad_profiles")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", ctx.ownerUserId)
       .maybeSingle();
 
     if (error) return null;
@@ -82,21 +85,31 @@ export async function upsertCloudSquadProfile(
   profile: SquadProfile
 ): Promise<void> {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    const ctx = await getMyTeamContext();
+    // Only the data owner (coach) writes squad profile records
+    if (!ctx || ctx.role !== "coach") return;
 
+    const supabase = createClient();
     const { error } = await supabase
       .from("squad_profiles")
-      .upsert(profileToUpsertPayload(profile, user.id), {
+      .upsert(profileToUpsertPayload(profile, ctx.ownerUserId), {
         onConflict: "user_id",
       });
 
     if (error) return;
   } catch {
     return;
+  }
+}
+
+export async function syncLocalSquadProfileToCloud(): Promise<void> {
+  const local = getSquadProfile();
+  const cloud = await fetchCloudSquadProfile();
+  const merged = mergeSquadProfiles(cloud, local);
+  if (!merged) return;
+  saveSquadProfile(merged);
+  if (!cloud || merged.updatedAt !== cloud.updatedAt) {
+    await upsertCloudSquadProfile(merged);
   }
 }
 

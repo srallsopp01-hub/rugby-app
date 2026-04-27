@@ -49,6 +49,8 @@ export type SquadPlayer = {
   jerseyNumber: number | null;
   voiceSamples: string[];
   status: SquadPlayerStatus;
+  email?: string;        // set when coach invites this player
+  linkedUserId?: string; // set after invite is accepted
 };
 
 export type ActionSample = {

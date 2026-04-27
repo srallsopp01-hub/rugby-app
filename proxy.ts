@@ -37,10 +37,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Protect /api/transcribe and /api/help-chat — return 401 if not authenticated
+  // Protect /api/transcribe, /api/help-chat, and /api/invite/redeem — return 401 if not authenticated
   if (
     (pathname.startsWith("/api/transcribe") ||
-      pathname.startsWith("/api/help-chat")) &&
+      pathname.startsWith("/api/help-chat") ||
+      pathname.startsWith("/api/invite")) &&
     !user
   ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -50,5 +51,10 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/coach/:path*", "/api/transcribe/:path*", "/api/help-chat/:path*"],
+  matcher: [
+    "/coach/:path*",
+    "/api/transcribe/:path*",
+    "/api/help-chat/:path*",
+    "/api/invite/:path*",
+  ],
 };

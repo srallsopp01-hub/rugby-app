@@ -26,6 +26,7 @@ export type SavedMatchRecord = {
   coachNotes: SavedCoachReviewNote[];
   clips?: ClipAnnotation[];
   showRawTranscript: boolean;
+  videoStoragePath?: string;
 };
 
 export function createMatchId() {

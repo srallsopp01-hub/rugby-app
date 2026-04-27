@@ -9,6 +9,7 @@ import { SAVED_MATCHES_KEY } from "@/app/rugby-tagging/lib/savedMatches";
 import { formatTime } from "@/app/rugby-tagging/helpers";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { ClipAnnotation } from "@/app/rugby-tagging/types";
+import { getMatchVideoSignedUrl } from "@/lib/matchVideoCloud";
 
 type ClipGroup = {
   match: SavedMatchRecord;
@@ -63,6 +64,26 @@ export default function ReviewPage() {
       Object.values(urls).forEach((u) => URL.revokeObjectURL(u));
     };
   }, [videoUrls]);
+
+  // Auto-load signed URLs for matches that have cloud video but no local blob URL
+  useEffect(() => {
+    const missing = clipGroups.filter(
+      ({ match }) => match.videoStoragePath && !videoUrls[match.id]
+    );
+    if (missing.length === 0) return;
+
+    void Promise.all(
+      missing.map(async ({ match }) => {
+        if (!match.videoStoragePath) return;
+        const url = await getMatchVideoSignedUrl(match.videoStoragePath, 14400);
+        if (url) {
+          setVideoUrls((prev) => ({ ...prev, [match.id]: url }));
+        }
+      })
+    );
+  // Re-run when clipGroups changes (new matches loaded), but not on every videoUrls change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clipGroups]);
 
   function handleVideoFile(matchId: string, e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];

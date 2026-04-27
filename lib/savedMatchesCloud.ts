@@ -1,5 +1,10 @@
 import { createClient } from "@/lib/supabase/client";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
+import {
+  getSavedMatches,
+  replaceSavedMatches,
+} from "@/app/rugby-tagging/lib/savedMatches";
+import { getMyTeamContext } from "@/lib/teamContext";
 
 type SavedMatchRow = {
   id: string;
@@ -9,6 +14,7 @@ type SavedMatchRow = {
   opponent: string;
   match_date: string;
   payload: SavedMatchRecord;
+  video_storage_path: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -24,6 +30,7 @@ function recordToUpsertPayload(
     opponent: record.opponent,
     match_date: record.matchDate,
     payload: record,
+    video_storage_path: record.videoStoragePath ?? null,
     created_at: record.createdAt,
     updated_at: record.updatedAt,
   };
@@ -38,21 +45,20 @@ function rowToRecord(row: SavedMatchRow): SavedMatchRecord {
     matchDate: row.match_date,
     createdAt: row.payload?.createdAt || row.created_at,
     updatedAt: row.payload?.updatedAt || row.updated_at,
+    videoStoragePath: row.video_storage_path ?? row.payload?.videoStoragePath,
   };
 }
 
 export async function fetchCloudSavedMatches(): Promise<SavedMatchRecord[]> {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return [];
+    const ctx = await getMyTeamContext();
+    if (!ctx) return [];
 
+    const supabase = createClient();
     const { data, error } = await supabase
       .from("saved_matches")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", ctx.ownerUserId)
       .order("updated_at", { ascending: false });
 
     if (error || !data) return [];
@@ -67,15 +73,14 @@ export async function upsertCloudSavedMatch(
   record: SavedMatchRecord
 ): Promise<void> {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    const ctx = await getMyTeamContext();
+    // Only the data owner (coach) writes match records
+    if (!ctx || ctx.role !== "coach") return;
 
+    const supabase = createClient();
     await supabase
       .from("saved_matches")
-      .upsert(recordToUpsertPayload(record, user.id), {
+      .upsert(recordToUpsertPayload(record, ctx.ownerUserId), {
         onConflict: "user_id,match_id",
       });
   } catch {
@@ -85,20 +90,35 @@ export async function upsertCloudSavedMatch(
 
 export async function deleteCloudSavedMatch(matchId: string): Promise<void> {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    const ctx = await getMyTeamContext();
+    if (!ctx || ctx.role !== "coach") return;
 
+    const supabase = createClient();
     await supabase
       .from("saved_matches")
       .delete()
-      .eq("user_id", user.id)
+      .eq("user_id", ctx.ownerUserId)
       .eq("match_id", matchId);
   } catch {
     return;
   }
+}
+
+export async function syncAllLocalMatchesToCloud(): Promise<{ count: number }> {
+  const local = getSavedMatches();
+  const cloud = await fetchCloudSavedMatches();
+  const merged = mergeSavedMatches(cloud, local);
+  replaceSavedMatches(merged);
+
+  const cloudIds = new Set(cloud.map((m) => m.id));
+  const cloudUpdated = new Map(cloud.map((m) => [m.id, m.updatedAt]));
+
+  const toSync = merged.filter(
+    (m) => !cloudIds.has(m.id) || cloudUpdated.get(m.id) !== m.updatedAt
+  );
+
+  await Promise.all(toSync.map((m) => upsertCloudSavedMatch(m)));
+  return { count: merged.length };
 }
 
 export function mergeSavedMatches(

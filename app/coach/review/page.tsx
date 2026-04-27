@@ -11,6 +11,7 @@ import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfid
 import { DEFAULT_ROSTER_ROWS, STORAGE_KEY } from "@/app/rugby-tagging/constants";
 import { formatTime, hydrateRosterRows } from "@/app/rugby-tagging/helpers";
 import { getCurrentMatchId, getSavedMatchById, upsertSavedMatch } from "@/app/rugby-tagging/lib/savedMatches";
+import { getMatchVideoSignedUrl } from "@/lib/matchVideoCloud";
 import type { ClipAnnotation, EventItem, RosterRow, VideoAnnotation } from "@/app/rugby-tagging/types";
 
 type CoachReviewNote = {
@@ -188,7 +189,8 @@ export default function ReviewPage() {
   const [showRawTranscript, setShowRawTranscript] = useState(
     typeof savedSession.showRawTranscript === "boolean" ? savedSession.showRawTranscript : true
   );
-  const [videoSrc] = useState(loadSavedReviewVideoSrc);
+  const [videoSrc, setVideoSrc] = useState(loadSavedReviewVideoSrc);
+  const [videoCloudStatus, setVideoCloudStatus] = useState<"idle" | "loading" | "loaded" | "unavailable">("idle");
   const [currentTime, setCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
@@ -422,6 +424,26 @@ export default function ReviewPage() {
     visible.forEach((annotation) => drawAnnotation(ctx, annotation, width, height));
     if (draftAnnotation) drawAnnotation(ctx, draftAnnotation, width, height);
   }, [clips, currentTime, draftAnnotation, drawAnnotation]);
+
+  // Load video from cloud if no local session video is available
+  useEffect(() => {
+    if (videoSrc) return;
+    const matchId = getCurrentMatchId();
+    if (!matchId) return;
+    const match = getSavedMatchById(matchId);
+    if (!match?.videoStoragePath) return;
+
+    setVideoCloudStatus("loading");
+    void getMatchVideoSignedUrl(match.videoStoragePath, 14400).then((url) => {
+      if (url) {
+        setVideoSrc(url);
+        setVideoCloudStatus("loaded");
+      } else {
+        setVideoCloudStatus("unavailable");
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     redrawAnnotations();
@@ -688,6 +710,12 @@ export default function ReviewPage() {
                   {activeClip ? `Active clip: ${activeClip.label}` : "Select a clip to annotate"}
                 </div>
               </div>
+
+              {videoCloudStatus === "loading" && (
+                <div className="rounded-xl border border-border bg-panel-2 px-4 py-3 text-sm text-muted">
+                  Loading video from cloud…
+                </div>
+              )}
 
               {videoSrc ? (
                 <>
