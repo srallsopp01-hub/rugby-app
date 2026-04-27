@@ -725,6 +725,11 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 - ✅ Manual clips remain unchanged; set-piece tags are generated from match events and are not persisted as new clips
 - ✅ Verification: `git diff --check`, `npm run lint`, and `npm run build` passed
 
+### Batch AB (April 2026) — Video upload finalising state
+- ✅ Capture video upload status now distinguishes bytes sent from confirmed cloud storage: 100% displays as "Finalising cloud save..." until the saved match has `videoStoragePath`
+- ✅ Direct Supabase Storage uploads now time out while finalising and retry through the Supabase client fallback instead of leaving the UI stuck at 100%
+- ✅ Completion signal remains "Synced to cloud"; if both upload paths fail, the capture page shows the returned storage error
+
 ---
 
 ## Next — Batch Z continuation (plan carefully before starting)

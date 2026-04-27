@@ -184,6 +184,10 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
   const [videoUploadStatus, setVideoUploadStatus] = useState<VideoUploadStatus>("idle");
   const [videoUploadPercent, setVideoUploadPercent] = useState(0);
   const [videoUploadError, setVideoUploadError] = useState("");
+  const videoUploadLabel =
+    videoUploadPercent >= 100
+      ? "Finalising cloud save..."
+      : `Uploading... ${videoUploadPercent}%`;
 
   const players = rosterRows.map((row) => row.name.trim()).filter(Boolean);
   const playersReady = players.length > 0;
@@ -2990,7 +2994,7 @@ Ellie missed tackle"
                     <div className="mt-2 flex items-center gap-2 text-xs">
                       {videoUploadStatus === "uploading" && (
                         <>
-                          <span className="text-amber-400">Uploading… {videoUploadPercent}%</span>
+                          <span className="text-amber-400">{videoUploadLabel}</span>
                           <div className="h-1 flex-1 overflow-hidden rounded-full bg-border">
                             <div
                               className="h-full rounded-full bg-amber-400 transition-all"

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getMyTeamContext } from "@/lib/teamContext";
 
 const BUCKET = "match-videos";
+const DIRECT_UPLOAD_TIMEOUT_MS = 120_000;
 
 export type VideoUploadProgress = {
   loaded: number;
@@ -27,6 +28,13 @@ function xhrUpload(
 ): Promise<{ ok: boolean; error?: string }> {
   return new Promise((resolve) => {
     const xhr = new XMLHttpRequest();
+    let settled = false;
+
+    const finish = (result: { ok: boolean; error?: string }) => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
 
     xhr.upload.addEventListener("progress", (e) => {
       if (e.lengthComputable && onProgress) {
@@ -40,17 +48,24 @@ function xhrUpload(
 
     xhr.addEventListener("load", () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        resolve({ ok: true });
+        finish({ ok: true });
         return;
       }
-      resolve({
+      finish({
         ok: false,
         error: xhr.responseText || `Storage upload failed with status ${xhr.status}`,
       });
     });
-    xhr.addEventListener("error", () => resolve({ ok: false, error: "Network error during video upload" }));
+    xhr.addEventListener("error", () => finish({ ok: false, error: "Network error during video upload" }));
+    xhr.addEventListener("timeout", () =>
+      finish({
+        ok: false,
+        error: "Cloud upload timed out while finalising; retrying with fallback upload",
+      })
+    );
 
     xhr.open("POST", url);
+    xhr.timeout = DIRECT_UPLOAD_TIMEOUT_MS;
     xhr.setRequestHeader("Authorization", `Bearer ${token}`);
     xhr.setRequestHeader("apikey", anonKey);
     if (file.type) xhr.setRequestHeader("Content-Type", file.type);
