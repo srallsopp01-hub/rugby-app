@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { createClient } from "@/lib/supabase/server";
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -70,6 +71,17 @@ type Message = {
 
 export async function POST(req: Request) {
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     if (!process.env.OPENAI_API_KEY) {
       return new Response(JSON.stringify({ error: "OPENAI_API_KEY is missing" }), {
         status: 500,

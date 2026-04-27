@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState, useSyncExternalStore } from "react";
+import { createClient } from "@/lib/supabase/client";
 import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
 import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "../help-content";
@@ -94,12 +96,19 @@ function buildDownloadFilename() {
 }
 
 export default function CoachSettingsPage() {
+  const router = useRouter();
   const snapshotJson = useSyncExternalStore(
     subscribeToStorage,
     getKnownStorageSnapshotJson,
     () => emptyStorageSnapshot
   );
   const [statusMessage, setStatusMessage] = useState("Settings loaded");
+
+  async function handleSignOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+  }
 
   const snapshot = useMemo(
     () => parseJson<StorageSnapshot>(snapshotJson, {}),
@@ -405,6 +414,29 @@ export default function CoachSettingsPage() {
                 danger
               />
             </div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">
+                Account
+              </div>
+              <h2 className="mt-2 text-lg font-semibold text-foreground-strong">
+                Sign out
+              </h2>
+              <p className="mt-1 text-sm text-muted">
+                Sign out of RugbyCoach on this device.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="shrink-0 rounded-lg border border-danger/40 bg-danger/10 px-5 py-2.5 text-sm font-bold uppercase text-danger transition hover:border-danger/60 hover:bg-danger/20"
+            >
+              Sign out
+            </button>
           </div>
         </section>
       </div>

@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — Player settings page live (Batch W)
+**Last updated:** April 2026 — Supabase auth live (Batch Y)
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -661,9 +661,27 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
-## Next — Batch Y (plan carefully before starting)
+### Batch Y (April 2026) — Supabase Auth
+- ✅ `@supabase/supabase-js` + `@supabase/ssr` installed
+- ✅ `lib/supabase/client.ts` (browser) + `lib/supabase/server.ts` (server, async cookies)
+- ✅ `proxy.ts` (Next.js 16 replacement for middleware.ts) — session refresh on every request; `/coach/*` → 307 to `/login` if no session; `/api/transcribe` + `/api/help-chat` → 401 if no session
+- ✅ `/login` and `/signup` pages — email/password, dark-themed, RugbyCoach logo; check-email confirmation state on signup
+- ✅ `app/(auth)/auth/callback/route.ts` — exchanges email confirmation code for session, redirects to `/coach`
+- ✅ `app/coach/layout.tsx` — server-side auth guard (redirect to `/login` if no user)
+- ✅ Marketing header `LoginDropdown` — auth-aware: "Sign in" + "Try free" when logged out, "Dashboard" when logged in
+- ✅ Pricing CTAs — Team Launch and Club 5 "Start 14-day free trial" now link to `/signup?plan=team-launch` / `/signup?plan=club-5` (was `/coach/onboarding`)
+- ✅ API routes (`/api/transcribe`, `/api/help-chat`) — server-side auth guard (401 if no user)
+- ✅ Coach Settings — "Sign out" button calls `supabase.auth.signOut()` and redirects to `/login`
+- ✅ localStorage data unchanged — existing coach data still works after logging in
 
-Options: accounts + auth (Supabase/Clerk), Stripe payments, cloud game storage (DB), mobile support, video annotation.
+**Supabase project:** `lkobjxhmuuisbtsmgwwt.supabase.co`
+**Tech note:** Next.js 16 renamed `middleware.ts` → `proxy.ts`; export function `middleware` → `proxy`
+
+---
+
+## Next — Batch Z (plan carefully before starting)
+
+Options: cloud squad profile (Supabase DB + RLS), cloud match storage, Cloudflare Stream for video, Stripe payments.
 
 ---
 

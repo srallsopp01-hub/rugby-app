@@ -383,7 +383,7 @@ export default function PricingExperience() {
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
-                href="/coach/onboarding"
+                href="/signup?plan=team-launch"
                 className="inline-flex items-center justify-center rounded-lg bg-foreground-strong px-7 py-4 text-sm font-black uppercase text-background transition hover:opacity-90"
               >
                 Start 14-day free trial
@@ -448,7 +448,7 @@ export default function PricingExperience() {
               </p>
             </div>
             <Link
-              href="/coach/onboarding"
+              href="/signup?plan=team-launch"
               className="inline-flex items-center justify-center rounded-lg bg-foreground-strong px-6 py-3 text-sm font-black uppercase text-background transition hover:opacity-90"
             >
               Start 14-day free trial

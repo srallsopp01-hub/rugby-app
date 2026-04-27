@@ -163,7 +163,7 @@ export const planContent: readonly PlanContent[] = [
     description:
       "For coaches who want one clean place to analyse matches, create clips and share feedback.",
     cta: "Start 14-day free trial",
-    href: "/coach/onboarding",
+    href: "/signup?plan=team-launch",
     features: [
       "1 sport",
       "1 team",
@@ -188,7 +188,7 @@ export const planContent: readonly PlanContent[] = [
     description:
       "For clubs that want every team working from the same coaching system.",
     cta: "Start 14-day free trial",
-    href: "/coach/onboarding",
+    href: "/signup?plan=club-5",
     featured: true,
     features: [
       "1 sport",
