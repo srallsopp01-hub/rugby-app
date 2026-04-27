@@ -120,6 +120,9 @@ export function getSquadProfile(): SquadProfile | null {
 export function saveSquadProfile(profile: SquadProfile): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(SQUAD_PROFILE_KEY, JSON.stringify(profile));
+  import("@/lib/squadProfileCloud")
+    .then(({ upsertCloudSquadProfile }) => void upsertCloudSquadProfile(profile))
+    .catch(() => {});
 }
 
 export function clearSquadProfile(): void {

@@ -679,18 +679,28 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
-## Next — Batch Z (plan carefully before starting)
+### Batch Z, Part 1 (April 2026) — Cloud Squad Profile
+- ✅ `public.squad_profiles` Supabase table planned for manual SQL setup — one row per coach (`user_id` unique), JSONB profile arrays, RLS own-row select/insert/update policies
+- ✅ `lib/squadProfileCloud.ts` — browser Supabase helpers for fetch/upsert plus `mergeSquadProfiles()`; maps DB snake_case rows to `SquadProfile` camelCase and silently no-ops on cloud errors
+- ✅ `app/coach/SyncSquadProfile.tsx` — client-only coach layout sync: localStorage read, cloud fetch, newest `updatedAt` wins, tie goes to cloud, winner saved locally and pushed up if cloud is absent/stale
+- ✅ `app/coach/layout.tsx` — renders `<SyncSquadProfile />` inside the authenticated coach shell before the sidebar
+- ✅ `saveSquadProfile()` now remains localStorage-first and fire-and-forget upserts to Supabase via dynamic import; no call sites changed
+- ✅ Verification: `npm run lint` passed with existing warning only; `npm run build` passed
 
-Options: cloud squad profile (Supabase DB + RLS), cloud match storage, Cloudflare Stream for video, Stripe payments.
+---
+
+## Next — Batch Z continuation (plan carefully before starting)
+
+Options: run/verify Supabase SQL in dashboard, cloud match storage, Cloudflare Stream for video, Stripe payments.
 
 ---
 
 ## Longer-term (don't prioritise yet)
 
-- Cloud storage and coach accounts
-- Player logins and season dashboards
-- Video annotation / telestration
-- Cross-match player trends
+- Cloud match storage and cross-device match history
+- Player logins and authenticated season dashboards
+- Cloud video storage / streaming and video annotation / telestration
+- Cross-match player trends backed by cloud data
 - Shared team analysis links
 - Mobile support
 
