@@ -30,7 +30,7 @@ import {
   setCurrentMatchId as persistCurrentMatchId,
   upsertSavedMatch,
 } from "@/app/rugby-tagging/lib/savedMatches";
-import { uploadMatchVideo } from "@/lib/matchVideoCloud";
+import { uploadMatchVideoWithResult } from "@/lib/matchVideoCloud";
 import {
   getSquadProfile,
   resolvePlayerName,
@@ -183,6 +183,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
   type VideoUploadStatus = "idle" | "uploading" | "uploaded" | "error";
   const [videoUploadStatus, setVideoUploadStatus] = useState<VideoUploadStatus>("idle");
   const [videoUploadPercent, setVideoUploadPercent] = useState(0);
+  const [videoUploadError, setVideoUploadError] = useState("");
 
   const players = rosterRows.map((row) => row.name.trim()).filter(Boolean);
   const playersReady = players.length > 0;
@@ -1330,17 +1331,22 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
   const triggerVideoUpload = (file: File, matchId: string) => {
     setVideoUploadStatus("uploading");
     setVideoUploadPercent(0);
-    void uploadMatchVideo(matchId, file, (p) => setVideoUploadPercent(p.percent))
-      .then((storagePath) => {
-        if (storagePath) {
+    setVideoUploadError("");
+    void uploadMatchVideoWithResult(matchId, file, (p) => setVideoUploadPercent(p.percent))
+      .then((result) => {
+        if (result.storagePath) {
           const saved = getSavedMatchById(matchId);
-          if (saved) upsertSavedMatch({ ...saved, videoStoragePath: storagePath });
+          if (saved) upsertSavedMatch({ ...saved, videoStoragePath: result.storagePath });
           setVideoUploadStatus("uploaded");
         } else {
+          setVideoUploadError(result.error ?? "Video upload failed");
           setVideoUploadStatus("error");
         }
       })
-      .catch(() => setVideoUploadStatus("error"));
+      .catch((error) => {
+        setVideoUploadError(error instanceof Error ? error.message : "Video upload failed");
+        setVideoUploadStatus("error");
+      });
   };
 
   const saveCurrentMatchRecord = () => {
@@ -2961,6 +2967,7 @@ Ellie missed tackle"
                         setVideoDuration(0);
                         setVideoUploadStatus("idle");
                         setVideoUploadPercent(0);
+                        setVideoUploadError("");
                         setStatusMessage("Video loaded");
                         // Upload immediately if match is already saved, otherwise queue
                         if (currentMatchId) {
@@ -2974,6 +2981,7 @@ Ellie missed tackle"
                         setVideoDuration(0);
                         setPlaybackRate(1);
                         setVideoUploadStatus("idle");
+                        setVideoUploadError("");
                         sessionStorage.removeItem("rugby-tagging-video-src");
                       }
                     }}
@@ -2995,7 +3003,9 @@ Ellie missed tackle"
                         <span className="text-success">Synced to cloud</span>
                       )}
                       {videoUploadStatus === "error" && (
-                        <span className="text-danger">Upload failed — video not saved to cloud</span>
+                        <span className="text-danger">
+                          Upload failed - {videoUploadError || "video not saved to cloud"}
+                        </span>
                       )}
                     </div>
                   )}
