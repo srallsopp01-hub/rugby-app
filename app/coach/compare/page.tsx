@@ -547,7 +547,7 @@ export default function ComparePage() {
               </div>
               <p className="mt-2 text-sm leading-6 text-muted">
                 Side-by-side comparison for saved matches and player output.
-                This screen reads local saved match data only and uses resolved tagged events.
+                This screen reads saved match records and uses resolved tagged events.
               </p>
             </div>
             <div className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
@@ -559,7 +559,7 @@ export default function ComparePage() {
         {savedMatches.length === 0 ? (
           <EmptyState
             title="No saved matches yet"
-            body="Save a match from Capture first, then return here to compare team and player performance on this browser."
+            body="Save a match from Capture first, then return here to compare team and player performance."
           />
         ) : savedMatches.length < 2 ? (
           <EmptyState

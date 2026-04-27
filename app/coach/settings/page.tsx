@@ -238,8 +238,8 @@ export default function CoachSettingsPage() {
                 <PageHelp {...COACH_PAGE_HELP["/coach/settings"]} />
               </div>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Manage browser-local RugbyCoach data, display preference, and
-                beta setup shortcuts for this device.
+                Manage local RugbyCoach data, cloud-backed coach account
+                storage, display preference, and beta setup shortcuts.
               </p>
             </div>
             <div className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
@@ -302,7 +302,7 @@ export default function CoachSettingsPage() {
               <SettingsLink
                 href="/coach/saved-matches"
                 label="Saved Matches"
-                description="Reopen, compare, export, or delete saved local matches."
+                description="Reopen, compare, export, or delete saved matches."
               />
               <SettingsLink
                 href="/player"
@@ -320,8 +320,8 @@ export default function CoachSettingsPage() {
               Local data snapshot
             </h2>
             <p className="mt-1 text-sm leading-6 text-muted">
-              This app is still browser-local. Nothing here syncs to a cloud
-              account or another device.
+              RugbyCoach keeps this browser fast with local data, then syncs
+              squad profile and saved match records to your coach account.
             </p>
 
             <div className="mt-5 space-y-3">
@@ -388,7 +388,8 @@ export default function CoachSettingsPage() {
             </h2>
             <p className="mt-1 text-sm leading-6 text-muted">
               These actions only touch known RugbyCoach browser data on this
-              device. Saved matches are preserved unless factory reset is used.
+              device. Cloud copies may sync back after login unless deleted
+              from their source screen.
             </p>
 
             <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">

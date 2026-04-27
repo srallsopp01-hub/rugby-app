@@ -146,7 +146,7 @@ export default function BlogPage() {
             <span className="text-danger">free?</span>
           </h2>
           <p className="relative mx-auto mt-6 max-w-xl text-base leading-7 text-muted">
-            Free during private beta. Runs in your browser. No account needed.
+            Free during private beta. Runs in your browser with coach account sync.
           </p>
           <div className="relative mt-9 flex flex-col justify-center gap-3 sm:flex-row">
             <Link

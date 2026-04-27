@@ -24,9 +24,9 @@ const principles = [
     visual: "layout",
   },
   {
-    label: "No backend (yet)",
-    title: "Everything runs in your browser.",
-    body: "No account required. No cloud sync. No data leaving your machine. Fast, private, and yours.",
+    label: "Local-first sync",
+    title: "Fast in browser, backed by your account.",
+    body: "Your squad and saved match records stay instant locally, then sync to your coach account when cloud storage is reachable.",
     visual: "local",
   },
   {
@@ -81,12 +81,12 @@ function PrincipleVisual({ type }: { type: string }) {
     return (
       <div className="space-y-2 font-mono text-[11px]">
         <div className="rounded-md border border-border bg-panel-2 px-3 py-2">
-          <span className="text-muted-2">STORAGE</span>{" "}
+          <span className="text-muted-2">LOCAL</span>{" "}
           <span className="text-foreground-strong">localStorage</span>
         </div>
         <div className="rounded-md border border-success/40 bg-success/10 px-3 py-2">
-          <span className="text-success">PRIVATE</span>{" "}
-          <span className="text-foreground-strong">No cloud · No account</span>
+          <span className="text-success">SYNC</span>{" "}
+          <span className="text-foreground-strong">Coach account</span>
         </div>
       </div>
     );
@@ -196,7 +196,7 @@ export default function AboutPage() {
                 {
                   label: "Runs on",
                   value: "Browser",
-                  detail: "No install, no account required",
+                  detail: "No install, coach account sync",
                 },
                 {
                   label: "Platform",
@@ -373,7 +373,7 @@ export default function AboutPage() {
           <p className="mb-10 max-w-2xl text-base leading-7 text-foreground">
             RugbyCoach is in active private beta with real clubs and real
             matches. The platform is free to use while in beta. Everything runs
-            in your browser — no account, no installation.
+            in your browser with a coach account for squad and match sync.
           </p>
 
           <div className="rounded-xl border border-border bg-panel p-6">

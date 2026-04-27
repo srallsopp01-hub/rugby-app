@@ -18,7 +18,6 @@ import {
   buildReportRowsFromMatch,
   buildTeamEventSummary,
   buildTeamTotals,
-  teamTacklePctFromTotals,
 } from "@/app/rugby-tagging/helpers";
 import type { EventItem } from "@/app/rugby-tagging/types";
 import { PageHelp } from "@/app/components/PageHelp";
@@ -186,7 +185,7 @@ export default function CoachHomePage() {
               </p>
             </div>
             <div className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
-              {savedMatches.length} saved match{savedMatches.length === 1 ? "" : "es"} on this browser
+              {savedMatches.length} saved match{savedMatches.length === 1 ? "" : "es"} synced locally
             </div>
           </div>
         </section>
@@ -271,7 +270,7 @@ export default function CoachHomePage() {
                     Start your first saved match
                   </h2>
                   <p className="mt-1 text-sm text-muted">
-                    No local saved matches were found on this browser yet.
+                    No saved matches were found for this coach account yet.
                   </p>
                   <div className="mt-4">
                     <Link
@@ -336,9 +335,9 @@ export default function CoachHomePage() {
                 Current beta storage
               </h2>
               <p className="mt-1 text-sm text-muted">
-                Saved matches are local to this browser and device. Use Saved
-                Matches to choose the active match before opening Insights or
-                Review.
+                Saved matches open locally first and sync to your coach account
+                when cloud storage is reachable. Use Saved Matches to choose the
+                active match before opening Insights or Review.
               </p>
             </div>
             <Link

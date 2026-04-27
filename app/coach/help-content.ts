@@ -11,7 +11,7 @@ export const COACH_PAGE_HELP: Record<string, PageHelpProps> = {
     ],
     tips: [
       "Set up your squad in Team Setup before your first match so voice recognition works correctly.",
-      "Save matches regularly in Capture — data is stored locally and not backed up automatically.",
+      "Save matches regularly in Capture — local data syncs to your coach account when cloud storage is reachable.",
       "Use Settings > Export after every session to create an Excel backup of your data.",
     ],
   },
@@ -118,11 +118,11 @@ export const COACH_PAGE_HELP: Record<string, PageHelpProps> = {
     steps: [
       { title: "Browse your match history", body: "All saved matches are listed here with title, opponent, and date. Click any to open it in Insights." },
       { title: "Export individual matches", body: "Click the export icon to download a single match as an Excel report." },
-      { title: "Delete old matches", body: "To free up browser storage, delete matches you no longer need. This cannot be undone." },
+      { title: "Delete old matches", body: "Delete matches you no longer need. This removes the local record and asks cloud storage to remove the account copy too." },
     ],
     tips: [
-      "Export matches to Excel regularly as a backup — all data is stored locally in your browser.",
-      "If you switch devices or clear your browser cache, match data will be lost unless exported.",
+      "Export important matches to Excel before major cleanup.",
+      "Cloud sync covers match metadata and tags; video files still need to be loaded on the device you are using.",
       "Give each match a clear title at capture time (e.g. 'Round 5 vs Easts') — it makes them easy to find here.",
     ],
   },
@@ -136,7 +136,7 @@ export const COACH_PAGE_HELP: Record<string, PageHelpProps> = {
       { title: "Factory reset", body: "If you need to start fresh, use the factory reset to clear all local data. This is permanent — export first." },
     ],
     tips: [
-      "Export before clearing any data — there is no cloud backup.",
+      "Export before clearing local data if you need an offline backup.",
       "If the app feels slow, clearing old matches in Saved Matches (rather than a full reset) is the safer option.",
     ],
   },

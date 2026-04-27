@@ -2,6 +2,7 @@ import type { ClipAnnotation, EventItem, ReviewItem, RosterRow } from "../types"
 
 export const SAVED_MATCHES_KEY = "rugby-tagging-saved-matches-v1";
 export const CURRENT_MATCH_ID_KEY = "rugby-tagging-current-match-id";
+export const SAVED_MATCHES_CHANGED_EVENT = "rugby-saved-matches-changed";
 
 export type SavedCoachReviewNote = {
   id: number;
@@ -63,6 +64,17 @@ export function getSavedMatchById(matchId: string) {
   return getSavedMatches().find((match) => match.id === matchId) || null;
 }
 
+function emitSavedMatchesChanged() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(SAVED_MATCHES_CHANGED_EVENT));
+}
+
+export function replaceSavedMatches(records: SavedMatchRecord[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(SAVED_MATCHES_KEY, JSON.stringify(records));
+  emitSavedMatchesChanged();
+}
+
 export function upsertSavedMatch(record: SavedMatchRecord) {
   if (typeof window === "undefined") return;
 
@@ -79,5 +91,18 @@ export function upsertSavedMatch(record: SavedMatchRecord) {
     existing.unshift(record);
   }
 
-  localStorage.setItem(SAVED_MATCHES_KEY, JSON.stringify(existing));
+  replaceSavedMatches(existing);
+  import("@/lib/savedMatchesCloud")
+    .then(({ upsertCloudSavedMatch }) => void upsertCloudSavedMatch(record))
+    .catch(() => {});
+}
+
+export function deleteSavedMatch(matchId: string) {
+  if (typeof window === "undefined") return;
+
+  const nextMatches = getSavedMatches().filter((match) => match.id !== matchId);
+  replaceSavedMatches(nextMatches);
+  import("@/lib/savedMatchesCloud")
+    .then(({ deleteCloudSavedMatch }) => void deleteCloudSavedMatch(matchId))
+    .catch(() => {});
 }

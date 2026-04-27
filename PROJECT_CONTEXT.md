@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — Supabase auth live (Batch Y)
+**Last updated:** April 2026 — cloud data foundation live (Batch Z Part 2)
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -25,7 +25,7 @@ It is currently a **coach-first MVP / early private beta**, best used on desktop
 - Next.js 16 (App Router, Turbopack)
 - React + TypeScript
 - Tailwind CSS v4 (custom design tokens via CSS variables in `globals.css`)
-- localStorage for match persistence (no backend/cloud yet)
+- localStorage-first match persistence with Supabase cloud sync for saved match records
 - localStorage for browser-local colour scheme preference (`dark` / `bright`)
 - Anthropic API for voice transcription (`/api/transcribe`)
 - ExcelJS for `.xlsx` report generation
@@ -180,8 +180,8 @@ app/
       matchVideoSession.ts            ← Video blob session management
       matchConfidence.ts              ← Read-only saved match labels, counts, report readiness
       onboarding.ts                   ← Onboarding completion helpers
-      savedMatches.ts                 ← localStorage match persistence
-      squadProfile.ts                 ← Squad Profile localStorage persistence (cross-match)
+      savedMatches.ts                 ← localStorage-first match persistence + cloud sync trigger
+      squadProfile.ts                 ← Squad Profile localStorage-first persistence (cross-match)
     squad/
       page.tsx                        ← Squad Profile management UI (/squad route, legacy)
     exports/
@@ -333,6 +333,8 @@ All previous CSV downloads have been removed. One polished report.
 
 **SquadProfile** (lib/squadProfile.ts — cross-match, persistent): `id`, `teamName`, `coachName`, `primaryColour`, `secondaryColour`, `logoUrl`, `players[]`, `actionSamples[]`, `correctionMemory[]`
 
+**SavedMatchRecord** (lib/savedMatches.ts — local-first, cloud synced): `id`, `createdAt`, `updatedAt`, `matchTitle`, `opponent`, `matchDate`, `activeMode`, `rosterRows[]`, `selectedPlayer`, `events[]`, `reviewQueue[]`, `coachNotes[]`, `clips?`, `showRawTranscript`
+
 **SquadPlayer**: `id`, `fullName`, `preferredName`, `nicknames[]`, `primaryPosition`, `secondaryPositions[]`, `jerseyNumber`, `voiceSamples[]`, `status`
 
 **CorrectionMemoryEntry**: `rawWhisperText`, `resolvedPlayerName`, `resolvedAction`, `count`
@@ -346,10 +348,10 @@ All previous CSV downloads have been removed. One polished report.
 - **Squad Profile (cross-match):** `localStorage` key `SQUAD_PROFILE_KEY` (via lib/squadProfile.ts)
 - **Onboarding completion:** `localStorage` key `ONBOARDING_COMPLETE_KEY`
 - **Current match ID:** `localStorage` (via savedMatches lib)
-- **Saved matches list:** `localStorage` (via savedMatches lib)
+- **Saved matches list:** `localStorage` first + Supabase `saved_matches` sync (via savedMatches lib and `lib/savedMatchesCloud.ts`)
 - **Video:** `sessionStorage` blob URL (not persisted across sessions)
 - **Player identity:** `localStorage` key `rugby-player-selected-id` (SquadPlayer.id, via PlayerContext)
-- **No cloud storage yet**
+- **Cloud storage:** Supabase auth, `squad_profiles`, and `saved_matches` records. Match video files are not cloud-stored yet.
 
 ---
 
@@ -360,7 +362,7 @@ All previous CSV downloads have been removed. One polished report.
 3. **Insights is analytics only** — do not add clip review or tagging to it
 4. **Review is teaching/review only** — do not add tagging to it
 5. **No player logins yet** — player platform is UI scaffold only; coach-facing analysis only
-6. **No cloud storage yet** — all persistence is browser localStorage
+6. **Local-first persistence** — saved match records and squad profiles sync to Supabase; match videos still stay on the current device/session
 7. **Desktop-first** — not optimised for mobile
 8. **Spacebar = voice recording only** — must never trigger a focused button
 9. **Transcript always sorted by timestamp** — oldest at top, newest at bottom
@@ -689,9 +691,20 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
+### Batch Z, Part 2 (April 2026) — Cloud Data Foundation
+- ✅ Tracked Supabase SQL added at `supabase/migrations/20260427000000_cloud_data_foundation.sql` for `squad_profiles`, `saved_matches`, indexes, and RLS own-row policies
+- ✅ `lib/savedMatchesCloud.ts` added — browser Supabase helpers for fetch/upsert/delete plus `mergeSavedMatches()` newest-`updatedAt` conflict resolution
+- ✅ `app/coach/SyncSavedMatches.tsx` added — authenticated coach shell merges local/cloud saved matches and backfills stale or missing cloud rows
+- ✅ `savedMatches.ts` remains localStorage-first and now fire-and-forget upserts/deletes cloud records without blocking the UI
+- ✅ Saved Matches delete now removes local data immediately and requests cloud deletion in the background
+- ✅ Stale no-account/no-cloud copy updated across coach settings/help, help chat, saved matches, coach home, compare, and marketing/about/blog CTAs
+- ✅ Video remains out of scope: clips/annotations sync as match metadata, video files still need to be loaded locally
+
+---
+
 ## Next — Batch Z continuation (plan carefully before starting)
 
-Options: run/verify Supabase SQL in dashboard, cloud match storage, Cloudflare Stream for video, Stripe payments.
+Options: run/verify Supabase SQL in dashboard, add visible cloud sync status/errors, Cloudflare Stream for video, Stripe payments.
 
 ---
 

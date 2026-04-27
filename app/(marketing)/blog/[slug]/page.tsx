@@ -112,8 +112,8 @@ export default async function BlogPostPage({ params }: Props) {
                 <span className="text-danger">Ship Monday.</span>
               </h2>
               <p className="relative mx-auto mt-5 max-w-lg text-sm leading-6 text-muted">
-                Free during private beta. Runs in your browser. No account, no
-                installation — just open and start tagging.
+                Free during private beta. Runs in your browser with a coach
+                account for squad and match sync.
               </p>
               <div className="relative mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                 <Link

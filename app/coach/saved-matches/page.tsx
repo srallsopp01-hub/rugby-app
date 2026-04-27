@@ -6,8 +6,9 @@ import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "../help-content";
 import {
   clearCurrentMatchId,
+  deleteSavedMatch,
   getSavedMatches,
-  SAVED_MATCHES_KEY,
+  SAVED_MATCHES_CHANGED_EVENT,
   setCurrentMatchId,
   type SavedMatchRecord,
 } from "@/app/rugby-tagging/lib/savedMatches";
@@ -22,7 +23,16 @@ export default function CoachSavedMatchesPage() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
-    setSavedMatches(getSavedMatches());
+    const refreshSavedMatches = () => setSavedMatches(getSavedMatches());
+
+    refreshSavedMatches();
+    window.addEventListener(SAVED_MATCHES_CHANGED_EVENT, refreshSavedMatches);
+    window.addEventListener("storage", refreshSavedMatches);
+
+    return () => {
+      window.removeEventListener(SAVED_MATCHES_CHANGED_EVENT, refreshSavedMatches);
+      window.removeEventListener("storage", refreshSavedMatches);
+    };
   }, []);
 
   const toggleSelected = (matchId: string) => {
@@ -86,7 +96,6 @@ export default function CoachSavedMatchesPage() {
     if (!confirmed) return;
 
     try {
-      const nextMatches = savedMatches.filter((match) => match.id !== matchId);
       const currentMatchId =
         typeof window !== "undefined"
           ? localStorage.getItem("rugby-tagging-current-match-id") || ""
@@ -96,8 +105,8 @@ export default function CoachSavedMatchesPage() {
         clearCurrentMatchId();
       }
 
-      localStorage.setItem(SAVED_MATCHES_KEY, JSON.stringify(nextMatches));
-      setSavedMatches(nextMatches);
+      deleteSavedMatch(matchId);
+      setSavedMatches(getSavedMatches());
     } catch (error) {
       console.error("Failed to delete saved match", error);
     }
@@ -127,7 +136,7 @@ export default function CoachSavedMatchesPage() {
                 Current beta storage
               </h2>
               <p className="mt-1 text-sm text-muted">
-                Saved matches currently stay on this browser and this device only. They are not yet stored in a cloud account or shareable across devices.
+                Saved matches stay available locally first, then sync to your coach account when cloud storage is reachable. Video files still need to be loaded on this device.
               </p>
             </div>
 
@@ -177,7 +186,7 @@ export default function CoachSavedMatchesPage() {
               No saved matches yet
             </h2>
             <p className="mt-2 text-sm text-muted">
-              Save a match from Capture first, then it will appear here on this browser and device.
+              Save a match from Capture first, then it will appear here and sync to your coach account in the background.
             </p>
 
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">

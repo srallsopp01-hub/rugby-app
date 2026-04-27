@@ -2488,7 +2488,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
                 </h3>
                 <ul className="mt-3 space-y-2 text-sm text-muted">
                   <li>• Saved matches are currently stored in the browser on the same device only</li>
-                  <li>• This is not yet cloud storage or a full coach account system</li>
+                  <li>• Match records sync to your coach account; video files stay on this device</li>
                   <li>• Player share links and multi-user team access are not live yet</li>
                   <li>• Transcript import works, but untimed lines currently import at 0:00</li>
                   <li>• Voice tagging is still a beta workflow and works best with a clear microphone and reduced background noise</li>
@@ -2535,7 +2535,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
                 <div className="rounded-xl border border-border bg-panel p-3">
                   <div className="font-medium text-foreground">Saved Matches</div>
                   <div className="mt-1 text-sm text-muted">
-                    Reopen or delete matches that were saved on this browser and device.
+                    Reopen or delete saved matches synced to this coach account.
                   </div>
                 </div>
               </div>
