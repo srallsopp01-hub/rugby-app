@@ -11,6 +11,12 @@ import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfid
 import { DEFAULT_ROSTER_ROWS, STORAGE_KEY } from "@/app/rugby-tagging/constants";
 import { formatTime, hydrateRosterRows } from "@/app/rugby-tagging/helpers";
 import { getCurrentMatchId, getSavedMatchById, upsertSavedMatch } from "@/app/rugby-tagging/lib/savedMatches";
+import {
+  buildSetPieceReviewMoments,
+  filterSetPieceReviewMoments,
+  type SetPieceSideFilters,
+  type SetPieceTypeFilter,
+} from "@/app/rugby-tagging/lib/setPieceReview";
 import { getMatchVideoSignedUrl } from "@/lib/matchVideoCloud";
 import type { ClipAnnotation, EventItem, RosterRow, VideoAnnotation } from "@/app/rugby-tagging/types";
 
@@ -36,10 +42,10 @@ type SavedSession = {
 };
 
 type AnnotationTool = VideoAnnotation["type"] | null;
-type ClipFilter = "All" | "Attack" | "Defence" | "Set Piece";
+type ClipFilter = "All" | "Attack" | "Defence" | "Scrum" | "Lineout";
 
-const CLIP_CATEGORIES = ["Breakdown", "Set Piece", "Kick", "Defence", "Attack", "Other"];
-const CLIP_FILTERS: ClipFilter[] = ["All", "Attack", "Defence", "Set Piece"];
+const CLIP_CATEGORIES = ["Breakdown", "Scrum", "Lineout", "Kick", "Defence", "Attack", "Other"];
+const CLIP_FILTERS: ClipFilter[] = ["All", "Attack", "Defence", "Scrum", "Lineout"];
 const ANNOTATION_COLOURS: Record<VideoAnnotation["type"], string> = {
   arrow: "#f4d35e",
   circle: "#7dd3fc",
@@ -204,6 +210,11 @@ export default function ReviewPage() {
   const [clipCategoryDraft, setClipCategoryDraft] = useState("");
   const [activeClipId, setActiveClipId] = useState<number | null>(null);
   const [clipFilter, setClipFilter] = useState<ClipFilter>("All");
+  const [setPieceTypeFilter, setSetPieceTypeFilter] = useState<SetPieceTypeFilter>("All");
+  const [setPieceSideFilters, setSetPieceSideFilters] = useState<SetPieceSideFilters>({
+    own: true,
+    opposition: true,
+  });
   const [annotationTool, setAnnotationTool] = useState<AnnotationTool>(null);
   const [draftAnnotation, setDraftAnnotation] = useState<VideoAnnotation | null>(null);
   const [autosaveStatus, setAutosaveStatus] = useState("Saved locally");
@@ -285,6 +296,11 @@ export default function ReviewPage() {
         .sort((a, b) => a.startTime - b.startTime)
         .filter((clip) => clipFilter === "All" || clip.category === clipFilter),
     [clipFilter, clips]
+  );
+  const setPieceMoments = useMemo(() => buildSetPieceReviewMoments(events), [events]);
+  const filteredSetPieceMoments = useMemo(
+    () => filterSetPieceReviewMoments(setPieceMoments, setPieceTypeFilter, setPieceSideFilters),
+    [setPieceMoments, setPieceSideFilters, setPieceTypeFilter]
   );
 
   const teamTotals = useMemo(() => {
@@ -569,6 +585,15 @@ export default function ReviewPage() {
     }
     setCurrentTime(clip.startTime);
     setActiveClipId(clip.id);
+  };
+
+  const seekToSetPieceMoment = (timestamp: number) => {
+    const nextTime = Math.max(0, timestamp - 3);
+    if (videoRef.current) {
+      videoRef.current.currentTime = nextTime;
+      videoRef.current.pause();
+    }
+    setCurrentTime(nextTime);
   };
 
   const jumpVideoBy = (seconds: number) => {
@@ -990,6 +1015,79 @@ export default function ReviewPage() {
                       </div>
                     );
                   })}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-base font-semibold text-foreground-strong">Set-piece tags</h2>
+                <span className="rounded-full border border-border bg-panel-2 px-3 py-1 text-xs text-muted">
+                  {setPieceMoments.length} tag{setPieceMoments.length === 1 ? "" : "s"}
+                </span>
+              </div>
+
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                {(["All", "Scrum", "Lineout"] as SetPieceTypeFilter[]).map((filter) => (
+                  <button
+                    key={filter}
+                    type="button"
+                    onClick={() => setSetPieceTypeFilter(filter)}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                      setPieceTypeFilter === filter ? "border-border-light bg-panel-3 text-foreground" : "border-border bg-panel-2 text-muted"
+                    }`}
+                  >
+                    {filter}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mb-3 flex flex-wrap gap-2">
+                {[
+                  ["own", "Own"],
+                  ["opposition", "Opposition"],
+                ].map(([key, label]) => (
+                  <label
+                    key={key}
+                    className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-panel-2 px-3 py-1.5 text-xs font-medium text-muted"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={setPieceSideFilters[key as keyof SetPieceSideFilters]}
+                      onChange={(event) =>
+                        setSetPieceSideFilters((prev) => ({
+                          ...prev,
+                          [key]: event.target.checked,
+                        }))
+                      }
+                      className="h-3.5 w-3.5 rounded accent-foreground"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+
+              {filteredSetPieceMoments.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border p-3 text-sm text-muted">
+                  {setPieceMoments.length === 0 ? "No scrum or lineout tags logged yet." : "No set-piece tags match these filters."}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredSetPieceMoments.map((moment) => (
+                    <button
+                      key={moment.id}
+                      type="button"
+                      onClick={() => seekToSetPieceMoment(moment.timestamp)}
+                      className="w-full rounded-xl border border-border bg-panel-2 px-3 py-2 text-left transition hover:border-border-light hover:bg-panel-3"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-[11px] text-muted-2">{formatTime(moment.timestamp)}</span>
+                        <span className="text-sm font-medium text-foreground">{moment.label}</span>
+                        <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted">{moment.side}</span>
+                      </div>
+                      {moment.notes && <p className="mt-1 text-xs text-muted">Call: {moment.notes}</p>}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>

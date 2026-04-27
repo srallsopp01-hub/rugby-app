@@ -7,6 +7,13 @@ import { PLAYER_PAGE_HELP } from "../help-content";
 import { PlayerPicker } from "../PlayerPicker";
 import { SAVED_MATCHES_KEY } from "@/app/rugby-tagging/lib/savedMatches";
 import { formatTime } from "@/app/rugby-tagging/helpers";
+import {
+  buildSetPieceReviewMoments,
+  filterSetPieceReviewMoments,
+  type SetPieceReviewMoment,
+  type SetPieceSideFilters,
+  type SetPieceTypeFilter,
+} from "@/app/rugby-tagging/lib/setPieceReview";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { ClipAnnotation } from "@/app/rugby-tagging/types";
 import { getMatchVideoSignedUrl } from "@/lib/matchVideoCloud";
@@ -14,6 +21,7 @@ import { getMatchVideoSignedUrl } from "@/lib/matchVideoCloud";
 type ClipGroup = {
   match: SavedMatchRecord;
   clips: ClipAnnotation[];
+  setPieceMoments: SetPieceReviewMoment[];
 };
 
 const CATEGORY_COLOUR: Record<string, string> = {
@@ -36,6 +44,11 @@ export default function ReviewPage() {
   // Per-match video blob URLs and active clip indices
   const [videoUrls, setVideoUrls] = useState<Record<string, string>>({});
   const [activeClipIdx, setActiveClipIdx] = useState<Record<string, number | null>>({});
+  const [setPieceTypeFilter, setSetPieceTypeFilter] = useState<SetPieceTypeFilter>("All");
+  const [setPieceSideFilters, setSetPieceSideFilters] = useState<SetPieceSideFilters>({
+    own: true,
+    opposition: true,
+  });
   // Track which match's video is currently in the video element
   const [activeVideoMatchId, setActiveVideoMatchId] = useState<string | null>(null);
 
@@ -45,16 +58,22 @@ export default function ReviewPage() {
     () => "[]"
   );
 
-  const { clipGroups, totalClips } = useMemo(() => {
+  const { clipGroups, totalClips, totalSetPieces } = useMemo(() => {
     let all: SavedMatchRecord[];
-    try { all = JSON.parse(matchesRaw); } catch { return { clipGroups: [], totalClips: 0 }; }
+    try { all = JSON.parse(matchesRaw); } catch { return { clipGroups: [], totalClips: 0, totalSetPieces: 0 }; }
     const clipResult: ClipGroup[] = [];
     let totalC = 0;
+    let totalS = 0;
     for (const match of all) {
       const clips = [...(match.clips ?? [])].sort((a, b) => a.startTime - b.startTime);
-      if (clips.length > 0) { clipResult.push({ match, clips }); totalC += clips.length; }
+      const setPieceMoments = buildSetPieceReviewMoments(match.events ?? []);
+      if (clips.length > 0 || setPieceMoments.length > 0) {
+        clipResult.push({ match, clips, setPieceMoments });
+        totalC += clips.length;
+        totalS += setPieceMoments.length;
+      }
     }
-    return { clipGroups: clipResult, totalClips: totalC };
+    return { clipGroups: clipResult, totalClips: totalC, totalSetPieces: totalS };
   }, [matchesRaw]);
 
   // Revoke all blob URLs on unmount
@@ -109,6 +128,22 @@ export default function ReviewPage() {
     }, 50);
   }
 
+  function seekToSetPiece(matchId: string, timestamp: number) {
+    if (!videoRef.current || activeVideoMatchId !== matchId) return;
+    videoRef.current.currentTime = Math.max(0, timestamp - 3);
+    videoRef.current.play();
+  }
+
+  function activateAndSeekToClip(matchId: string, clips: ClipAnnotation[], idx: number) {
+    setActiveVideoMatchId(matchId);
+    window.setTimeout(() => seekToClip(matchId, clips, idx), 0);
+  }
+
+  function activateAndSeekToSetPiece(matchId: string, timestamp: number) {
+    setActiveVideoMatchId(matchId);
+    window.setTimeout(() => seekToSetPiece(matchId, timestamp), 0);
+  }
+
   if (!ready) return null;
   if (!currentPlayer) return <PlayerPicker />;
 
@@ -121,8 +156,8 @@ export default function ReviewPage() {
           <PageHelp {...PLAYER_PAGE_HELP["/player/review"]} />
         </div>
         <p className="mt-1 text-sm text-muted">
-          {totalClips > 0
-            ? `${totalClips} ${totalClips === 1 ? "clip" : "clips"} from film review`
+          {totalClips > 0 || totalSetPieces > 0
+            ? `${totalClips} ${totalClips === 1 ? "clip" : "clips"} and ${totalSetPieces} set-piece ${totalSetPieces === 1 ? "tag" : "tags"} from review`
             : "Coach clips from film review"}
         </p>
       </div>
@@ -131,13 +166,18 @@ export default function ReviewPage() {
       {clipGroups.length > 0 && (
         <section className="space-y-5">
           <h2 className="text-sm font-semibold text-foreground-strong uppercase tracking-widest">
-            Coaching Clips
+            Review Moments
           </h2>
 
-          {clipGroups.map(({ match, clips }) => {
+          {clipGroups.map(({ match, clips, setPieceMoments }) => {
             const videoUrl = videoUrls[match.id];
             const isActiveMatch = activeVideoMatchId === match.id;
             const currentIdx = activeClipIdx[match.id] ?? null;
+            const filteredSetPieceMoments = filterSetPieceReviewMoments(
+              setPieceMoments,
+              setPieceTypeFilter,
+              setPieceSideFilters
+            );
 
             return (
               <div key={match.id} className="rounded-xl border border-border bg-panel overflow-hidden">
@@ -191,7 +231,7 @@ export default function ReviewPage() {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => seekToClip(match.id, clips, Math.max(0, (currentIdx ?? 0) - 1))}
+                          onClick={() => activateAndSeekToClip(match.id, clips, Math.max(0, (currentIdx ?? 0) - 1))}
                           disabled={currentIdx === null || currentIdx === 0}
                           className="rounded-lg border border-border bg-panel-2 px-3 py-1.5 text-xs text-muted transition-all duration-150 hover:border-border-light hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
                         >
@@ -200,8 +240,8 @@ export default function ReviewPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            if (currentIdx === null) seekToClip(match.id, clips, 0);
-                            else if (currentIdx < clips.length - 1) seekToClip(match.id, clips, currentIdx + 1);
+                            if (currentIdx === null) activateAndSeekToClip(match.id, clips, 0);
+                            else if (currentIdx < clips.length - 1) activateAndSeekToClip(match.id, clips, currentIdx + 1);
                           }}
                           disabled={currentIdx !== null && currentIdx >= clips.length - 1}
                           className="rounded-lg border border-border bg-panel-2 px-3 py-1.5 text-xs text-muted transition-all duration-150 hover:border-border-light hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
@@ -228,44 +268,113 @@ export default function ReviewPage() {
                 </div>
 
                 {/* Clip playlist */}
-                <div ref={playlistRef} className="divide-y divide-border">
-                  {clips.map((clip, idx) => {
-                    const isActive = isActiveMatch && currentIdx === idx;
-                    return (
+                <div className="border-b border-border">
+                  <div className="flex items-center justify-between px-5 py-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-2">Set-piece tags</h3>
+                    <span className="text-xs text-muted-2">
+                      {setPieceMoments.length} {setPieceMoments.length === 1 ? "tag" : "tags"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 px-5 pb-3">
+                    {(["All", "Scrum", "Lineout"] as SetPieceTypeFilter[]).map((filter) => (
                       <button
-                        key={clip.id}
+                        key={filter}
                         type="button"
-                        data-idx={idx}
-                        onClick={() => {
-                          // If video not yet loaded for this match, can't seek — noop
-                          if (videoUrl) seekToClip(match.id, clips, idx);
-                        }}
-                        className={`w-full flex items-start gap-3 px-5 py-3.5 text-left transition-all duration-150 ${
-                          isActive ? "bg-panel-3" : "hover:bg-panel-2"
-                        } ${!videoUrl ? "cursor-default" : "cursor-pointer"}`}
+                        onClick={() => setSetPieceTypeFilter(filter)}
+                        className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                          setPieceTypeFilter === filter ? "border-border-light bg-panel-3 text-foreground" : "border-border bg-panel-2 text-muted"
+                        }`}
                       >
-                        {/* Time range */}
-                        <span className="shrink-0 mt-0.5 text-[11px] font-mono tabular-nums text-muted-2 bg-panel-2 border border-border rounded px-1.5 py-0.5 whitespace-nowrap">
-                          {formatTime(clip.startTime)} → {formatTime(clip.endTime)}
-                        </span>
-                        {/* Label */}
-                        <span className={`flex-1 text-sm ${isActive ? "text-foreground-strong" : "text-foreground"}`}>
-                          {clip.label}
-                        </span>
-                        {/* Category badge */}
-                        {clip.category && (
-                          <span className={`shrink-0 mt-0.5 text-[11px] font-medium border rounded px-1.5 py-0.5 ${categoryClass(clip.category)}`}>
-                            {clip.category}
-                          </span>
-                        )}
-                        {/* Active dot */}
-                        {isActive && (
-                          <span className="shrink-0 mt-2 h-1.5 w-1.5 rounded-full bg-success" />
-                        )}
+                        {filter}
                       </button>
-                    );
-                  })}
+                    ))}
+                    {[
+                      ["own", "Own"],
+                      ["opposition", "Opposition"],
+                    ].map(([key, label]) => (
+                      <label
+                        key={key}
+                        className="flex cursor-pointer items-center gap-2 rounded-full border border-border bg-panel-2 px-3 py-1 text-xs font-medium text-muted"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={setPieceSideFilters[key as keyof SetPieceSideFilters]}
+                          onChange={(event) =>
+                            setSetPieceSideFilters((prev) => ({
+                              ...prev,
+                              [key]: event.target.checked,
+                            }))
+                          }
+                          className="h-3.5 w-3.5 rounded accent-foreground"
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                  {filteredSetPieceMoments.length === 0 ? (
+                    <p className="px-5 pb-4 text-sm text-muted">
+                      {setPieceMoments.length === 0 ? "No scrum or lineout tags logged for this match." : "No set-piece tags match these filters."}
+                    </p>
+                  ) : (
+                    <div className="divide-y divide-border">
+                      {filteredSetPieceMoments.map((moment) => (
+                        <button
+                          key={moment.id}
+                          type="button"
+                          onClick={() => {
+                            if (videoUrl) activateAndSeekToSetPiece(match.id, moment.timestamp);
+                          }}
+                          className={`w-full px-5 py-3 text-left transition-all duration-150 ${
+                            videoUrl ? "cursor-pointer hover:bg-panel-2" : "cursor-default"
+                          }`}
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono text-[11px] text-muted-2">{formatTime(moment.timestamp)}</span>
+                            <span className="text-sm font-medium text-foreground">{moment.label}</span>
+                            <span className="rounded border border-border bg-panel-2 px-1.5 py-0.5 text-[11px] text-muted">{moment.side}</span>
+                          </div>
+                          {moment.notes && <p className="mt-1 text-xs text-muted">Call: {moment.notes}</p>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
+
+                {clips.length > 0 && (
+                  <div ref={playlistRef} className="divide-y divide-border">
+                    {clips.map((clip, idx) => {
+                      const isActive = isActiveMatch && currentIdx === idx;
+                      return (
+                        <button
+                          key={clip.id}
+                          type="button"
+                          data-idx={idx}
+                          onClick={() => {
+                            if (videoUrl) activateAndSeekToClip(match.id, clips, idx);
+                          }}
+                          className={`w-full flex items-start gap-3 px-5 py-3.5 text-left transition-all duration-150 ${
+                            isActive ? "bg-panel-3" : "hover:bg-panel-2"
+                          } ${!videoUrl ? "cursor-default" : "cursor-pointer"}`}
+                        >
+                          <span className="shrink-0 mt-0.5 text-[11px] font-mono tabular-nums text-muted-2 bg-panel-2 border border-border rounded px-1.5 py-0.5 whitespace-nowrap">
+                            {formatTime(clip.startTime)} → {formatTime(clip.endTime)}
+                          </span>
+                          <span className={`flex-1 text-sm ${isActive ? "text-foreground-strong" : "text-foreground"}`}>
+                            {clip.label}
+                          </span>
+                          {clip.category && (
+                            <span className={`shrink-0 mt-0.5 text-[11px] font-medium border rounded px-1.5 py-0.5 ${categoryClass(clip.category)}`}>
+                              {clip.category}
+                            </span>
+                          )}
+                          {isActive && (
+                            <span className="shrink-0 mt-2 h-1.5 w-1.5 rounded-full bg-success" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}

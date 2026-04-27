@@ -717,6 +717,15 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
+### Batch AA (April 2026) — Review set-piece tags
+- ✅ Shared `setPieceReview.ts` helper derives read-only review moments from saved scrum and lineout tags
+- ✅ Coach Review now shows auto-generated Set-piece tags beside the clip playlist, split by Scrum / Lineout with Own / Opposition checkbox filters
+- ✅ Player Review shows the same set-piece tags per match alongside coach clips, using the same filters and seek-to-video behaviour when a video is available
+- ✅ Manual clips remain unchanged; set-piece tags are generated from match events and are not persisted as new clips
+- ✅ Verification: `git diff --check`, `npm run lint`, and `npm run build` passed
+
+---
+
 ## Next — Batch Z continuation (plan carefully before starting)
 
 Options: run/verify Supabase SQL in production dashboard, set `SUPABASE_SERVICE_ROLE_KEY` server-side for linked player profile updates, smoke-test invite redemption with real Supabase auth/email settings, harden invite ownership/email matching edge cases, add visible team-member sync errors, evaluate Cloudflare Stream or signed playback strategy for larger video libraries, Stripe payments.
