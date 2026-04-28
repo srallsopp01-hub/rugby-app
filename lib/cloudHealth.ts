@@ -29,8 +29,11 @@ export async function checkCloudSchema(): Promise<CloudSchemaHealth> {
     if (error?.code === "42703") missingColumns.push("saved_matches.video_storage_path");
   }
 
-  const { data: bucket } = await supabase.storage.getBucket("match-videos");
-  const bucketExists = Boolean(bucket);
+  // getBucket() requires service-role key; use list() which works with the anon key + RLS.
+  // A non-existent bucket returns { error.message: "Bucket not found" }; an existing
+  // bucket (even empty) returns { data: [], error: null }.
+  const { error: bucketError } = await supabase.storage.from("match-videos").list("", { limit: 1 });
+  const bucketExists = !bucketError || !bucketError.message?.toLowerCase().includes("not found");
 
   const ok = missingTables.length === 0 && missingColumns.length === 0 && bucketExists;
   return { ok, missingTables, missingColumns, bucketExists };
