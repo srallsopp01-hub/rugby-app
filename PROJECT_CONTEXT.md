@@ -1,6 +1,6 @@
 # Rugby Analysis App — Project Context File
 
-**Last updated:** April 2026 — cloud video, team invites, and player sync live (Batch Z Part 3)
+**Last updated:** April 2026 — video upload timeout fix and cross-account signed URL refresh (Batch AD)
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -732,6 +732,32 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
+### Batch AD (April 2026) — Video upload and cross-account streaming fixes
+
+Two implementation bugs that blocked reliable video upload and cross-account playback:
+
+**Bug 1 (upload timeout):** XHR upload timeout was hardcoded to 120 s — any video larger than ~500 MB at typical home internet speeds would always fail silently. Fixed by setting `DIRECT_UPLOAD_TIMEOUT_MS = 0` (unlimited); the browser still fires `error` events on genuine network failures.
+
+**Bug 2 (signed URL expiry with no recovery):** All three playback pages requested signed URLs with a 4-hour expiry and had no `onError` handler. An expired or failed cloud URL would silently break the video element with no recovery path. Fixed by increasing expiry to 24 hours and wiring `onError` refresh on all three `<video>` elements.
+
+- ✅ `lib/matchVideoCloud.ts` — upload timeout set to 0 (unlimited); `SIGNED_URL_EXPIRY_SECONDS = 86400` exported as shared constant; `refreshVideoSignedUrl()` exported for use by all playback pages
+- ✅ `app/coach/review/page.tsx` — signed URL expiry updated to 24 hr; `onError` re-fetches a fresh cloud URL when the current one expires; loading hint suppressed while cloud fetch is in flight; "unavailable" vs "not-yet-loaded" states distinguished
+- ✅ `app/player/review/page.tsx` — 24 hr expiry; per-match loading spinner while cloud URL is fetching; `onError` re-fetches fresh URL per match
+- ✅ `app/player/games/[gameId]/page.tsx` — 24 hr expiry; loading spinner while cloud fetch is in flight; `onError` re-fetches on failure
+- ✅ Cross-account video access already correctly enabled by RLS (migration 20260427000002 "Team member can read coach videos" policy) — no schema changes needed
+- ✅ Verification: `npm run lint` clean, `npm run build` passed
+
+**Video stack (current):**
+- Storage: Supabase Storage private bucket `match-videos`, path `{owner_user_id}/{match_id}/{filename}`
+- Upload: XHR with real-time progress (primary), Supabase SDK (fallback), head-coach only
+- Playback: signed URLs, 24 hr expiry, auto-refresh on error
+- Access control: Supabase RLS — accepted team members (`team_members.status = 'accepted'`) can read all videos in their coach's folder
+- No transcoding — raw video file served via HTTP range requests (adequate for private beta)
+
+**Why not Cloudflare Stream:** RLS architecture is already correct; the two bugs above were the only blockers. Cloudflare Stream adds transcoding/HLS/CDN but requires full architectural migration (new vendor, video IDs, different upload/playback). Revisit when: >50 hrs of stored video, mobile adaptive streaming needed, or Supabase bandwidth costs become material.
+
+---
+
 ### Batch AC (April 2026) — Cloud sync error surfacing and schema diagnostics
 
 Root cause of all cross-device sync failures identified and fixed: all 5 Supabase migrations were unapplied in production, and every cloud error was silently swallowed so Settings always showed "Synced" even when nothing reached the database.
@@ -750,16 +776,32 @@ Root cause of all cross-device sync failures identified and fixed: all 5 Supabas
 
 ---
 
-## Next — remaining cloud hardening
+## Next — recommended priority order
 
-Options: smoke-test invite redemption end-to-end with real Supabase auth/email settings, set `SUPABASE_SERVICE_ROLE_KEY` server-side for linked player profile updates after invite acceptance, harden invite ownership/email matching edge cases, add visible team-member sync errors in player settings, evaluate Cloudflare Stream for larger video libraries, Stripe payments.
+### Immediate (unblocked, high value)
+1. **Smoke-test video cross-account end-to-end** — log in as an accepted player, open `/player/review` and `/player/games/[gameId]`, confirm cloud video loads automatically without a file picker; confirm `onError` refresh works when URL is stale
+2. **Smoke-test invite redemption** — send a real invite to a test email, accept it, and verify player identity auto-sets and coach data (squad profile, saved matches, videos) loads correctly
+3. **`SUPABASE_SERVICE_ROLE_KEY` server-side** — required for `SquadPlayer.linkedUserId` to be written back to the coach's squad profile after invite acceptance (player linking); add to Vercel environment variables and `lib/supabase/server.ts`
+
+### Medium-term (quality/completeness)
+4. **Player settings — team-member sync errors** — if `SyncPlayerData` fails, currently only logs to console; surface a visible error in `/player/settings`
+5. **Invite ownership/email edge cases** — coach invites same email twice; player tries to redeem expired token; revoked member tries to access data
+6. **Stripe payments** — wire up Stripe to the pricing page CTAs; the `pricingConfig.ts` has placeholder price IDs ready
+
+### Longer-term (don't prioritise yet)
+- Cloudflare Stream (revisit when >50 hrs stored video, mobile adaptive streaming needed, or bandwidth costs material)
+- Production-grade multi-team/member permissions and audit trail
+- Advanced video annotation / telestration
+- Cross-match player trends backed by cloud data
+- Shared team analysis links
+- Mobile support
 
 ---
 
 ## Longer-term (don't prioritise yet)
 
+- Cloudflare Stream / HLS transcoding for large video libraries (revisit at >50 hrs stored)
 - Production-grade multi-team/member permissions and audit trail
-- Video streaming/transcoding for large match libraries
 - Advanced video annotation / telestration
 - Cross-match player trends backed by cloud data
 - Shared team analysis links
