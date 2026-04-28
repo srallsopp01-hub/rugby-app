@@ -732,9 +732,27 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ---
 
-## Next — Batch Z continuation (plan carefully before starting)
+### Batch AC (April 2026) — Cloud sync error surfacing and schema diagnostics
 
-Options: run/verify Supabase SQL in production dashboard, set `SUPABASE_SERVICE_ROLE_KEY` server-side for linked player profile updates, smoke-test invite redemption with real Supabase auth/email settings, harden invite ownership/email matching edge cases, add visible team-member sync errors, evaluate Cloudflare Stream or signed playback strategy for larger video libraries, Stripe payments.
+Root cause of all cross-device sync failures identified and fixed: all 5 Supabase migrations were unapplied in production, and every cloud error was silently swallowed so Settings always showed "Synced" even when nothing reached the database.
+
+- ✅ `lib/savedMatchesCloud.ts` — all functions now return `{ ok, error? }` / `{ records, error? }` / `{ count, errors[] }` instead of void/null; errors are surfaced to callers
+- ✅ `lib/squadProfileCloud.ts` — same error-surfacing pattern applied to all functions
+- ✅ `lib/teamContext.ts` — no longer permanently caches `null` on a transient JS exception; a failed lookup retries next call
+- ✅ `lib/cloudHealth.ts` (new) — probes `squad_profiles`, `saved_matches`, `team_members`, `video_storage_path` column, and `match-videos` bucket; returns `{ ok, missingTables[], missingColumns[], bucketExists }`
+- ✅ `app/coach/SyncSavedMatches.tsx` — dispatches `rugbycoach-cloud-sync-error` CustomEvent when background sync fails so Settings can surface it without a manual click
+- ✅ `app/coach/SyncSquadProfile.tsx` — updated to use new `{ profile }` destructured return from `fetchCloudSquadProfile`
+- ✅ `app/player/SyncPlayerData.tsx` — membership and fetch errors now logged to `console.error` with `[SyncPlayerData]` prefix for Vercel/devtools visibility
+- ✅ `app/coach/settings/page.tsx` — "Sync Now" shows "Sync failed" with error text when any write fails; amber schema warning panel when tables/columns/bucket are missing; new "Check Cloud" diagnostic button shows live user ID, local match count, and cloud match count; `clearTeamContextCache()` called on sync and sign-out; `useEffect` added for schema check on mount and sync-error event listener
+- ✅ `upsertCloudSavedMatch` gracefully retries without `video_storage_path` if migration 001 column is absent (error code `42703`)
+- ✅ Production Supabase: all 5 migrations applied manually via SQL editor; `saved_matches`, `squad_profiles`, `team_members`, `invite_tokens` tables live with correct RLS; `match-videos` bucket created
+- ✅ Verification: `npm run lint` clean, `npm run build` passed, deployed to Vercel
+
+---
+
+## Next — remaining cloud hardening
+
+Options: smoke-test invite redemption end-to-end with real Supabase auth/email settings, set `SUPABASE_SERVICE_ROLE_KEY` server-side for linked player profile updates after invite acceptance, harden invite ownership/email matching edge cases, add visible team-member sync errors in player settings, evaluate Cloudflare Stream for larger video libraries, Stripe payments.
 
 ---
 
