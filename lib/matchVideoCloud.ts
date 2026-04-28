@@ -2,7 +2,9 @@ import { createClient } from "@/lib/supabase/client";
 import { getMyTeamContext } from "@/lib/teamContext";
 
 const BUCKET = "match-videos";
-const DIRECT_UPLOAD_TIMEOUT_MS = 120_000;
+const DIRECT_UPLOAD_TIMEOUT_MS = 0;
+
+export const SIGNED_URL_EXPIRY_SECONDS = 86400;
 
 export type VideoUploadProgress = {
   loaded: number;
@@ -142,6 +144,10 @@ export async function getMatchVideoSignedUrl(
   } catch {
     return null;
   }
+}
+
+export async function refreshVideoSignedUrl(storagePath: string): Promise<string | null> {
+  return getMatchVideoSignedUrl(storagePath, SIGNED_URL_EXPIRY_SECONDS);
 }
 
 export async function deleteMatchVideo(storagePath: string): Promise<void> {

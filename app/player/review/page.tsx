@@ -16,7 +16,7 @@ import {
 } from "@/app/rugby-tagging/lib/setPieceReview";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { ClipAnnotation } from "@/app/rugby-tagging/types";
-import { getMatchVideoSignedUrl } from "@/lib/matchVideoCloud";
+import { getMatchVideoSignedUrl, refreshVideoSignedUrl, SIGNED_URL_EXPIRY_SECONDS } from "@/lib/matchVideoCloud";
 
 type ClipGroup = {
   match: SavedMatchRecord;
@@ -43,6 +43,7 @@ export default function ReviewPage() {
 
   // Per-match video blob URLs and active clip indices
   const [videoUrls, setVideoUrls] = useState<Record<string, string>>({});
+  const [videoLoading, setVideoLoading] = useState<Record<string, boolean>>({});
   const [activeClipIdx, setActiveClipIdx] = useState<Record<string, number | null>>({});
   const [setPieceTypeFilter, setSetPieceTypeFilter] = useState<SetPieceTypeFilter>("All");
   const [setPieceSideFilters, setSetPieceSideFilters] = useState<SetPieceSideFilters>({
@@ -87,17 +88,22 @@ export default function ReviewPage() {
   // Auto-load signed URLs for matches that have cloud video but no local blob URL
   useEffect(() => {
     const missing = clipGroups.filter(
-      ({ match }) => match.videoStoragePath && !videoUrls[match.id]
+      ({ match }) => match.videoStoragePath && !videoUrls[match.id] && !videoLoading[match.id]
     );
     if (missing.length === 0) return;
+
+    setVideoLoading((prev) => {
+      const next = { ...prev };
+      missing.forEach(({ match }) => { next[match.id] = true; });
+      return next;
+    });
 
     void Promise.all(
       missing.map(async ({ match }) => {
         if (!match.videoStoragePath) return;
-        const url = await getMatchVideoSignedUrl(match.videoStoragePath, 14400);
-        if (url) {
-          setVideoUrls((prev) => ({ ...prev, [match.id]: url }));
-        }
+        const url = await getMatchVideoSignedUrl(match.videoStoragePath, SIGNED_URL_EXPIRY_SECONDS);
+        if (url) setVideoUrls((prev) => ({ ...prev, [match.id]: url }));
+        setVideoLoading((prev) => ({ ...prev, [match.id]: false }));
       })
     );
   // Re-run when clipGroups changes (new matches loaded), but not on every videoUrls change
@@ -198,7 +204,15 @@ export default function ReviewPage() {
 
                 {/* Video area */}
                 <div className="px-5 py-4 border-b border-border space-y-3">
-                  {!videoUrl ? (
+                  {videoLoading[match.id] ? (
+                    <div className="flex items-center gap-2 py-1 text-sm text-muted">
+                      <svg className="animate-spin h-4 w-4 shrink-0 text-muted-2" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                      </svg>
+                      Loading video from cloud…
+                    </div>
+                  ) : !videoUrl ? (
                     <label className="flex items-center gap-3 cursor-pointer group w-fit">
                       <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-panel-2 transition-all duration-150 group-hover:border-border-light group-hover:bg-panel-3">
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -226,6 +240,16 @@ export default function ReviewPage() {
                         controls
                         className="w-full rounded-lg bg-black aspect-video"
                         onPlay={() => setActiveVideoMatchId(match.id)}
+                        onError={() => {
+                          if (!videoUrl || videoUrl.startsWith("blob:")) return;
+                          if (!match.videoStoragePath) return;
+                          setVideoUrls((prev) => { const n = { ...prev }; delete n[match.id]; return n; });
+                          setVideoLoading((prev) => ({ ...prev, [match.id]: true }));
+                          void refreshVideoSignedUrl(match.videoStoragePath).then((freshUrl) => {
+                            if (freshUrl) setVideoUrls((prev) => ({ ...prev, [match.id]: freshUrl }));
+                            setVideoLoading((prev) => ({ ...prev, [match.id]: false }));
+                          });
+                        }}
                       />
                       {/* Prev / Next */}
                       <div className="flex items-center gap-2">

@@ -12,7 +12,7 @@ import { buildPlayerCoachingPlan } from "../../playerCoachingPlan";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { EventItem } from "@/app/rugby-tagging/types";
 import type { SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
-import { getMatchVideoSignedUrl } from "@/lib/matchVideoCloud";
+import { getMatchVideoSignedUrl, refreshVideoSignedUrl, SIGNED_URL_EXPIRY_SECONDS } from "@/lib/matchVideoCloud";
 
 const ACTION_LABELS: Record<string, string> = {
   tackle: "Tackle",
@@ -81,6 +81,7 @@ export default function GameDetailPage() {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoUrl, setVideoUrl] = useState("");
+  const [videoLoading, setVideoLoading] = useState(false);
   const [activeEventIdx, setActiveEventIdx] = useState<number | null>(null);
   const playlistRef = useRef<HTMLDivElement>(null);
 
@@ -91,8 +92,10 @@ export default function GameDetailPage() {
   // Auto-load from cloud if match has a stored video path and no local URL yet
   useEffect(() => {
     if (videoUrl || !match?.videoStoragePath) return;
-    void getMatchVideoSignedUrl(match.videoStoragePath, 14400).then((url) => {
+    setVideoLoading(true);
+    void getMatchVideoSignedUrl(match.videoStoragePath, SIGNED_URL_EXPIRY_SECONDS).then((url) => {
       if (url) setVideoUrl(url);
+      setVideoLoading(false);
     });
   // Run only when the match changes (new game loaded)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -164,13 +167,31 @@ export default function GameDetailPage() {
       </div>
 
       {/* Video player + playlist */}
-      {videoUrl ? (
+      {videoLoading ? (
+        <div className="flex items-center gap-2 rounded-xl border border-border bg-panel px-5 py-4 text-sm text-muted">
+          <svg className="animate-spin h-4 w-4 shrink-0 text-muted-2" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+          </svg>
+          Loading video from cloud…
+        </div>
+      ) : videoUrl ? (
         <div className="rounded-xl border border-border bg-panel overflow-hidden">
           <video
             ref={videoRef}
             src={videoUrl}
             className="w-full aspect-video bg-black"
             controls
+            onError={() => {
+              if (!videoUrl || videoUrl.startsWith("blob:")) return;
+              if (!match?.videoStoragePath) return;
+              setVideoUrl("");
+              setVideoLoading(true);
+              void refreshVideoSignedUrl(match.videoStoragePath).then((url) => {
+                if (url) setVideoUrl(url);
+                setVideoLoading(false);
+              });
+            }}
           />
 
           {events.length > 0 && (

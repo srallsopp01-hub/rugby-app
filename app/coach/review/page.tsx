@@ -17,7 +17,7 @@ import {
   type SetPieceSideFilters,
   type SetPieceTypeFilter,
 } from "@/app/rugby-tagging/lib/setPieceReview";
-import { getMatchVideoSignedUrl } from "@/lib/matchVideoCloud";
+import { getMatchVideoSignedUrl, refreshVideoSignedUrl, SIGNED_URL_EXPIRY_SECONDS } from "@/lib/matchVideoCloud";
 import type { ClipAnnotation, EventItem, RosterRow, VideoAnnotation } from "@/app/rugby-tagging/types";
 
 type CoachReviewNote = {
@@ -450,7 +450,7 @@ export default function ReviewPage() {
     if (!match?.videoStoragePath) return;
 
     setVideoCloudStatus("loading");
-    void getMatchVideoSignedUrl(match.videoStoragePath, 14400).then((url) => {
+    void getMatchVideoSignedUrl(match.videoStoragePath, SIGNED_URL_EXPIRY_SECONDS).then((url) => {
       if (url) {
         setVideoSrc(url);
         setVideoCloudStatus("loaded");
@@ -750,6 +750,19 @@ export default function ReviewPage() {
                       controls
                       src={videoSrc}
                       className="aspect-video min-h-[340px] w-full bg-black object-contain xl:min-h-[460px] 2xl:min-h-[560px]"
+                      onError={() => {
+                        if (!videoSrc || videoSrc.startsWith("blob:")) return;
+                        const matchId = getCurrentMatchId();
+                        if (!matchId) return;
+                        const m = getSavedMatchById(matchId);
+                        if (!m?.videoStoragePath) return;
+                        setVideoSrc("");
+                        setVideoCloudStatus("loading");
+                        void refreshVideoSignedUrl(m.videoStoragePath).then((url) => {
+                          if (url) { setVideoSrc(url); setVideoCloudStatus("loaded"); }
+                          else setVideoCloudStatus("unavailable");
+                        });
+                      }}
                       onLoadedData={() => {
                         if (videoRef.current) {
                           videoRef.current.playbackRate = playbackRate;
@@ -877,14 +890,16 @@ export default function ReviewPage() {
                     </div>
                   )}
                 </>
-              ) : (
+              ) : videoCloudStatus !== "loading" ? (
                 <div className="rounded-xl border border-border bg-panel-2 px-4 py-4 text-sm text-muted">
                   <div className="font-medium text-foreground">No video available yet</div>
                   <p className="mt-2">
-                    Load a match video in Capture first, then reopen Review. This page uses the current browser session video rather than cloud storage.
+                    {videoCloudStatus === "unavailable"
+                      ? "Could not load the match video from cloud. Check your connection and try reloading the page."
+                      : "Load a match video in Capture first, then reopen Review."}
                   </p>
                 </div>
-              )}
+              ) : null}
             </div>
 
             <CoachReviewPanel
