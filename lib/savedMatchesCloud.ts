@@ -49,10 +49,13 @@ function rowToRecord(row: SavedMatchRow): SavedMatchRecord {
   };
 }
 
-export async function fetchCloudSavedMatches(): Promise<SavedMatchRecord[]> {
+export async function fetchCloudSavedMatches(): Promise<{
+  records: SavedMatchRecord[];
+  error?: string;
+}> {
   try {
     const ctx = await getMyTeamContext();
-    if (!ctx) return [];
+    if (!ctx) return { records: [] };
 
     const supabase = createClient();
     const { data, error } = await supabase
@@ -61,51 +64,81 @@ export async function fetchCloudSavedMatches(): Promise<SavedMatchRecord[]> {
       .eq("user_id", ctx.ownerUserId)
       .order("updated_at", { ascending: false });
 
-    if (error || !data) return [];
+    if (error) return { records: [], error: error.message };
+    if (!data) return { records: [] };
 
-    return (data as SavedMatchRow[]).map(rowToRecord);
-  } catch {
-    return [];
+    return { records: (data as SavedMatchRow[]).map(rowToRecord) };
+  } catch (e) {
+    return { records: [], error: String(e) };
   }
 }
 
 export async function upsertCloudSavedMatch(
   record: SavedMatchRecord
-): Promise<void> {
+): Promise<{ ok: boolean; error?: string }> {
   try {
     const ctx = await getMyTeamContext();
-    if (!ctx?.canManageTeam) return;
+    if (!ctx?.canManageTeam) return { ok: false, error: "No write permission" };
 
     const supabase = createClient();
-    await supabase
+    const payload = recordToUpsertPayload(record, ctx.ownerUserId);
+
+    const { error } = await supabase
       .from("saved_matches")
-      .upsert(recordToUpsertPayload(record, ctx.ownerUserId), {
-        onConflict: "user_id,match_id",
-      });
-  } catch {
-    return;
+      .upsert(payload, { onConflict: "user_id,match_id" });
+
+    if (error?.code === "42703") {
+      // video_storage_path column doesn't exist (migration 001 not applied) — retry without it
+      const basePayload = Object.fromEntries(
+        Object.entries(payload).filter(([k]) => k !== "video_storage_path")
+      );
+      const { error: retryError } = await supabase
+        .from("saved_matches")
+        .upsert(basePayload, { onConflict: "user_id,match_id" });
+      if (retryError) {
+        return { ok: false, error: `Saved match upsert failed: ${retryError.message}` };
+      }
+      return { ok: true };
+    }
+
+    if (error) return { ok: false, error: `Saved match upsert failed: ${error.message}` };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e) };
   }
 }
 
-export async function deleteCloudSavedMatch(matchId: string): Promise<void> {
+export async function deleteCloudSavedMatch(
+  matchId: string
+): Promise<{ ok: boolean; error?: string }> {
   try {
     const ctx = await getMyTeamContext();
-    if (!ctx?.canManageTeam) return;
+    if (!ctx?.canManageTeam) return { ok: false, error: "No write permission" };
 
     const supabase = createClient();
-    await supabase
+    const { error } = await supabase
       .from("saved_matches")
       .delete()
       .eq("user_id", ctx.ownerUserId)
       .eq("match_id", matchId);
-  } catch {
-    return;
+
+    if (error) return { ok: false, error: `Delete failed: ${error.message}` };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e) };
   }
 }
 
-export async function syncAllLocalMatchesToCloud(): Promise<{ count: number }> {
+export async function syncAllLocalMatchesToCloud(): Promise<{
+  count: number;
+  errors: string[];
+}> {
   const local = getSavedMatches();
-  const cloud = await fetchCloudSavedMatches();
+  const { records: cloud, error: fetchError } = await fetchCloudSavedMatches();
+
+  const errors: string[] = [];
+  if (fetchError) errors.push(`Fetch cloud matches: ${fetchError}`);
+
   const merged = mergeSavedMatches(cloud, local);
   replaceSavedMatches(merged);
 
@@ -116,8 +149,12 @@ export async function syncAllLocalMatchesToCloud(): Promise<{ count: number }> {
     (m) => !cloudIds.has(m.id) || cloudUpdated.get(m.id) !== m.updatedAt
   );
 
-  await Promise.all(toSync.map((m) => upsertCloudSavedMatch(m)));
-  return { count: merged.length };
+  const results = await Promise.all(toSync.map((m) => upsertCloudSavedMatch(m)));
+  for (const r of results) {
+    if (!r.ok && r.error) errors.push(r.error);
+  }
+
+  return { count: merged.length, errors };
 }
 
 export function mergeSavedMatches(

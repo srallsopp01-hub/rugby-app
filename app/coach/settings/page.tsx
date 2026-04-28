@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
 import { PageHelp } from "@/app/components/PageHelp";
@@ -16,10 +16,15 @@ import {
 } from "@/app/rugby-tagging/constants";
 import {
   CURRENT_MATCH_ID_KEY,
+  getSavedMatches,
   SAVED_MATCHES_KEY,
 } from "@/app/rugby-tagging/lib/savedMatches";
-import { syncAllLocalMatchesToCloud } from "@/lib/savedMatchesCloud";
+import { syncAllLocalMatchesToCloud, fetchCloudSavedMatches } from "@/lib/savedMatchesCloud";
 import { syncLocalSquadProfileToCloud } from "@/lib/squadProfileCloud";
+import { checkCloudSchema, type CloudSchemaHealth } from "@/lib/cloudHealth";
+import { clearTeamContextCache, getMyTeamContext } from "@/lib/teamContext";
+import { CLOUD_SYNC_ERROR_EVENT } from "@/app/coach/SyncSavedMatches";
+import { createClient as createBrowserClient } from "@/lib/supabase/client";
 
 const THEME_SCHEME_KEY = "rugbycoach-theme-scheme";
 const COACH_SIDEBAR_KEY = "coach-sidebar-collapsed";
@@ -105,24 +110,42 @@ export default function CoachSettingsPage() {
   const router = useRouter();
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [syncedCount, setSyncedCount] = useState<number | null>(null);
+  const [syncErrors, setSyncErrors] = useState<string[]>([]);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(() =>
     typeof window !== "undefined" ? localStorage.getItem(CLOUD_SYNC_LAST_AT_KEY) : null
   );
+  const [schemaHealth, setSchemaHealth] = useState<CloudSchemaHealth | null>(null);
+  const [cloudDiag, setCloudDiag] = useState<{
+    userId: string;
+    cloudMatchCount: number;
+    localMatchCount: number;
+    error?: string;
+  } | null>(null);
+  const [diagLoading, setDiagLoading] = useState(false);
 
   async function handleSyncNow() {
     setSyncStatus("syncing");
+    setSyncErrors([]);
+    clearTeamContextCache();
     try {
-      const [{ count }] = await Promise.all([
+      const [matchResult, profileResult] = await Promise.all([
         syncAllLocalMatchesToCloud(),
         syncLocalSquadProfileToCloud(),
       ]);
+      const allErrors: string[] = [
+        ...matchResult.errors,
+        ...(profileResult.ok ? [] : [profileResult.error ?? "Squad profile sync failed"]),
+      ].filter(Boolean) as string[];
+
       const now = new Date().toISOString();
       localStorage.setItem(CLOUD_SYNC_LAST_AT_KEY, now);
       setLastSyncedAt(now);
-      setSyncedCount(count);
-      setSyncStatus("synced");
+      setSyncedCount(matchResult.count);
+      setSyncErrors(allErrors);
+      setSyncStatus(allErrors.length > 0 ? "error" : "synced");
       emitStorageChanged();
-    } catch {
+    } catch (e) {
+      setSyncErrors([String(e)]);
       setSyncStatus("error");
     }
   }
@@ -134,10 +157,48 @@ export default function CoachSettingsPage() {
   );
   const [statusMessage, setStatusMessage] = useState("Settings loaded");
 
+  useEffect(() => {
+    checkCloudSchema().then(setSchemaHealth);
+  }, []);
+
+  useEffect(() => {
+    function onSyncError(e: Event) {
+      const errors = (e as CustomEvent<string[]>).detail ?? [];
+      if (errors.length > 0) {
+        setSyncErrors((prev) => [...new Set([...prev, ...errors])]);
+        setSyncStatus("error");
+      }
+    }
+    window.addEventListener(CLOUD_SYNC_ERROR_EVENT, onSyncError);
+    return () => window.removeEventListener(CLOUD_SYNC_ERROR_EVENT, onSyncError);
+  }, []);
+
   async function handleSignOut() {
+    clearTeamContextCache();
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push("/login");
+  }
+
+  async function handleCheckCloud() {
+    setDiagLoading(true);
+    setCloudDiag(null);
+    clearTeamContextCache();
+    try {
+      const supabase = createBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const ctx = await getMyTeamContext();
+      const { records, error } = await fetchCloudSavedMatches();
+      const local = getSavedMatches();
+      setCloudDiag({
+        userId: user?.id ?? "not signed in",
+        cloudMatchCount: records.length,
+        localMatchCount: local.length,
+        error: error ?? (ctx ? undefined : "Could not resolve team context — check Supabase connection"),
+      });
+    } finally {
+      setDiagLoading(false);
+    }
   }
 
   const snapshot = useMemo(
@@ -379,6 +440,45 @@ export default function CoachSettingsPage() {
           </div>
         </section>
 
+        {schemaHealth && !schemaHealth.ok && (
+          <section className="rounded-2xl border border-warning/40 bg-warning/5 p-5">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 text-warning" aria-hidden>⚠</span>
+              <div>
+                <h2 className="text-sm font-semibold text-warning">
+                  Cloud database not fully set up
+                </h2>
+                <p className="mt-1 text-xs leading-5 text-muted">
+                  Some Supabase migrations have not been applied. Data cannot sync until the
+                  schema is complete. Apply migrations 000–004 in the Supabase SQL editor.
+                </p>
+                {schemaHealth.missingTables.length > 0 && (
+                  <p className="mt-2 text-xs text-muted">
+                    Missing tables:{" "}
+                    <span className="font-mono text-warning">
+                      {schemaHealth.missingTables.join(", ")}
+                    </span>
+                  </p>
+                )}
+                {schemaHealth.missingColumns.length > 0 && (
+                  <p className="mt-1 text-xs text-muted">
+                    Missing columns:{" "}
+                    <span className="font-mono text-warning">
+                      {schemaHealth.missingColumns.join(", ")}
+                    </span>
+                  </p>
+                )}
+                {!schemaHealth.bucketExists && (
+                  <p className="mt-1 text-xs text-muted">
+                    Storage bucket <span className="font-mono text-warning">match-videos</span> not
+                    found — video uploads will fail.
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
         <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
@@ -402,6 +502,12 @@ export default function CoachSettingsPage() {
                   {syncedCount !== null && ` — ${syncedCount} match${syncedCount === 1 ? "" : "es"}`}
                 </p>
               )}
+              {syncErrors.length > 0 && (
+                <p className="mt-2 max-w-md truncate text-xs text-danger" title={syncErrors[0]}>
+                  {syncErrors[0]}
+                  {syncErrors.length > 1 && ` (+${syncErrors.length - 1} more)`}
+                </p>
+              )}
             </div>
             <div className="flex shrink-0 items-center gap-3">
               <SyncStatusPill status={syncStatus} />
@@ -414,6 +520,32 @@ export default function CoachSettingsPage() {
                 {syncStatus === "syncing" ? "Syncing…" : "Sync Now"}
               </button>
             </div>
+          </div>
+
+          <div className="mt-4 border-t border-border pt-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted">
+                Check what this account currently sees in the cloud database.
+              </p>
+              <button
+                type="button"
+                onClick={handleCheckCloud}
+                disabled={diagLoading}
+                className="rounded-lg border border-border bg-panel-2 px-3 py-1.5 text-xs font-medium text-foreground transition hover:border-border-light hover:bg-panel-3 disabled:opacity-50"
+              >
+                {diagLoading ? "Checking…" : "Check cloud"}
+              </button>
+            </div>
+            {cloudDiag && (
+              <div className="mt-3 rounded-xl border border-border bg-panel-2 p-4 font-mono text-xs leading-6 text-muted">
+                <div>User ID: <span className="text-foreground">{cloudDiag.userId}</span></div>
+                <div>Local matches: <span className="text-foreground">{cloudDiag.localMatchCount}</span></div>
+                <div>Cloud matches: <span className={cloudDiag.cloudMatchCount > 0 ? "text-success" : "text-warning"}>{cloudDiag.cloudMatchCount}</span></div>
+                {cloudDiag.error && (
+                  <div className="mt-1 text-danger">Error: {cloudDiag.error}</div>
+                )}
+              </div>
+            )}
           </div>
         </section>
 

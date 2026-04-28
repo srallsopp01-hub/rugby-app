@@ -53,7 +53,7 @@ export async function getMyTeamContext(): Promise<MyTeamContext | null> {
 
     return cachedContext;
   } catch {
-    cachedContext = null;
+    // Don't cache null on exception — a transient error shouldn't block all future lookups.
     return null;
   }
 }

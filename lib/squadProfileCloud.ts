@@ -61,10 +61,13 @@ function profileToUpsertPayload(
   };
 }
 
-export async function fetchCloudSquadProfile(): Promise<SquadProfile | null> {
+export async function fetchCloudSquadProfile(): Promise<{
+  profile: SquadProfile | null;
+  error?: string;
+}> {
   try {
     const ctx = await getMyTeamContext();
-    if (!ctx) return null;
+    if (!ctx) return { profile: null };
 
     const supabase = createClient();
     const { data, error } = await supabase
@@ -73,20 +76,20 @@ export async function fetchCloudSquadProfile(): Promise<SquadProfile | null> {
       .eq("user_id", ctx.ownerUserId)
       .maybeSingle();
 
-    if (error) return null;
+    if (error) return { profile: null, error: error.message };
 
-    return data ? rowToProfile(data as SquadProfileRow) : null;
-  } catch {
-    return null;
+    return { profile: data ? rowToProfile(data as SquadProfileRow) : null };
+  } catch (e) {
+    return { profile: null, error: String(e) };
   }
 }
 
 export async function upsertCloudSquadProfile(
   profile: SquadProfile
-): Promise<void> {
+): Promise<{ ok: boolean; error?: string }> {
   try {
     const ctx = await getMyTeamContext();
-    if (!ctx?.canManageTeam) return;
+    if (!ctx?.canManageTeam) return { ok: false, error: "No write permission" };
 
     const supabase = createClient();
     const { error } = await supabase
@@ -95,21 +98,32 @@ export async function upsertCloudSquadProfile(
         onConflict: "user_id",
       });
 
-    if (error) return;
-  } catch {
-    return;
+    if (error) return { ok: false, error: `Squad profile upsert failed: ${error.message}` };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e) };
   }
 }
 
-export async function syncLocalSquadProfileToCloud(): Promise<void> {
+export async function syncLocalSquadProfileToCloud(): Promise<{
+  ok: boolean;
+  error?: string;
+}> {
   const local = getSquadProfile();
-  const cloud = await fetchCloudSquadProfile();
+  const { profile: cloud, error: fetchError } = await fetchCloudSquadProfile();
+
+  if (fetchError) return { ok: false, error: `Fetch squad profile: ${fetchError}` };
+
   const merged = mergeSquadProfiles(cloud, local);
-  if (!merged) return;
+  if (!merged) return { ok: true };
+
   saveSquadProfile(merged);
+
   if (!cloud || merged.updatedAt !== cloud.updatedAt) {
-    await upsertCloudSquadProfile(merged);
+    return upsertCloudSquadProfile(merged);
   }
+
+  return { ok: true };
 }
 
 export function mergeSquadProfiles(

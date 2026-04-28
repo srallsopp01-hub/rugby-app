@@ -17,7 +17,7 @@ export function SyncSquadProfile() {
 
     async function sync() {
       const local = getSquadProfile();
-      const cloud = await fetchCloudSquadProfile();
+      const { profile: cloud } = await fetchCloudSquadProfile();
 
       if (cancelled) return;
 

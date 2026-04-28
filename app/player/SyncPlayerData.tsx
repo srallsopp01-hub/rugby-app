@@ -20,13 +20,18 @@ export function SyncPlayerData() {
       if (!user || cancelled) return;
 
       // Check if this authenticated user is an accepted player member
-      const { data: membership } = await supabase
+      const { data: membership, error: membershipError } = await supabase
         .from("team_members")
         .select("player_squad_id, owner_user_id")
         .eq("member_user_id", user.id)
         .eq("status", "accepted")
         .eq("role", "player")
         .maybeSingle();
+
+      if (membershipError) {
+        console.error("[SyncPlayerData] membership lookup failed:", membershipError.message);
+        return;
+      }
 
       if (!membership || cancelled) return;
 
@@ -40,12 +45,17 @@ export function SyncPlayerData() {
       }
 
       // Fetch coach's squad profile and match data (RLS allows this for accepted members)
-      const [profile, cloudMatches] = await Promise.all([
-        fetchCloudSquadProfile(),
-        fetchCloudSavedMatches(),
-      ]);
+      const [{ profile, error: profileError }, { records: cloudMatches, error: matchesError }] =
+        await Promise.all([fetchCloudSquadProfile(), fetchCloudSavedMatches()]);
 
       if (cancelled) return;
+
+      if (profileError) {
+        console.error("[SyncPlayerData] squad profile fetch failed:", profileError);
+      }
+      if (matchesError) {
+        console.error("[SyncPlayerData] saved matches fetch failed:", matchesError);
+      }
 
       if (profile) saveSquadProfile(profile);
       if (cloudMatches.length > 0) replaceSavedMatches(cloudMatches);
