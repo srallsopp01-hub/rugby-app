@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 
+export type TeamMemberStatus = "pending" | "accepted" | "revoked" | "pending_approval";
+
 export type TeamMember = {
   id: string;
   ownerUserId: string;
@@ -9,9 +11,22 @@ export type TeamMember = {
   coachLabel: string | null;
   canManageTeam: boolean;
   playerSquadId: string | null;
-  status: "pending" | "accepted" | "revoked";
+  displayName: string | null;
+  inviteLinkId: string | null;
+  status: TeamMemberStatus;
   invitedAt: string;
   acceptedAt: string | null;
+};
+
+export type InviteLink = {
+  id: string;
+  ownerUserId: string;
+  token: string;
+  role: "assistant_coach" | "player";
+  label: string | null;
+  isActive: boolean;
+  expiresAt: string | null;
+  createdAt: string;
 };
 
 type TeamMemberRow = {
@@ -23,9 +38,22 @@ type TeamMemberRow = {
   coach_label: string | null;
   can_manage_team: boolean | null;
   player_squad_id: string | null;
-  status: "pending" | "accepted" | "revoked";
+  display_name: string | null;
+  invite_link_id: string | null;
+  status: TeamMemberStatus;
   invited_at: string;
   accepted_at: string | null;
+};
+
+type InviteLinkRow = {
+  id: string;
+  owner_user_id: string;
+  token: string;
+  role: "assistant_coach" | "player";
+  label: string | null;
+  is_active: boolean;
+  expires_at: string | null;
+  created_at: string;
 };
 
 function rowToMember(row: TeamMemberRow): TeamMember {
@@ -38,9 +66,24 @@ function rowToMember(row: TeamMemberRow): TeamMember {
     coachLabel: row.coach_label,
     canManageTeam: Boolean(row.can_manage_team),
     playerSquadId: row.player_squad_id,
+    displayName: row.display_name,
+    inviteLinkId: row.invite_link_id,
     status: row.status,
     invitedAt: row.invited_at,
     acceptedAt: row.accepted_at,
+  };
+}
+
+function rowToInviteLink(row: InviteLinkRow): InviteLink {
+  return {
+    id: row.id,
+    ownerUserId: row.owner_user_id,
+    token: row.token,
+    role: row.role,
+    label: row.label,
+    isActive: row.is_active,
+    expiresAt: row.expires_at,
+    createdAt: row.created_at,
   };
 }
 
@@ -75,6 +118,91 @@ export async function revokeTeamMember(memberId: string): Promise<void> {
       .eq("id", memberId);
   } catch {
     return;
+  }
+}
+
+export async function fetchPendingApprovals(): Promise<TeamMember[]> {
+  try {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data, error } = await supabase
+      .from("team_members")
+      .select("*")
+      .eq("owner_user_id", user.id)
+      .eq("status", "pending_approval")
+      .order("invited_at", { ascending: false });
+
+    if (error || !data) return [];
+    return (data as TeamMemberRow[]).map(rowToMember);
+  } catch {
+    return [];
+  }
+}
+
+export async function approveTeamMember(memberId: string): Promise<void> {
+  await fetch("/api/invite/approve", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ memberId }),
+  });
+}
+
+export async function rejectTeamMember(memberId: string): Promise<void> {
+  await fetch("/api/invite/reject", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ memberId }),
+  });
+}
+
+export async function createInviteLink(
+  role: "assistant_coach" | "player",
+  label?: string
+): Promise<{ linkId: string; linkUrl: string } | null> {
+  try {
+    const res = await fetch("/api/invite/link", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role, label }),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as { linkId: string; linkUrl: string };
+  } catch {
+    return null;
+  }
+}
+
+export async function deactivateInviteLink(linkId: string): Promise<void> {
+  await fetch("/api/invite/link", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ linkId }),
+  });
+}
+
+export async function fetchActiveInviteLinks(): Promise<InviteLink[]> {
+  try {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data, error } = await supabase
+      .from("team_invite_links")
+      .select("*")
+      .eq("owner_user_id", user.id)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+
+    if (error || !data) return [];
+    return (data as InviteLinkRow[]).map(rowToInviteLink);
+  } catch {
+    return [];
   }
 }
 

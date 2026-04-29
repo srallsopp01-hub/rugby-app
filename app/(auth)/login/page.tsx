@@ -17,6 +17,7 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("token");
+  const joinToken = searchParams.get("join_token");
   const prefillEmail = searchParams.get("email") ?? "";
 
   const [email, setEmail] = useState(prefillEmail);
@@ -35,6 +36,12 @@ function LoginContent() {
     if (error) {
       setError(error.message);
       setLoading(false);
+      return;
+    }
+
+    if (joinToken) {
+      router.push(`/invite/join?token=${joinToken}`);
+      router.refresh();
       return;
     }
 

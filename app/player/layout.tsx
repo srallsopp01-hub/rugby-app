@@ -1,13 +1,24 @@
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import PlayerSidebar from "./PlayerSidebar";
 import { PlayerProvider } from "./PlayerContext";
 import { SyncPlayerData } from "./SyncPlayerData";
 import { FloatingHelpChat } from "@/app/components/FloatingHelpChat";
 
-export default function PlayerLayout({
+export default async function PlayerLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
   return (
     <PlayerProvider>
       <SyncPlayerData />

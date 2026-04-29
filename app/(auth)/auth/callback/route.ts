@@ -7,6 +7,7 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/coach";
   const inviteToken = searchParams.get("invite_token");
+  const joinToken = searchParams.get("join_token");
 
   if (code) {
     const supabase = await createClient();
@@ -63,6 +64,9 @@ export async function GET(request: Request) {
     }
 
     if (!error) {
+      if (joinToken) {
+        return NextResponse.redirect(`${origin}/invite/join?token=${joinToken}`);
+      }
       return NextResponse.redirect(`${origin}${next}`);
     }
   }

@@ -3,7 +3,18 @@
 import { useEffect, useState } from "react";
 import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "../help-content";
-import { fetchTeamMembers, revokeTeamMember, type TeamMember } from "@/lib/teamMembersCloud";
+import {
+  fetchTeamMembers,
+  fetchPendingApprovals,
+  fetchActiveInviteLinks,
+  revokeTeamMember,
+  approveTeamMember,
+  rejectTeamMember,
+  createInviteLink,
+  deactivateInviteLink,
+  type TeamMember,
+  type InviteLink,
+} from "@/lib/teamMembersCloud";
 import {
   createDefaultSquadProfile,
   getSquadProfile,
@@ -28,6 +39,8 @@ function formatCoachMemberLabel(member: TeamMember) {
 
 export default function TeamPage() {
   const [members, setMembers] = useState<TeamMember[]>([]);
+  const [pendingApprovals, setPendingApprovals] = useState<TeamMember[]>([]);
+  const [inviteLinks, setInviteLinks] = useState<InviteLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState("Manage your team access");
   const [profile, setProfile] = useState<SquadProfile | null>(null);
@@ -42,6 +55,9 @@ export default function TeamPage() {
   const [inviting, setInviting] = useState(false);
   const [squadPlayers, setSquadPlayers] = useState<SquadPlayer[]>([]);
 
+  const [generatingLink, setGeneratingLink] = useState<"player" | "assistant_coach" | null>(null);
+  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
+
   useEffect(() => {
     const loadedProfile = getSquadProfile();
     if (loadedProfile) {
@@ -50,11 +66,57 @@ export default function TeamPage() {
       setSquadPlayers(loadedProfile.players.filter((p) => p.status === "active"));
     }
 
-    void fetchTeamMembers().then((data) => {
-      setMembers(data);
+    void Promise.all([
+      fetchTeamMembers(),
+      fetchPendingApprovals(),
+      fetchActiveInviteLinks(),
+    ]).then(([memberData, pendingData, linksData]) => {
+      setMembers(memberData);
+      setPendingApprovals(pendingData);
+      setInviteLinks(linksData);
       setLoading(false);
     });
   }, []);
+
+  async function handleGenerateLink(role: "player" | "assistant_coach") {
+    setGeneratingLink(role);
+    const result = await createInviteLink(role);
+    if (!result) {
+      setStatusMessage("Failed to generate invite link");
+      setGeneratingLink(null);
+      return;
+    }
+    const updated = await fetchActiveInviteLinks();
+    setInviteLinks(updated);
+    setGeneratingLink(null);
+  }
+
+  async function handleDeactivateLink(linkId: string) {
+    await deactivateInviteLink(linkId);
+    setInviteLinks((prev) => prev.filter((l) => l.id !== linkId));
+    setStatusMessage("Invite link deactivated");
+  }
+
+  function handleCopyLink(linkId: string, url: string) {
+    void navigator.clipboard.writeText(url).then(() => {
+      setCopiedLinkId(linkId);
+      setTimeout(() => setCopiedLinkId(null), 2000);
+    });
+  }
+
+  async function handleApprove(memberId: string) {
+    await approveTeamMember(memberId);
+    setPendingApprovals((prev) => prev.filter((m) => m.id !== memberId));
+    const updated = await fetchTeamMembers();
+    setMembers(updated);
+    setStatusMessage("Member approved");
+  }
+
+  async function handleReject(memberId: string) {
+    await rejectTeamMember(memberId);
+    setPendingApprovals((prev) => prev.filter((m) => m.id !== memberId));
+    setStatusMessage("Member rejected");
+  }
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -312,6 +374,144 @@ export default function TeamPage() {
 
         <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
           <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">
+            Share
+          </div>
+          <h2 className="mt-2 text-lg font-semibold text-foreground-strong">Invite link</h2>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Share a link — anyone who opens it can request to join. You approve or reject each request.
+          </p>
+
+          <div className="mt-5 space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void handleGenerateLink("player")}
+                disabled={generatingLink === "player"}
+                className="rounded-xl border border-border bg-panel-2 px-4 py-2 text-sm font-semibold text-foreground-strong transition hover:border-border-light disabled:opacity-50"
+              >
+                {generatingLink === "player" ? "Generating…" : "+ Player invite link"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleGenerateLink("assistant_coach")}
+                disabled={generatingLink === "assistant_coach"}
+                className="rounded-xl border border-border bg-panel-2 px-4 py-2 text-sm font-semibold text-foreground-strong transition hover:border-border-light disabled:opacity-50"
+              >
+                {generatingLink === "assistant_coach" ? "Generating…" : "+ Coach invite link"}
+              </button>
+            </div>
+
+            {inviteLinks.length > 0 && (
+              <div className="space-y-2">
+                {inviteLinks.map((link) => {
+                  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+                  const linkUrl = `${appUrl}/invite/join?token=${link.token}`;
+                  return (
+                    <div
+                      key={link.id}
+                      className="flex flex-col gap-2 rounded-xl border border-border bg-panel-2 px-4 py-3 sm:flex-row sm:items-center"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted">
+                            {link.role === "assistant_coach" ? "Coach" : "Player"}
+                          </span>
+                        </div>
+                        <input
+                          readOnly
+                          value={linkUrl}
+                          className="mt-1.5 w-full truncate rounded-lg border border-border bg-panel px-3 py-1.5 text-xs text-muted outline-none"
+                        />
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleCopyLink(link.id, linkUrl)}
+                          className="rounded-lg border border-border bg-panel px-3 py-1.5 text-xs font-semibold text-foreground-strong transition hover:border-border-light"
+                        >
+                          {copiedLinkId === link.id ? "Copied!" : "Copy"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDeactivateLink(link.id)}
+                          className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-1.5 text-xs font-semibold text-danger transition hover:border-danger/60"
+                        >
+                          Deactivate
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {pendingApprovals.length > 0 && (
+          <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+            <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">
+              Approvals
+            </div>
+            <h2 className="mt-2 text-lg font-semibold text-foreground-strong">
+              Pending requests
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-muted">
+              These people joined via an invite link and are waiting for your approval.
+            </p>
+
+            <div className="mt-5 space-y-3">
+              {pendingApprovals.map((member) => {
+                const linkedPlayer = member.playerSquadId
+                  ? squadPlayers.find((p) => p.id === member.playerSquadId)
+                  : null;
+                return (
+                  <div
+                    key={member.id}
+                    className="flex items-start justify-between gap-3 rounded-xl border border-border bg-panel-2 px-4 py-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="truncate text-sm font-medium text-foreground-strong">
+                          {member.displayName ?? member.email}
+                        </span>
+                        <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted">
+                          {member.role === "assistant_coach" ? "Coach" : "Player"}
+                        </span>
+                      </div>
+                      {member.email && member.displayName && (
+                        <p className="mt-0.5 text-xs text-muted">{member.email}</p>
+                      )}
+                      {linkedPlayer && (
+                        <p className="mt-0.5 text-xs text-muted">
+                          Selected: {linkedPlayer.fullName}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void handleApprove(member.id)}
+                        className="rounded-lg border border-success/30 bg-success/10 px-2.5 py-1 text-xs font-semibold text-success transition hover:border-success/60"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleReject(member.id)}
+                        className="rounded-lg border border-danger/30 bg-danger/10 px-2.5 py-1 text-xs font-semibold text-danger transition hover:border-danger/60"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+          <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">
             Members
           </div>
           <h2 className="mt-2 text-lg font-semibold text-foreground-strong">
@@ -384,6 +584,7 @@ function MemberRow({
 
   const statusStyles: Record<string, string> = {
     pending: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+    pending_approval: "bg-amber-500/10 text-amber-400 border-amber-500/30",
     accepted: "bg-success/10 text-success border-success/30",
     revoked: "bg-danger/10 text-danger border-danger/30",
   };

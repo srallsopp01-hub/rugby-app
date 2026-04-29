@@ -17,6 +17,7 @@ function SignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("token");
+  const joinToken = searchParams.get("join_token");
   const prefillEmail = searchParams.get("email") ?? "";
 
   const [name, setName] = useState("");
@@ -34,10 +35,13 @@ function SignupContent() {
     const supabase = createClient();
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
 
-    // Build redirect URL — if invite token present, forward it through email confirmation
-    const redirectTo = inviteToken
-      ? `${appUrl}/auth/callback?invite_token=${inviteToken}`
-      : `${appUrl}/auth/callback`;
+    // Build redirect URL — forward relevant tokens through email confirmation
+    let redirectTo = `${appUrl}/auth/callback`;
+    if (inviteToken) {
+      redirectTo += `?invite_token=${inviteToken}`;
+    } else if (joinToken) {
+      redirectTo += `?join_token=${joinToken}`;
+    }
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -56,6 +60,12 @@ function SignupContent() {
 
     // If session is present, email confirm is disabled — go straight
     if (data.session) {
+      if (joinToken) {
+        router.push(`/invite/join?token=${joinToken}`);
+        router.refresh();
+        return;
+      }
+
       if (inviteToken) {
         try {
           const res = await fetch("/api/invite/redeem", {
