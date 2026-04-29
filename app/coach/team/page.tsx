@@ -209,7 +209,7 @@ export default function TeamPage() {
                 )}
               </div>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Invite players and coaches to access this team&apos;s RugbyCoach workspace.
+                Invite players and coaches to access this team&apos;s FYNL Whistle workspace.
               </p>
             </div>
             <div className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">

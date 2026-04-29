@@ -10,7 +10,7 @@ type Message = {
 
 const WELCOME: Message = {
   role: "assistant",
-  content: "Hi! I'm your RugbyCoach assistant. Ask me anything about how to use the app — capturing matches, understanding grades, setting up your squad, or reading your stats.",
+  content: "Hi! I'm your FYNL Whistle assistant. Ask me anything about how to use the app — capturing matches, understanding grades, setting up your squad, or reading your stats.",
 };
 
 export function FloatingHelpChat() {
@@ -130,7 +130,7 @@ export function FloatingHelpChat() {
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div>
-              <p className="text-sm font-semibold text-foreground-strong">RugbyCoach Help</p>
+              <p className="text-sm font-semibold text-foreground-strong">FYNL Whistle Help</p>
               <p className="text-[10px] text-muted">Ask anything about the app</p>
             </div>
             <button

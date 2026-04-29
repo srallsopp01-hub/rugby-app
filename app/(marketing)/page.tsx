@@ -30,7 +30,7 @@ const scoreboardItems = [
     label: "Beta",
     value: "Coach",
     unit: "",
-    detail: "Desktop-first private beta",
+    detail: "Desktop-first",
   },
 ];
 
@@ -230,11 +230,11 @@ export default function MarketingHomePage() {
       <section className="border-b border-border bg-foreground-strong text-background">
         <div className="marketing-marquee py-2 text-[11px] font-black uppercase">
           <div className="marketing-marquee-track">
-            <span>Private beta live</span>
+            <span>Now live</span>
             <span>Built for rugby coaches</span>
             <span>Voice tagging during video</span>
             <span>Capture - insights - review</span>
-            <span>Private beta live</span>
+            <span>Now live</span>
             <span>Built for rugby coaches</span>
             <span>Voice tagging during video</span>
             <span>Capture - insights - review</span>
@@ -271,7 +271,7 @@ export default function MarketingHomePage() {
             <span>/</span>
             <span className="inline-flex items-center gap-2 text-foreground-strong">
               <span className="h-1.5 w-1.5 rounded-full bg-danger" />
-              Private beta
+              Live
             </span>
           </div>
 
@@ -410,7 +410,7 @@ export default function MarketingHomePage() {
               <div className="text-sm font-black uppercase text-foreground-strong">
                 Head Coach
               </div>
-              <div className="mt-1 text-xs text-muted">Private beta rugby club</div>
+              <div className="mt-1 text-xs text-muted">Rugby club</div>
             </div>
           </div>
         </div>

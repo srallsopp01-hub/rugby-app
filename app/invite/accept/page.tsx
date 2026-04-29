@@ -109,7 +109,7 @@ export default async function InviteAcceptPage({ searchParams }: Params) {
           </div>
           <h1 className="text-2xl font-bold text-foreground-strong">You&apos;re invited</h1>
           <p className="mt-2 text-sm text-muted">
-            You&apos;ve been invited to join a RugbyCoach team as{" "}
+            You&apos;ve been invited to join a FYNL Whistle team as{" "}
             <span className="font-medium text-foreground">
               {roleLabel === "player" ? "a player" : roleLabel}
             </span>
@@ -136,7 +136,7 @@ export default async function InviteAcceptPage({ searchParams }: Params) {
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-2">
-          By accepting, you agree to join this team&apos;s RugbyCoach workspace.
+          By accepting, you agree to join this team&apos;s FYNL Whistle workspace.
         </p>
       </div>
     </main>

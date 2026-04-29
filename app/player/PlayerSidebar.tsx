@@ -181,7 +181,7 @@ export default function PlayerSidebar() {
         </button>
         {!collapsed && (
           <div className="px-5 pb-4">
-            <span className="text-xs text-muted-2">Private beta</span>
+            <span className="text-xs text-muted-2">fynlwhistle.com</span>
           </div>
         )}
       </div>

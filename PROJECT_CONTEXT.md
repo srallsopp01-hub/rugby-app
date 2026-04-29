@@ -1,6 +1,6 @@
-# Rugby Analysis App — Project Context File
+# FYNL Whistle — Project Context File
 
-**Last updated:** April 2026 — full codebase audit and cleanup (Batch AE); video storage and invite flow redesign planned
+**Last updated:** April 2026 — rebranded from FYNL Whistle to FYNL Whistle; launched under fynlwhistle.com (Batch AF)
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -16,7 +16,7 @@ It helps coaches:
 - Review team and player performance
 - Generate analysis outputs and downloadable reports
 
-It is currently a **coach-first MVP / early private beta**, best used on desktop/laptop, one coach per browser/device.
+It is currently a **coach-first MVP**, live at [fynlwhistle.com](https://fynlwhistle.com), best used on desktop/laptop, one coach per browser/device.
 
 ---
 
@@ -199,7 +199,7 @@ Player-facing pages may show shared team and teammate stats, but must not show o
 
 ## Design tokens (globals.css)
 
-Theme CSS variables available as Tailwind classes. Default is the dark scheme; a browser-local bright scheme can be selected via the shared theme toggle and is stored in `localStorage` as `rugbycoach-theme-scheme`.
+Theme CSS variables available as Tailwind classes. Default is the dark scheme; a browser-local bright scheme can be selected via the shared theme toggle and is stored in `localStorage` as `fynlwhistle-theme-scheme`.
 
 | Token | Value | Usage |
 |---|---|---|
@@ -245,7 +245,7 @@ Sidebar pattern:
 - Left accent bar (`w-[3px] rounded-r-full bg-foreground-strong`) on active link
 - Logo mark + platform name + sub-label in header
 - `transition-all duration-150` on nav links
-- "Private beta" footer label
+- `fynlwhistle.com` footer label
 
 ---
 
@@ -441,7 +441,7 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 
 ### Phase 10 — Aesthetic and layout polish (April 2026)
 - ✅ Layout fix: coach/player/admin use `h-screen overflow-hidden`, sidebar stays fixed
-- ✅ Coach sidebar: left accent bar on active link, RugbyCoach logo mark, refined transitions
+- ✅ Coach sidebar: left accent bar on active link, FYNL Whistle logo mark, refined transitions
 - ✅ Player/Admin sidebars: same accent bar + logo mark treatment applied
 - ✅ Marketing layout: logo mark in header, tighter button styling
 - ✅ Marketing homepage: radial hero glow, contrast headline, status dot badge, feature cards with icons and hover, CTA in panel card
@@ -549,7 +549,7 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 ---
 
 ### Batch N (April 2026) — Player platform validation + hydration fixes
-- ✅ Inline theme script added to `app/layout.tsx` — reads `rugbycoach-theme-scheme` from localStorage before React hydrates and sets `data-theme-scheme` on `<html>`; eliminates dark→bright flash on reload for users with bright scheme saved
+- ✅ Inline theme script added to `app/layout.tsx` — reads `fynlwhistle-theme-scheme` from localStorage before React hydrates and sets `data-theme-scheme` on `<html>`; eliminates dark→bright flash on reload for users with bright scheme saved
 - ✅ `app/layout.tsx` has `suppressHydrationWarning` on `<html>` to silence expected attribute mismatch from the inline script
 - ✅ `ThemeSchemeToggle.tsx` updated — state starts as `"dark"`, syncs from localStorage in `useEffect`, `suppressHydrationWarning` on wrapper div
 - ✅ `PlayerSidebar.tsx` — `suppressHydrationWarning` added to `<aside>` to suppress collapsed-state width mismatch during hydration
@@ -587,8 +587,8 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 - ✅ Settings now shows saved match count, current match presence, squad/team profile status, correction memory count, onboarding state, selected player identity, and known local data size
 - ✅ Quick links added for Team Setup, Onboarding, Saved Matches, and Player Platform
 - ✅ Shared `ThemeSchemeToggle` added to Settings
-- ✅ Raw JSON export added for known RugbyCoach localStorage keys
-- ✅ Guarded data controls added: clear current match, reset correction memory, clear player identity, and factory reset known RugbyCoach local data only
+- ✅ Raw JSON export added for known FYNL Whistle localStorage keys
+- ✅ Guarded data controls added: clear current match, reset correction memory, clear player identity, and factory reset known FYNL Whistle local data only
 - ✅ Settings storage snapshot uses `useSyncExternalStore` to avoid the new React lint rule against synchronous state writes in effects
 - ✅ Verification: focused lint passed for `app/coach/settings/page.tsx`; `npm run build` passed; `/coach/settings` returned 200 locally; full repo lint still fails on pre-existing `react-hooks/set-state-in-effect` errors in other coach/player files
 
@@ -634,7 +634,7 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 - ✅ `blogData.tsx` — shared post data: `BlogPost` type, JSX content, two seed posts
 - ✅ `/blog` — index listing: marquee ticker header, hero panel, post cards (tag, date, reading time, link), CTA section
 - ✅ `/blog/[slug]` — individual post: breadcrumb nav, article header, JSX body, JSON-LD structured data, `generateStaticParams`, post-article CTA
-- ✅ Seed post 1: "Why We Built RugbyCoach" — Sunday-evening spreadsheet problem, voice-tagging workflow, beta status
+- ✅ Seed post 1: "Why We Built FYNL Whistle" — Sunday-evening spreadsheet problem, voice-tagging workflow, beta status
 - ✅ Seed post 2: "What Good Coaching Feedback Actually Looks Like" — Specific → Contextual → Forward-looking structure, callout examples, lineout example, data as enabler
 
 ---
@@ -667,7 +667,7 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 - ✅ `@supabase/supabase-js` + `@supabase/ssr` installed
 - ✅ `lib/supabase/client.ts` (browser) + `lib/supabase/server.ts` (server, async cookies)
 - ✅ `proxy.ts` (Next.js 16 replacement for middleware.ts) — session refresh on every request; `/coach/*` → 307 to `/login` if no session; `/api/transcribe` + `/api/help-chat` → 401 if no session
-- ✅ `/login` and `/signup` pages — email/password, dark-themed, RugbyCoach logo; check-email confirmation state on signup
+- ✅ `/login` and `/signup` pages — email/password, dark-themed, FYNL Whistle logo; check-email confirmation state on signup
 - ✅ `app/(auth)/auth/callback/route.ts` — exchanges email confirmation code for session, redirects to `/coach`
 - ✅ `app/coach/layout.tsx` — server-side auth guard (redirect to `/login` if no user)
 - ✅ Marketing header `LoginDropdown` — auth-aware: "Sign in" + "Try free" when logged out, "Dashboard" when logged in
@@ -804,6 +804,22 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
 
 ---
 
+### Batch AF (April 2026) — Rebrand to FYNL Whistle
+
+- ✅ All "RugbyCoach" text replaced with "FYNL Whistle" across all 20 affected files
+- ✅ `NEXT_PUBLIC_APP_URL` updated to `https://fynlwhistle.com` — invite links now generate correct public URLs
+- ✅ Email sender updated to `FYNL Whistle <noreply@fynlwhistle.com>` (Resend domain verification for fynlwhistle.com still needed)
+- ✅ localStorage and CustomEvent keys migrated: `rugbycoach-*` → `fynlwhistle-*` across `ThemeSchemeToggle`, `SyncSavedMatches`, and `settings/page.tsx`
+- ✅ "Private beta" labels removed from all layouts, sidebars, marquees, and CTAs; replaced with "Live" / "Now live" / "Free to use"
+- ✅ Blog post slug updated: `why-we-built-rugbycoach` → `why-we-built-fynl-whistle`
+- ✅ AI system prompts (help-chat route + FloatingHelpChat) updated to reference FYNL Whistle
+- ✅ JSON-LD structured data on blog posts updated (author/publisher name)
+- ✅ PROJECT_CONTEXT.md updated throughout
+
+**Note:** Existing users will have their theme preference reset (localStorage key changed). Resend email sending requires `fynlwhistle.com` domain verification with SPF/DKIM/DMARC DNS records before invite emails will send.
+
+---
+
 ## Next — recommended priority order
 
 ### Immediate (highest value, unblocked)
@@ -825,7 +841,7 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
    Files to create/modify: `app/api/invite/route.ts`, `app/coach/team/page.tsx`, new `app/invite/join/page.tsx`, new `app/api/invite/approve/route.ts`, `lib/teamMembersCloud.ts`
 
 4. **Fix email delivery (Resend domain verification)**
-   Even as a stopgap before the link-based flow: `rugbycoach.app` must be verified in the Resend dashboard with SPF, DKIM, and DMARC DNS records. Until verified, all invite emails silently fail. Also confirm `RESEND_API_KEY` is set in Vercel production env vars.
+   `fynlwhistle.com` must be verified in the Resend dashboard with SPF, DKIM, and DMARC DNS records. Until verified, invite emails silently fail. Also confirm `RESEND_API_KEY` is set in Vercel production env vars.
 
 5. **Wire up Stripe on the pricing page**
    Create products in Stripe dashboard, replace `"price_TODO"` placeholders in `app/(marketing)/pricing/pricingConfig.ts`, connect checkout buttons. Gate between demo and paid product.
@@ -862,7 +878,7 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
 ### Rules for working with code
 - `coach/capture/page.tsx` is large (~3,445 lines) — never rewrite the whole file, always use targeted find/replace
 - Always read the current file before making changes — never guess from memory
-- Stability over cleverness — app is live in private beta
+- Stability over cleverness — app is live at fynlwhistle.com
 - Test after every change before moving to the next
 
 ---

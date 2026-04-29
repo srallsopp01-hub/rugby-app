@@ -28,10 +28,7 @@ export default function AuthLayout({
         </div>
         <div>
           <div className="text-base font-black uppercase text-foreground-strong">
-            RugbyCoach
-          </div>
-          <div className="font-mono text-[10px] font-semibold uppercase text-muted-2">
-            Private beta
+            FYNL Whistle
           </div>
         </div>
       </Link>

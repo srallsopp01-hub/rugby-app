@@ -25,7 +25,7 @@ import { checkCloudSchema, type CloudSchemaHealth } from "@/lib/cloudHealth";
 import { clearTeamContextCache, getMyTeamContext } from "@/lib/teamContext";
 import { CLOUD_SYNC_ERROR_EVENT } from "@/app/coach/SyncSavedMatches";
 
-const THEME_SCHEME_KEY = "rugbycoach-theme-scheme";
+const THEME_SCHEME_KEY = "fynlwhistle-theme-scheme";
 const COACH_SIDEBAR_KEY = "coach-sidebar-collapsed";
 const PLAYER_SIDEBAR_KEY = "player-sidebar-collapsed";
 const HELP_DISMISSED_KEY = "rugby-tagging-help-dismissed";
@@ -51,7 +51,7 @@ const KNOWN_LOCAL_STORAGE_KEYS = [
 type StorageSnapshot = Record<string, string | null>;
 
 const emptyStorageSnapshot = "{}";
-const storageChangedEvent = "rugbycoach-settings-storage-changed";
+const storageChangedEvent = "fynlwhistle-settings-storage-changed";
 
 function getKnownStorageSnapshot(): StorageSnapshot {
   if (typeof window === "undefined") return {};
@@ -102,7 +102,7 @@ function formatBytes(value: string | null) {
 
 function buildDownloadFilename() {
   const date = new Date().toISOString().slice(0, 10);
-  return `rugbycoach-local-data-${date}.json`;
+  return `fynlwhistle-local-data-${date}.json`;
 }
 
 export default function CoachSettingsPage() {
@@ -248,7 +248,7 @@ export default function CoachSettingsPage() {
   const exportRawJson = () => {
     const payload = {
       exportedAt: new Date().toISOString(),
-      app: "RugbyCoach",
+      app: "FYNL Whistle",
       scope: "known-local-storage-keys",
       keys: KNOWN_LOCAL_STORAGE_KEYS,
       localStorage: getKnownStorageSnapshot(),
@@ -304,7 +304,7 @@ export default function CoachSettingsPage() {
 
   const factoryReset = () => {
     const confirmed = window.confirm(
-      "Factory reset RugbyCoach data on this browser? This removes saved matches, current match data, team setup, onboarding state, corrections, display preference, and sidebar preferences. This cannot be undone."
+      "Factory reset FYNL Whistle data on this browser? This removes saved matches, current match data, team setup, onboarding state, corrections, display preference, and sidebar preferences. This cannot be undone."
     );
     if (!confirmed) return;
 
@@ -328,7 +328,7 @@ export default function CoachSettingsPage() {
                 <PageHelp {...COACH_PAGE_HELP["/coach/settings"]} />
               </div>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Manage local RugbyCoach data, cloud-backed coach account
+                Manage local FYNL Whistle data, cloud-backed coach account
                 storage, display preference, and beta setup shortcuts.
               </p>
             </div>
@@ -410,7 +410,7 @@ export default function CoachSettingsPage() {
               Local data snapshot
             </h2>
             <p className="mt-1 text-sm leading-6 text-muted">
-              RugbyCoach keeps this browser fast with local data, then syncs
+              FYNL Whistle keeps this browser fast with local data, then syncs
               squad profile and saved match records to your coach account.
             </p>
 
@@ -559,7 +559,7 @@ export default function CoachSettingsPage() {
                   Raw JSON backup
                 </h2>
                 <p className="mt-1 text-sm leading-6 text-muted">
-                  Download a readable snapshot of the known RugbyCoach
+                  Download a readable snapshot of the known FYNL Whistle
                   localStorage keys on this browser.
                 </p>
               </div>
@@ -586,7 +586,7 @@ export default function CoachSettingsPage() {
               Data management
             </h2>
             <p className="mt-1 text-sm leading-6 text-muted">
-              These actions only touch known RugbyCoach browser data on this
+              These actions only touch known FYNL Whistle browser data on this
               device. Cloud copies may sync back after login unless deleted
               from their source screen.
             </p>
@@ -609,7 +609,7 @@ export default function CoachSettingsPage() {
               />
               <ActionButton
                 label="Factory Reset"
-                description="Remove all known RugbyCoach local data on this browser."
+                description="Remove all known FYNL Whistle local data on this browser."
                 onClick={factoryReset}
                 danger
               />
@@ -627,7 +627,7 @@ export default function CoachSettingsPage() {
                 Sign out
               </h2>
               <p className="mt-1 text-sm text-muted">
-                Sign out of RugbyCoach on this device.
+                Sign out of FYNL Whistle on this device.
               </p>
             </div>
             <button

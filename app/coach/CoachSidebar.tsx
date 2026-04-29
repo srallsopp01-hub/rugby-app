@@ -167,7 +167,7 @@ export default function CoachSidebar() {
         {!collapsed && (
           <div>
             <span className="text-xs font-semibold tracking-tight text-foreground-strong leading-none block">
-              RugbyCoach
+              FYNL Whistle
             </span>
             <span className="text-[10px] text-muted-2 leading-none mt-0.5 block">
               Coach platform
@@ -234,7 +234,7 @@ export default function CoachSidebar() {
         </button>
         {!collapsed && (
           <div className="px-5 pb-4">
-            <span className="text-xs text-muted-2">Private beta</span>
+            <span className="text-xs text-muted-2">fynlwhistle.com</span>
           </div>
         )}
       </div>

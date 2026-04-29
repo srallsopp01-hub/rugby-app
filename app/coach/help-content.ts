@@ -129,7 +129,7 @@ export const COACH_PAGE_HELP: Record<string, PageHelpProps> = {
 
   "/coach/team": {
     title: "Team Access",
-    description: "Manage your team name and invite players or coaches into the shared RugbyCoach workspace.",
+    description: "Manage your team name and invite players or coaches into the shared FYNL Whistle workspace.",
     steps: [
       { title: "Set the team name", body: "Edit the team name here when the squad name changes. It updates the same squad profile used across coach and player screens." },
       { title: "Invite players", body: "Choose Player, then link the invite to an active squad player so the player app opens with the right identity." },

@@ -151,13 +151,13 @@ export async function POST(req: Request) {
 
   if (resend) {
     await resend.emails.send({
-      from: "RugbyCoach <noreply@rugbycoach.app>",
+      from: "FYNL Whistle <noreply@fynlwhistle.com>",
       to: email,
-      subject: `You've been invited to join ${coachName ? `${coachName}'s` : "a"} RugbyCoach team`,
+      subject: `You've been invited to join ${coachName ? `${coachName}'s` : "a"} FYNL Whistle team`,
       html: `
         <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
           <h2 style="margin:0 0 16px">You've been invited</h2>
-          <p>${coachName ?? "A coach"} has invited you to join their RugbyCoach team as an <strong>${roleLabel}</strong>.</p>
+          <p>${coachName ?? "A coach"} has invited you to join their FYNL Whistle team as an <strong>${roleLabel}</strong>.</p>
           <p>Click the link below to accept your invite and create your account:</p>
           <a href="${inviteUrl}" style="display:inline-block;margin:16px 0;padding:12px 24px;background:#ed6a1f;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
             Accept invite

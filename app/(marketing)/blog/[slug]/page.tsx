@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: post.title,
     description: post.description,
     openGraph: {
-      title: `${post.title} | RugbyCoach Blog`,
+      title: `${post.title} | FYNL Whistle Blog`,
       description: post.description,
       type: "article",
       publishedTime: post.dateISO,
@@ -38,8 +38,8 @@ export default async function BlogPostPage({ params }: Props) {
     headline: post.title,
     description: post.description,
     datePublished: post.dateISO,
-    author: { "@type": "Organization", name: "RugbyCoach" },
-    publisher: { "@type": "Organization", name: "RugbyCoach" },
+    author: { "@type": "Organization", name: "FYNL Whistle" },
+    publisher: { "@type": "Organization", name: "FYNL Whistle" },
   };
 
   return (
@@ -103,7 +103,7 @@ export default async function BlogPostPage({ params }: Props) {
               <p className="relative font-mono text-[10px] font-bold uppercase text-muted-2">
                 <span className="inline-flex items-center justify-center gap-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-danger" />
-                  Try RugbyCoach
+                  Try FYNL Whistle
                 </span>
               </p>
               <h2 className="relative mt-4 text-3xl font-black uppercase leading-none text-foreground-strong sm:text-5xl">
@@ -112,8 +112,8 @@ export default async function BlogPostPage({ params }: Props) {
                 <span className="text-danger">Ship Monday.</span>
               </h2>
               <p className="relative mx-auto mt-5 max-w-lg text-sm leading-6 text-muted">
-                Free during private beta. Runs in your browser with a coach
-                account for squad and match sync.
+                Free to use. Runs in your browser with a coach account for
+                squad and match sync.
               </p>
               <div className="relative mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                 <Link

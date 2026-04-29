@@ -4,8 +4,8 @@ import { useSyncExternalStore } from "react";
 
 type ThemeScheme = "dark" | "bright";
 
-const STORAGE_KEY = "rugbycoach-theme-scheme";
-const SCHEME_EVENT = "rugbycoach-scheme-changed";
+const STORAGE_KEY = "fynlwhistle-theme-scheme";
+const SCHEME_EVENT = "fynlwhistle-scheme-changed";
 
 function applyScheme(scheme: ThemeScheme) {
   document.documentElement.setAttribute("data-theme-scheme", scheme);

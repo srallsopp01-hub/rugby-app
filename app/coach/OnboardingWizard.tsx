@@ -341,7 +341,7 @@ export default function OnboardingWizard() {
               <p className="text-xs text-muted mb-1.5">Step 3 of 3</p>
               <h1 className="text-2xl font-semibold text-foreground-strong">Voice recognition</h1>
               <p className="mt-1.5 text-sm text-muted">
-                RugbyCoach uses AI to transcribe your voice tags during matches. It learns from every correction you make.
+                FYNL Whistle uses AI to transcribe your voice tags during matches. It learns from every correction you make.
               </p>
             </div>
 

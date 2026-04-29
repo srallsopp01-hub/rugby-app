@@ -5,11 +5,11 @@ import { blogPosts } from "./blogData";
 export const metadata: Metadata = {
   title: "Blog",
   description:
-    "Coaching insights, analysis tips, and the story behind RugbyCoach.",
+    "Coaching insights, analysis tips, and the story behind FYNL Whistle.",
   openGraph: {
-    title: "Blog | RugbyCoach Analysis",
+    title: "Blog | FYNL Whistle Analysis",
     description:
-      "Coaching insights, analysis tips, and the story behind RugbyCoach.",
+      "Coaching insights, analysis tips, and the story behind FYNL Whistle.",
     type: "website",
   },
 };
@@ -71,7 +71,7 @@ export default function BlogPage() {
             </h1>
             <p className="mt-7 max-w-xl text-base leading-7 text-foreground sm:text-lg">
               Practical coaching advice, match analysis tips, and the story of
-              how RugbyCoach was built — written by and for coaches.
+              how FYNL Whistle was built — written by and for coaches.
             </p>
           </div>
         </div>
@@ -146,7 +146,7 @@ export default function BlogPage() {
             <span className="text-danger">free?</span>
           </h2>
           <p className="relative mx-auto mt-6 max-w-xl text-base leading-7 text-muted">
-            Free during private beta. Runs in your browser with coach account sync.
+            Free to use. Runs in your browser with coach account sync.
           </p>
           <div className="relative mt-9 flex flex-col justify-center gap-3 sm:flex-row">
             <Link
@@ -159,7 +159,7 @@ export default function BlogPage() {
               href="/about"
               className="inline-flex items-center justify-center rounded-lg border border-border-light px-7 py-4 text-sm font-black uppercase text-foreground-strong transition hover:bg-panel-3"
             >
-              About RugbyCoach
+              About FYNL Whistle
             </Link>
           </div>
         </div>

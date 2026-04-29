@@ -14,11 +14,11 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "RugbyCoach Analysis",
-    template: "%s | RugbyCoach Analysis",
+    default: "FYNL Whistle",
+    template: "%s | FYNL Whistle",
   },
   description:
-    "Coach-first rugby match tagging, review, and analysis for private beta teams.",
+    "Coach-first rugby match tagging, review, and analysis.",
 };
 
 export default function RootLayout({
@@ -29,7 +29,7 @@ export default function RootLayout({
   const themeScript = `
     (function() {
       try {
-        var key = "rugbycoach-theme-scheme";
+        var key = "fynlwhistle-theme-scheme";
         var saved = window.localStorage.getItem(key);
         var scheme = saved === "bright" ? "bright" : "dark";
         document.documentElement.setAttribute("data-theme-scheme", scheme);

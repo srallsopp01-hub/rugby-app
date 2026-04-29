@@ -100,7 +100,7 @@ const slides: ProductSlide[] = [
 function MiniBrowser({
   route,
   children,
-  pill = "Private beta",
+  pill = "Live",
 }: {
   route: string;
   children: React.ReactNode;

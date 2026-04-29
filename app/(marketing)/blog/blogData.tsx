@@ -69,7 +69,7 @@ const post1Content = (
 
     <h2 className={h2}>Watch once. Talk through it. Done.</h2>
     <p className={p}>
-      That&apos;s the premise behind RugbyCoach. You upload the match video. You watch
+      That&apos;s the premise behind FYNL Whistle. You upload the match video. You watch
       it back — which you were going to do anyway. As you watch, you hold the
       spacebar and say what you see.
     </p>
@@ -113,10 +113,9 @@ const post1Content = (
 
     <h2 className={h2}>Where we are now</h2>
     <p className={p}>
-      RugbyCoach is in active private beta with real clubs and real matches. It&apos;s
-      free to use while in beta, runs entirely in your browser, and doesn&apos;t
-      require an account or any installation. Everything stays on your machine —
-      no data goes anywhere.
+      FYNL Whistle is live with real clubs and real matches. It&apos;s
+      free to use, runs entirely in your browser, and just needs a coach account
+      to get started. Everything stays on your machine — no data goes anywhere.
     </p>
     <p className={p}>
       It&apos;s built for coaches at every level — club, academy, school — who know
@@ -273,8 +272,8 @@ export const blogPosts: BlogPost[] = [
     content: post2Content,
   },
   {
-    slug: "why-we-built-rugbycoach",
-    title: "Why We Built RugbyCoach",
+    slug: "why-we-built-fynl-whistle",
+    title: "Why We Built FYNL Whistle",
     description:
       "Built for sports people, not technical people. Watch the video, say what you see, get the analysis.",
     date: "April 2026",

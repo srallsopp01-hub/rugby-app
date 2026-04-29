@@ -32,10 +32,7 @@ export default function MarketingLayout({
             </div>
             <div>
               <div className="text-base font-black uppercase text-foreground-strong">
-                RugbyCoach
-              </div>
-              <div className="font-mono text-[10px] font-semibold uppercase text-muted-2">
-                Private beta
+                FYNL Whistle
               </div>
             </div>
           </Link>
@@ -69,7 +66,7 @@ export default function MarketingLayout({
         <div className="mx-auto flex max-w-[1400px] flex-col gap-6 px-5 text-xs text-muted-2 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-12">
           <div>
             <div className="text-sm font-black uppercase text-foreground-strong">
-              RugbyCoach
+              FYNL Whistle
             </div>
             <p className="mt-2 max-w-md leading-5">
               Match analysis for coaches who tag, review, grade, and brief the
@@ -86,7 +83,6 @@ export default function MarketingLayout({
             <Link href="/blog" className="transition-colors hover:text-foreground">
               Blog
             </Link>
-            <span>Private beta</span>
           </div>
         </div>
       </footer>

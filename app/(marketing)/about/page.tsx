@@ -123,12 +123,12 @@ export default function AboutPage() {
           <div className="marketing-marquee-track">
             <span>Built by a coach</span>
             <span>For coaches</span>
-            <span>Private beta</span>
+            <span>Now live</span>
             <span>Voice-first</span>
             <span>Desktop-first</span>
             <span>Built by a coach</span>
             <span>For coaches</span>
-            <span>Private beta</span>
+            <span>Now live</span>
             <span>Voice-first</span>
             <span>Desktop-first</span>
           </div>
@@ -164,7 +164,7 @@ export default function AboutPage() {
             <span>/</span>
             <span className="inline-flex items-center gap-2 text-foreground-strong">
               <span className="h-1.5 w-1.5 rounded-full bg-danger" />
-              Private beta
+              Live
             </span>
           </div>
 
@@ -180,7 +180,7 @@ export default function AboutPage() {
                 <span className="text-danger">coaches.</span>
               </h1>
               <p className="mt-7 max-w-xl text-base leading-7 text-foreground sm:text-lg">
-                RugbyCoach started as a personal tool: voice-tag the match while
+                FYNL Whistle started as a personal tool: voice-tag the match while
                 watching the video, review the film, ship the Monday report. No
                 manual spreadsheets. No rebuilt grades from memory.
               </p>
@@ -251,14 +251,14 @@ export default function AboutPage() {
             </p>
             <p>
               It is a lot of hours for analysis that could be instant if the
-              data existed in the first place. That&apos;s the gap RugbyCoach
+              data existed in the first place. That&apos;s the gap FYNL Whistle
               closes — tag live, review later, report on Monday in minutes.
             </p>
           </div>
 
           <div className="rounded-xl border border-border bg-panel-2 p-5">
             <div className="mb-4 font-mono text-[10px] font-bold uppercase text-muted-2">
-              Before RugbyCoach — Sunday evening
+              Before FYNL Whistle — Sunday evening
             </div>
             <div className="space-y-2 font-mono text-[11px]">
               {[
@@ -362,18 +362,18 @@ export default function AboutPage() {
           <p className="mb-4 font-mono text-xs font-bold uppercase text-muted-2">
             <span className="inline-flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-danger" />
-              04 / Private beta
+              04 / Now live
             </span>
           </p>
           <h2 className="mb-6 text-4xl font-black uppercase leading-none text-foreground-strong sm:text-5xl">
-            Private beta,
+            Now live,
             <br />
             actively used.
           </h2>
           <p className="mb-10 max-w-2xl text-base leading-7 text-foreground">
-            RugbyCoach is in active private beta with real clubs and real
-            matches. The platform is free to use while in beta. Everything runs
-            in your browser with a coach account for squad and match sync.
+            FYNL Whistle is live with real clubs and real matches. The platform
+            is free to use. Everything runs in your browser with a coach account
+            for squad and match sync.
           </p>
 
           <div className="rounded-xl border border-border bg-panel p-6">
@@ -423,8 +423,8 @@ export default function AboutPage() {
             <span className="text-danger">it?</span>
           </h2>
           <p className="relative mx-auto mt-6 max-w-xl text-base leading-7 text-muted">
-            Free during private beta. Runs in your browser. Built for the match
-            you have this weekend.
+            Free to use. Runs in your browser. Built for the match you have
+            this weekend.
           </p>
           <div className="relative mt-9 flex flex-col justify-center gap-3 sm:flex-row">
             <Link
