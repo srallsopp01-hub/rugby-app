@@ -24,7 +24,6 @@ import { syncLocalSquadProfileToCloud } from "@/lib/squadProfileCloud";
 import { checkCloudSchema, type CloudSchemaHealth } from "@/lib/cloudHealth";
 import { clearTeamContextCache, getMyTeamContext } from "@/lib/teamContext";
 import { CLOUD_SYNC_ERROR_EVENT } from "@/app/coach/SyncSavedMatches";
-import { createClient as createBrowserClient } from "@/lib/supabase/client";
 
 const THEME_SCHEME_KEY = "rugbycoach-theme-scheme";
 const COACH_SIDEBAR_KEY = "coach-sidebar-collapsed";
@@ -185,7 +184,7 @@ export default function CoachSettingsPage() {
     setCloudDiag(null);
     clearTeamContextCache();
     try {
-      const supabase = createBrowserClient();
+      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       const ctx = await getMyTeamContext();
       const { records, error } = await fetchCloudSavedMatches();
