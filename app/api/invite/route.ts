@@ -149,24 +149,26 @@ export async function POST(req: Request) {
       ? formatCoachRoleLabel(coachLabel, canManageTeam)
       : "player";
 
-  if (resend) {
-    await resend.emails.send({
-      from: "FYNL Whistle <noreply@fynlwhistle.com>",
-      to: email,
-      subject: `You've been invited to join ${coachName ? `${coachName}'s` : "a"} FYNL Whistle team`,
-      html: `
-        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-          <h2 style="margin:0 0 16px">You've been invited</h2>
-          <p>${coachName ?? "A coach"} has invited you to join their FYNL Whistle team as an <strong>${roleLabel}</strong>.</p>
-          <p>Click the link below to accept your invite and create your account:</p>
-          <a href="${inviteUrl}" style="display:inline-block;margin:16px 0;padding:12px 24px;background:#ed6a1f;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
-            Accept invite
-          </a>
-          <p style="color:#888;font-size:12px">This link expires in 7 days. If you didn't expect this, you can ignore this email.</p>
-        </div>
-      `,
-    });
+  if (!resend) {
+    return NextResponse.json({ error: "Email service not configured" }, { status: 500 });
   }
+
+  await resend.emails.send({
+    from: "FYNL Whistle <noreply@fynlwhistle.com>",
+    to: email,
+    subject: `You've been invited to join ${coachName ? `${coachName}'s` : "a"} FYNL Whistle team`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+        <h2 style="margin:0 0 16px">You've been invited</h2>
+        <p>${coachName ?? "A coach"} has invited you to join their FYNL Whistle team as an <strong>${roleLabel}</strong>.</p>
+        <p>Click the link below to accept your invite and create your account:</p>
+        <a href="${inviteUrl}" style="display:inline-block;margin:16px 0;padding:12px 24px;background:#ed6a1f;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
+          Accept invite
+        </a>
+        <p style="color:#888;font-size:12px">This link expires in 7 days. If you didn't expect this, you can ignore this email.</p>
+      </div>
+    `,
+  });
 
   return NextResponse.json({
     success: true,

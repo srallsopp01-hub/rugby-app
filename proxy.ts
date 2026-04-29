@@ -32,8 +32,13 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Protect /coach/* — redirect to login if not authenticated
-  if (pathname.startsWith("/coach") && !user) {
+  // Protect /coach/*, /player/*, /admin/* — redirect to login if not authenticated
+  if (
+    (pathname.startsWith("/coach") ||
+      pathname.startsWith("/player") ||
+      pathname.startsWith("/admin")) &&
+    !user
+  ) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
@@ -53,6 +58,8 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     "/coach/:path*",
+    "/player/:path*",
+    "/admin/:path*",
     "/api/transcribe/:path*",
     "/api/help-chat/:path*",
     "/api/invite/:path*",
