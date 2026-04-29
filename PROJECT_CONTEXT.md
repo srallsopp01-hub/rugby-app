@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** April 2026 — link-based invite system, auth hardening, edge guards (Batch AG)
+**Last updated:** April 2026 — invite link anon RLS fix (Batch AH)
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -832,6 +832,15 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
   - Existing email invite flow (`/api/invite`) retained and updated: now returns `500` when Resend is not configured instead of silently succeeding (prevents false-positive "invite sent" UX)
 - ✅ **Auth hardening — player and admin layouts** — `/player/layout.tsx` and `/admin/layout.tsx` now have server-side auth guards that redirect unauthenticated users to `/login`; admin additionally gates on `ADMIN_EMAILS` env var allowlist
 - ✅ **Edge auth guard extended** — `proxy.ts` matcher and redirect guard extended to cover `/player/*` and `/admin/*` in addition to `/coach/*`; all three platform areas now protected at both edge and layout level
+
+---
+
+### Batch AH (April 2026) — Invite link anon RLS fix
+
+- ✅ `supabase/migrations/20260429000000_fix_invite_link_anon_rls.sql` — adds two missing anon SELECT policies
+- ✅ `team_invite_links` anon SELECT policy — unauthenticated users (new browser, no session) can now look up a link by token; previously RLS blocked the query and the join page always showed "INVALID LINK"
+- ✅ `squad_profiles` anon SELECT policy — unauthenticated join page can now display the team name ("Join Northside RFC") instead of falling back to "You've been invited"
+- No application code changes — page and API logic was already correct; root cause was the missing `to anon` policy on the table
 
 ---
 
