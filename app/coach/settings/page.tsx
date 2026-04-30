@@ -121,6 +121,23 @@ export default function CoachSettingsPage() {
     error?: string;
   } | null>(null);
   const [diagLoading, setDiagLoading] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [passwordResetSent, setPasswordResetSent] = useState(false);
+
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data }) => {
+      setUserEmail(data.user?.email ?? null);
+    });
+  }, []);
+
+  async function handleChangePassword() {
+    if (!userEmail) return;
+    const appUrl = typeof window !== "undefined" ? window.location.origin : "";
+    await createClient().auth.resetPasswordForEmail(userEmail, {
+      redirectTo: `${appUrl}/auth/callback?next=/reset-password`,
+    });
+    setPasswordResetSent(true);
+  }
 
   async function handleSyncNow() {
     setSyncStatus("syncing");
@@ -618,12 +635,30 @@ export default function CoachSettingsPage() {
         </section>
 
         <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">
-                Account
+          <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">
+            Account
+          </div>
+          {userEmail && (
+            <div className="mt-3 flex items-center justify-between gap-4 rounded-xl border border-border bg-panel-2 px-4 py-3">
+              <p className="truncate text-sm text-foreground">{userEmail}</p>
+              <div className="shrink-0">
+                {passwordResetSent ? (
+                  <span className="text-xs text-success">Check your email</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleChangePassword}
+                    className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted hover:border-border-light hover:text-foreground"
+                  >
+                    Change password
+                  </button>
+                )}
               </div>
-              <h2 className="mt-2 text-lg font-semibold text-foreground-strong">
+            </div>
+          )}
+          <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-foreground-strong">
                 Sign out
               </h2>
               <p className="mt-1 text-sm text-muted">

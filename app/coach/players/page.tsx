@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useRef, useState } from "react";
+import { Suspense, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "../help-content";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -9,6 +9,11 @@ import {
   STORAGE_KEY,
   DEFAULT_ROSTER_ROWS,
 } from "@/app/rugby-tagging/constants";
+import {
+  CURRENT_MATCH_ID_KEY,
+  SAVED_MATCHES_KEY,
+  type SavedMatchRecord,
+} from "@/app/rugby-tagging/lib/savedMatches";
 import {
   buildBasicStats,
   buildCoachComment,
@@ -66,6 +71,23 @@ function loadPlayersVideoSrc() {
   }
 }
 
+const emptyArraySnapshot = "[]";
+const subscribeToStorage = () => () => {};
+
+function getStorageSnapshot(key: string, fallback: string) {
+  if (typeof window === "undefined") return fallback;
+  return localStorage.getItem(key) || fallback;
+}
+
+function parseSavedMatches(snapshot: string): SavedMatchRecord[] {
+  try {
+    const parsed = JSON.parse(snapshot);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function PlayersPage() {
   return (
     <Suspense fallback={<PlayersLoading />}>
@@ -94,19 +116,45 @@ function PlayersContent() {
   const searchParams = useSearchParams();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [savedSession] = useState(loadPlayersSession);
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
 
-  const [matchTitle] = useState(savedSession.matchTitle || "");
-  const [opponent] = useState(savedSession.opponent || "");
-  const [matchDate] = useState(savedSession.matchDate || "");
-  const [rosterRows] = useState<RosterRow[]>(() =>
-    savedSession.rosterRows
-      ? hydrateRosterRows(savedSession.rosterRows)
-      : DEFAULT_ROSTER_ROWS
+  const savedMatchesSnapshot = useSyncExternalStore(
+    subscribeToStorage,
+    () => getStorageSnapshot(SAVED_MATCHES_KEY, emptyArraySnapshot),
+    () => emptyArraySnapshot
   );
-  const [events] = useState<EventItem[]>(() =>
-    Array.isArray(savedSession.events)
-      ? savedSession.events.filter((event) => !event.isPending)
-      : []
+  const currentMatchId = useSyncExternalStore(
+    subscribeToStorage,
+    () => getStorageSnapshot(CURRENT_MATCH_ID_KEY, ""),
+    () => ""
+  );
+  const allMatches = useMemo(() => parseSavedMatches(savedMatchesSnapshot), [savedMatchesSnapshot]);
+  const effectiveMatchId = selectedMatchId ?? currentMatchId;
+  const selectedMatch = useMemo(
+    () => allMatches.find((m) => m.id === effectiveMatchId) || null,
+    [allMatches, effectiveMatchId]
+  );
+
+  const matchTitle = selectedMatch?.matchTitle ?? savedSession.matchTitle ?? "";
+  const opponent = selectedMatch?.opponent ?? savedSession.opponent ?? "";
+  const matchDate = selectedMatch?.matchDate ?? savedSession.matchDate ?? "";
+  const rosterRows = useMemo<RosterRow[]>(
+    () =>
+      selectedMatch?.rosterRows
+        ? hydrateRosterRows(selectedMatch.rosterRows)
+        : savedSession.rosterRows
+          ? hydrateRosterRows(savedSession.rosterRows)
+          : DEFAULT_ROSTER_ROWS,
+    [selectedMatch, savedSession.rosterRows]
+  );
+  const events = useMemo<EventItem[]>(
+    () =>
+      Array.isArray(selectedMatch?.events)
+        ? selectedMatch.events.filter((e: EventItem) => !e.isPending)
+        : Array.isArray(savedSession.events)
+          ? savedSession.events.filter((e) => !e.isPending)
+          : [],
+    [selectedMatch, savedSession.events]
   );
   const [videoSrc] = useState(loadPlayersVideoSrc);
   const [currentTime, setCurrentTime] = useState(0);
@@ -264,6 +312,29 @@ function PlayersContent() {
 
         <div className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-[320px_minmax(0,1fr)]">
+            {allMatches.length >= 2 && (
+              <div className="xl:col-span-2">
+                <label className="mb-2 block text-sm font-medium text-foreground">
+                  Match
+                </label>
+                <select
+                  value={effectiveMatchId}
+                  onChange={(e) => {
+                    setSelectedMatchId(e.target.value);
+                    const newMatch = allMatches.find((m) => m.id === e.target.value);
+                    const firstPlayer = newMatch?.rosterRows?.[0]?.name?.trim() || "";
+                    router.push(`/coach/players${firstPlayer ? `?player=${encodeURIComponent(firstPlayer)}` : ""}`);
+                  }}
+                  className="w-full rounded-xl border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground"
+                >
+                  {allMatches.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {[m.matchTitle, m.opponent ? `vs ${m.opponent}` : "", m.matchDate].filter(Boolean).join(" · ") || m.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className="mb-2 block text-sm font-medium text-foreground">
                 Player

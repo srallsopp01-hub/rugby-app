@@ -13,6 +13,7 @@ type TeamSheetModalProps = {
   ) => void;
   onApplyPastedTeamSheet: () => void;
   onSubmitTeamSheet: () => void;
+  onSkip?: () => void;
 };
 
 export default function TeamSheetModal({
@@ -23,6 +24,7 @@ export default function TeamSheetModal({
   onUpdateRosterRow,
   onApplyPastedTeamSheet,
   onSubmitTeamSheet,
+  onSkip,
 }: TeamSheetModalProps) {
   if (!show) return null;
 
@@ -118,8 +120,20 @@ You can also use:
           </div>
         </div>
 
-        <div className="mt-5 flex justify-end">
+        <div className="mt-5 flex items-center justify-between">
+          {onSkip ? (
+            <button
+              type="button"
+              onClick={onSkip}
+              className="text-sm text-muted hover:text-foreground"
+            >
+              Skip for now
+            </button>
+          ) : (
+            <span />
+          )}
           <button
+            type="button"
             onClick={onSubmitTeamSheet}
             className="rounded-xl border border-border-light bg-panel-3 px-5 py-2.5 text-sm font-medium text-foreground"
           >

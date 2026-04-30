@@ -2455,6 +2455,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
         onUpdateRosterRow={updateRosterRow}
         onApplyPastedTeamSheet={applyPastedTeamSheet}
         onSubmitTeamSheet={submitTeamSheet}
+        onSkip={() => setShowTeamSheetModal(false)}
       />
 
       <MatchReportModal
