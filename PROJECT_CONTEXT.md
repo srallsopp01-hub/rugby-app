@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** April 2026 — Batch AL: PDF match report export
+**Last updated:** April 2026 — Batch AN: Production email reliability
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -803,7 +803,7 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
 
 **Architectural decisions raised:**
 1. **Video file size limit** — Supabase free tier enforces 50 MB max file size regardless of bucket config. Migration set bucket limit to 5 GB but Supabase plan overrides this. Fix: upgrade to Supabase Pro ($25/mo) for 5 GB per-file limit and 100 GB storage. Long-term: move video to Cloudflare R2 (no egress fees, no file size limit, cheaper at scale).
-2. **Invite flow redesign** — current email-based invite is fragile (Resend domain verification required, silent failure if key missing). Agreed to redesign as link-based flow: coach generates shareable link → anyone signs up via link → picks their player from squad list or creates one → coach approves. See next steps below.
+2. **Invite flow redesign** — current email-based invite depends on Resend domain verification and direct delivery. Agreed to redesign as link-based flow: coach generates shareable link → anyone signs up via link → picks their player from squad list or creates one → coach approves. See next steps below.
 
 ---
 
@@ -819,7 +819,7 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
 - ✅ JSON-LD structured data on blog posts updated (author/publisher name)
 - ✅ PROJECT_CONTEXT.md updated throughout
 
-**Note:** Existing users will have their theme preference reset (localStorage key changed). Resend email sending requires `fynlwhistle.com` domain verification with SPF/DKIM/DMARC DNS records before invite emails will send.
+**Note:** Existing users will have their theme preference reset (localStorage key changed). Resend email sending requires `fynlwhistle.com` domain verification with SPF/DKIM/DMARC DNS records before invite emails will send reliably.
 
 ---
 
@@ -917,11 +917,34 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
 
 ---
 
+### Batch AN (April 2026) — Production email reliability
+
+- ✅ `app/api/invite/route.ts` — direct coach invite emails now inspect the Resend SDK `{ error }` response and return `502` if Resend rejects the send, preventing a false-positive "Invite sent" UI state.
+- ✅ Sender remains `FYNL Whistle <noreply@fynlwhistle.com>`.
+- ✅ DNS inspection confirms `fynlwhistle.com` nameservers are Vercel (`ns1.vercel-dns.com`, `ns2.vercel-dns.com`).
+- ✅ DNS inspection confirms existing Resend-style records:
+  - `send.fynlwhistle.com` TXT: `v=spf1 include:amazonses.com ~all`
+  - `send.fynlwhistle.com` MX: `10 feedback-smtp.ap-northeast-1.amazonses.com`
+  - `resend._domainkey.fynlwhistle.com` TXT: DKIM public key present
+- ⚠️ DNS inspection found no `_dmarc.fynlwhistle.com` TXT record yet; add `v=DMARC1; p=none;` in Vercel DNS for the first monitoring pass.
+- ⚠️ Manual dashboard steps still required:
+  - Resend → Domains → verify `fynlwhistle.com` until status is `verified`.
+  - Vercel → DNS → add missing `_dmarc` TXT if not already added.
+  - Supabase Auth → URL Configuration → confirm Site URL `https://fynlwhistle.com` and redirect URLs `https://fynlwhistle.com/auth/callback` plus `https://fynlwhistle.com/auth/callback?*`.
+  - Supabase Auth → SMTP / Custom SMTP → enable Resend SMTP: host `smtp.resend.com`, port `465` SSL/TLS or `587` STARTTLS, username `resend`, password `RESEND_API_KEY`, sender email `noreply@fynlwhistle.com`, sender name `FYNL Whistle`.
+  - Vercel Production env vars → confirm `RESEND_API_KEY` and `NEXT_PUBLIC_APP_URL=https://fynlwhistle.com`.
+- Production smoke tests to run after manual dashboard/DNS steps:
+  - `/coach/team` direct invite email arrives from `FYNL Whistle <noreply@fynlwhistle.com>` and opens `https://fynlwhistle.com/invite/accept?...`.
+  - Fresh signup confirmation email arrives through Supabase/Resend SMTP and redirects to production, not localhost.
+  - Password reset email arrives and opens `https://fynlwhistle.com/auth/callback?next=/reset-password`.
+
+---
+
 ### Planned batches (not yet started)
 
 | Batch | Focus | Status |
 |---|---|---|
-| AN | Coach Review improvements — per-clip notes, visual scrubber timeline, fullscreen video, cleaner notes/clips split, clip export PDF | Planned |
+| AO | Coach Review improvements — per-clip notes, visual scrubber timeline, fullscreen video, cleaner notes/clips split, clip export PDF | Planned |
 
 ---
 
@@ -929,15 +952,15 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
 
 ### Tier 1 — Must-have to sell (do these first)
 
-1. **Fix email delivery (Resend domain verification)** — manual DNS task, no code needed
-   - Add `fynlwhistle.com` in Resend dashboard → copy SPF, DKIM, DMARC records → add to DNS provider → wait for verification
-   - Confirm `RESEND_API_KEY` is set in Vercel Production env vars
-   - Update Supabase Auth email sender to `FYNL Whistle <noreply@fynlwhistle.com>`
-   - Until done, invite emails silently fail and signup confirmation comes from Supabase's default domain
+1. **Complete email delivery dashboard verification** — manual Resend/Vercel/Supabase task
+   - Resend: verify `fynlwhistle.com` domain status is `verified`
+   - Vercel DNS: add missing `_dmarc` TXT record `v=DMARC1; p=none;`
+   - Supabase Auth SMTP: route signup confirmation/reset emails through Resend SMTP with sender `FYNL Whistle <noreply@fynlwhistle.com>`
+   - Production smoke test: direct invite, signup confirmation, password reset
 
-2. ~~**Batch AM — Stripe payments**~~ ✅ Test checkout verified end-to-end for Team Launch and Club 5 with Stripe manual currency options across USD/AUD/EUR/GBP. Remaining manual/payment tasks: create live-mode Stripe prices, swap in live `price_...` IDs, switch Vercel to `sk_live_...`, and add webhooks/subscription tracking when paid access needs enforcement.
+2. ~~**Batch AN — Production email reliability**~~ ✅ Invite API now fails visibly if Resend rejects send. Remaining manual tasks: Resend domain dashboard verification, missing DMARC DNS, Supabase Auth SMTP, and production smoke tests.
 
-3. ~~**Batch AL — PDF match report**~~ ✅ Done — "Export PDF" button on Insights; A4 portrait with KPIs, summaries, key players, full player stats table.
+3. ~~**Batch AM — Stripe payments**~~ ✅ Test checkout verified end-to-end for Team Launch and Club 5 with Stripe manual currency options across USD/AUD/EUR/GBP. Remaining manual/payment tasks: create live-mode Stripe prices, swap in live `price_...` IDs, switch Vercel to `sk_live_...`, and add webhooks/subscription tracking when paid access needs enforcement.
 
 ### Tier 2 — Medium-term
 

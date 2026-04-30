@@ -153,7 +153,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Email service not configured" }, { status: 500 });
   }
 
-  await resend.emails.send({
+  const { error: emailError } = await resend.emails.send({
     from: "FYNL Whistle <noreply@fynlwhistle.com>",
     to: email,
     subject: `You've been invited to join ${coachName ? `${coachName}'s` : "a"} FYNL Whistle team`,
@@ -169,6 +169,11 @@ export async function POST(req: Request) {
       </div>
     `,
   });
+
+  if (emailError) {
+    console.error("Failed to send invite email", emailError);
+    return NextResponse.json({ error: "Failed to send invite email" }, { status: 502 });
+  }
 
   return NextResponse.json({
     success: true,
