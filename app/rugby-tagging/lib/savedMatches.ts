@@ -101,8 +101,20 @@ export function upsertSavedMatch(record: SavedMatchRecord) {
 export function deleteSavedMatch(matchId: string) {
   if (typeof window === "undefined") return;
 
+  const matchToDelete = getSavedMatchById(matchId);
   const nextMatches = getSavedMatches().filter((match) => match.id !== matchId);
   replaceSavedMatches(nextMatches);
+
+  if (matchToDelete?.videoStoragePath) {
+    import("@/lib/matchVideoCloud")
+      .then(({ deleteMatchVideo }) =>
+        deleteMatchVideo(matchToDelete.videoStoragePath!).then((result) => {
+          if (!result.ok) console.error("Failed to delete match video", result.error);
+        })
+      )
+      .catch((error) => console.error("Failed to delete match video", error));
+  }
+
   import("@/lib/savedMatchesCloud")
     .then(({ deleteCloudSavedMatch }) => void deleteCloudSavedMatch(matchId))
     .catch(() => {});

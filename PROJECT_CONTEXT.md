@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** April 2026 — Batch AN: Production email reliability
+**Last updated:** April 2026 — Batch AO: Cloudflare R2 match video storage
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -25,7 +25,7 @@ It is currently a **coach-first MVP**, live at [fynlwhistle.com](https://fynlwhi
 - Next.js 16 (App Router, Turbopack)
 - React + TypeScript
 - Tailwind CSS v4 (custom design tokens via CSS variables in `globals.css`)
-- localStorage-first match persistence with Supabase cloud sync for saved match records and cloud video storage paths
+- localStorage-first match persistence with Supabase cloud sync for saved match records and Cloudflare R2 video storage paths
 - localStorage for browser-local colour scheme preference (`dark` / `bright`)
 - Anthropic API for voice transcription (`/api/transcribe`)
 - ExcelJS for `.xlsx` report generation
@@ -352,9 +352,9 @@ All previous CSV downloads have been removed. One polished report.
 - **Onboarding completion:** `localStorage` key `ONBOARDING_COMPLETE_KEY`
 - **Current match ID:** `localStorage` (via savedMatches lib)
 - **Saved matches list:** `localStorage` first + Supabase `saved_matches` sync (via savedMatches lib and `lib/savedMatchesCloud.ts`), including optional `video_storage_path`
-- **Video:** current-device `sessionStorage` blob URL for immediate playback; authenticated coaches can upload match files to private Supabase Storage bucket `match-videos`
+- **Video:** current-device `sessionStorage` blob URL for immediate playback; authenticated head coaches upload match files directly to Cloudflare R2 with server-issued signed URLs
 - **Player identity:** `localStorage` key `rugby-player-selected-id` (SquadPlayer.id, via PlayerContext). Authenticated player members are auto-linked from `team_members.player_squad_id`.
-- **Cloud storage:** Supabase auth, `squad_profiles`, `saved_matches`, `team_members`, `invite_tokens`, and private `match-videos` storage.
+- **Cloud storage:** Supabase auth/database for `squad_profiles`, `saved_matches`, `team_members`, `invite_tokens`; Cloudflare R2 for private match video objects.
 
 ---
 
@@ -365,7 +365,7 @@ All previous CSV downloads have been removed. One polished report.
 3. **Insights is analytics only** — do not add clip review or tagging to it
 4. **Review is teaching/review only** — do not add tagging to it
 5. **Player logins are scoped by invite** — authenticated player members load their coach's shared team data and only see their own private grades/coaching plan.
-6. **Local-first persistence with cloud sync** — saved match records and squad profiles remain local-first; coach accounts sync data to Supabase, and match videos can be stored in private Supabase Storage.
+6. **Local-first persistence with cloud sync** — saved match records and squad profiles remain local-first; coach accounts sync metadata to Supabase, and match videos are stored in private Cloudflare R2 objects.
 7. **Desktop-first** — not optimised for mobile
 8. **Spacebar = voice recording only** — must never trigger a focused button
 9. **Transcript always sorted by timestamp** — oldest at top, newest at bottom
@@ -708,7 +708,7 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 ### Batch Z, Part 3 (April 2026) — Cloud Video, Team Invites, Player Sync
 - ✅ Cloud sync helpers added: `syncAllLocalMatchesToCloud()` and `syncLocalSquadProfileToCloud()` power automatic sync and the Coach Settings "Sync Now" panel
 - ✅ Supabase Storage migration added for private `match-videos` bucket plus `saved_matches.video_storage_path`; `lib/matchVideoCloud.ts` handles upload progress, signed URLs, and deletion helper
-- ✅ Capture video uploads now queue until a match ID exists, then upload to Supabase Storage and save `videoStoragePath` on the saved match record
+- ✅ Capture video uploads now queue until a match ID exists, then save `videoStoragePath` on the saved match record. Original implementation used Supabase Storage; Batch AO superseded it with Cloudflare R2.
 - ✅ Coach Review, Player Review, and Player Game Detail can fall back to signed cloud video URLs when no local blob URL exists
 - ✅ Team invite migration added for `team_members` and `invite_tokens` with RLS for coach ownership and accepted-member read access to squad profiles, saved matches, and coach videos
 - ✅ Invite flow added: `/api/invite`, `/api/invite/redeem`, `/invite/accept`, token-aware `/login` and `/signup`, and auth callback redemption after email confirmation
@@ -751,13 +751,35 @@ Two implementation bugs that blocked reliable video upload and cross-account pla
 - ✅ Verification: `npm run lint` clean, `npm run build` passed
 
 **Video stack (current):**
-- Storage: Supabase Storage private bucket `match-videos`, path `{owner_user_id}/{match_id}/{filename}`
-- Upload: XHR with real-time progress (primary), Supabase SDK (fallback), head-coach only
-- Playback: signed URLs, 24 hr expiry, auto-refresh on error
-- Access control: Supabase RLS — accepted team members (`team_members.status = 'accepted'`) can read all videos in their coach's folder
+- Storage: Cloudflare R2 private bucket, object key `{owner_user_id}/{match_id}/{timestamp}-{uuid}-{filename}`
+- Upload: browser XHR direct to an R2 signed PUT URL from `/api/match-video/upload-url`, head-coach only
+- Playback: R2 signed GET URLs from `/api/match-video/signed-url`, 24 hr expiry, auto-refresh on error
+- Delete: `/api/match-video/delete` removes the R2 object when replacing a video or deleting a saved match
+- Access control: Supabase auth/team membership checked by server route before issuing any R2 signed URL. Accepted team members can read videos in their coach owner's folder; only coaches with `can_manage_team` can upload/delete.
 - No transcoding — raw video file served via HTTP range requests (adequate for private beta)
 
-**Why not Cloudflare Stream:** RLS architecture is already correct; the two bugs above were the only blockers. Cloudflare Stream adds transcoding/HLS/CDN but requires full architectural migration (new vendor, video IDs, different upload/playback). Revisit when: >50 hrs of stored video, mobile adaptive streaming needed, or Supabase bandwidth costs become material.
+**Cloudflare R2 setup required:**
+1. Create a private R2 bucket, e.g. `fynl-whistle-match-videos`.
+2. Create an R2 API token with object read/write permissions for that bucket.
+3. Add Vercel env vars: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`.
+4. Configure bucket CORS to allow the production origin `https://fynlwhistle.com` and local dev origin `http://localhost:3000` with methods `GET`, `PUT`, `HEAD`, `DELETE`; allowed headers should include `content-type`; expose headers should include `etag`, `content-length`, `content-range`, `accept-ranges`.
+5. Redeploy after env vars are set. Settings → Cloud sync will warn if R2 env vars are missing.
+
+**Why not Cloudflare Stream:** R2 removes the Supabase free-tier upload cap with the smallest architecture change. Cloudflare Stream adds transcoding/HLS/CDN but requires a deeper migration to video IDs and Stream playback. Revisit when: >50 hrs of stored video, mobile adaptive streaming needed, or raw-file playback becomes unreliable.
+
+---
+
+### Batch AO (April 2026) — Cloudflare R2 match video storage
+
+- ✅ `lib/matchVideoCloud.ts` now uses app server routes for R2 signed upload/playback/delete URLs instead of Supabase Storage.
+- ✅ Server-only R2 signer added in `lib/r2.ts`; no R2 credentials are exposed to the browser.
+- ✅ New routes: `/api/match-video/upload-url`, `/api/match-video/signed-url`, `/api/match-video/delete`, `/api/match-video/config`.
+- ✅ Object keys use `{owner_user_id}/{match_id}/{timestamp}-{uuid}-{sanitized_filename}` and continue to be stored in existing `SavedMatchRecord.videoStoragePath` / `saved_matches.video_storage_path`.
+- ✅ Security model: Supabase session + team membership decide access before issuing R2 signed URLs. Players/accepted members can read owner-folder videos; only `can_manage_team` coaches can upload/delete.
+- ✅ Local browser video behaviour is unchanged: Capture still uses the selected file's blob URL immediately, then uploads in the background.
+- ✅ Saved match deletion and video replacement now request R2 object deletion in the background and log clear delete errors.
+- ✅ `lib/cloudHealth.ts` no longer probes Supabase Storage; Settings checks whether R2 env vars are configured.
+- ⚠ Existing Supabase Storage video objects are not automatically copied. To preserve old cloud playback, copy objects from Supabase `match-videos` into R2 using the same `videoStoragePath` keys.
 
 ---
 
@@ -768,7 +790,7 @@ Root cause of all cross-device sync failures identified and fixed: all 5 Supabas
 - ✅ `lib/savedMatchesCloud.ts` — all functions now return `{ ok, error? }` / `{ records, error? }` / `{ count, errors[] }` instead of void/null; errors are surfaced to callers
 - ✅ `lib/squadProfileCloud.ts` — same error-surfacing pattern applied to all functions
 - ✅ `lib/teamContext.ts` — no longer permanently caches `null` on a transient JS exception; a failed lookup retries next call
-- ✅ `lib/cloudHealth.ts` (new) — probes `squad_profiles`, `saved_matches`, `team_members`, `video_storage_path` column, and `match-videos` bucket; returns `{ ok, missingTables[], missingColumns[], bucketExists }`
+- ✅ `lib/cloudHealth.ts` (new) — probes `squad_profiles`, `saved_matches`, `team_members`, `video_storage_path` column, and video storage readiness; Batch AO updated this to check R2 env configuration instead of the old Supabase Storage bucket.
 - ✅ `app/coach/SyncSavedMatches.tsx` — dispatches `rugbycoach-cloud-sync-error` CustomEvent when background sync fails so Settings can surface it without a manual click
 - ✅ `app/coach/SyncSquadProfile.tsx` — updated to use new `{ profile }` destructured return from `fetchCloudSquadProfile`
 - ✅ `app/player/SyncPlayerData.tsx` — membership and fetch errors now logged to `console.error` with `[SyncPlayerData]` prefix for Vercel/devtools visibility
@@ -802,7 +824,7 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
 - `public/` is now empty — no brand logo or open graph images
 
 **Architectural decisions raised:**
-1. **Video file size limit** — Supabase free tier enforces 50 MB max file size regardless of bucket config. Migration set bucket limit to 5 GB but Supabase plan overrides this. Fix: upgrade to Supabase Pro ($25/mo) for 5 GB per-file limit and 100 GB storage. Long-term: move video to Cloudflare R2 (no egress fees, no file size limit, cheaper at scale).
+1. **Video file size limit** — resolved in Batch AO by moving new match video upload/playback/delete flows from Supabase Storage to Cloudflare R2 signed URLs. Existing saved match records keep `videoStoragePath`; old Supabase-hosted objects require manual migration to R2 if they need continued cloud playback.
 2. **Invite flow redesign** — current email-based invite depends on Resend domain verification and direct delivery. Agreed to redesign as link-based flow: coach generates shareable link → anyone signs up via link → picks their player from squad list or creates one → coach approves. See next steps below.
 
 ---
@@ -964,7 +986,7 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
 
 ### Tier 2 — Medium-term
 
-4. **Fix video file size limit** — Supabase free tier enforces 50 MB max regardless of bucket config. Options: upgrade to Supabase Pro ($25/mo) for 5 GB per-file, or migrate `match-videos` bucket to Cloudflare R2 (no file size limit, no egress fees, ~$0.015/GB). Recommended: keep Supabase for auth/DB, move video to R2 via a signed-URL server route.
+4. ~~**Fix video file size limit**~~ ✅ Batch AO moved new match video storage to Cloudflare R2 signed URLs. Remaining manual tasks: create/configure the R2 bucket, set Vercel env vars, configure bucket CORS, redeploy, and optionally migrate old Supabase Storage objects into R2.
 
 5. **Batch AN — Coach Review improvements**
    - Per-clip notes/comments field

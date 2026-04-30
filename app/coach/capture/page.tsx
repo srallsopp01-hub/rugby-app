@@ -30,7 +30,7 @@ import {
   setCurrentMatchId as persistCurrentMatchId,
   upsertSavedMatch,
 } from "@/app/rugby-tagging/lib/savedMatches";
-import { uploadMatchVideoWithResult } from "@/lib/matchVideoCloud";
+import { deleteMatchVideo, uploadMatchVideoWithResult } from "@/lib/matchVideoCloud";
 import {
   getSquadProfile,
   resolvePlayerName,
@@ -1340,7 +1340,15 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
       .then((result) => {
         if (result.storagePath) {
           const saved = getSavedMatchById(matchId);
-          if (saved) upsertSavedMatch({ ...saved, videoStoragePath: result.storagePath });
+          if (saved) {
+            const previousStoragePath = saved.videoStoragePath;
+            upsertSavedMatch({ ...saved, videoStoragePath: result.storagePath });
+            if (previousStoragePath && previousStoragePath !== result.storagePath) {
+              void deleteMatchVideo(previousStoragePath).then((deleteResult) => {
+                if (!deleteResult.ok) console.error("Failed to delete previous match video", deleteResult.error);
+              });
+            }
+          }
           setVideoUploadStatus("uploaded");
         } else {
           setVideoUploadError(result.error ?? "Video upload failed");

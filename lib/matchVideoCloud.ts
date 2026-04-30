@@ -1,9 +1,3 @@
-import { createClient } from "@/lib/supabase/client";
-import { getMyTeamContext } from "@/lib/teamContext";
-
-const BUCKET = "match-videos";
-const DIRECT_UPLOAD_TIMEOUT_MS = 0;
-
 export const SIGNED_URL_EXPIRY_SECONDS = 86400;
 
 export type VideoUploadProgress = {
@@ -17,14 +11,19 @@ export type VideoUploadResult = {
   error?: string;
 };
 
-function sanitizeFilename(name: string): string {
-  return name.replace(/[^a-zA-Z0-9._-]/g, "_").toLowerCase();
-}
+type UploadUrlResponse = {
+  storagePath?: string;
+  uploadUrl?: string;
+  error?: string;
+};
+
+type SignedUrlResponse = {
+  signedUrl?: string;
+  error?: string;
+};
 
 function xhrUpload(
   url: string,
-  token: string,
-  anonKey: string,
   file: File,
   onProgress?: (p: VideoUploadProgress) => void
 ): Promise<{ ok: boolean; error?: string }> {
@@ -55,25 +54,25 @@ function xhrUpload(
       }
       finish({
         ok: false,
-        error: xhr.responseText || `Storage upload failed with status ${xhr.status}`,
+        error: xhr.responseText || `R2 upload failed with status ${xhr.status}`,
       });
     });
     xhr.addEventListener("error", () => finish({ ok: false, error: "Network error during video upload" }));
-    xhr.addEventListener("timeout", () =>
-      finish({
-        ok: false,
-        error: "Cloud upload timed out while finalising; retrying with fallback upload",
-      })
-    );
+    xhr.addEventListener("timeout", () => finish({ ok: false, error: "Cloud upload timed out" }));
 
-    xhr.open("POST", url);
-    xhr.timeout = DIRECT_UPLOAD_TIMEOUT_MS;
-    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-    xhr.setRequestHeader("apikey", anonKey);
+    xhr.open("PUT", url);
+    xhr.timeout = 0;
     if (file.type) xhr.setRequestHeader("Content-Type", file.type);
-    xhr.setRequestHeader("x-upsert", "true");
     xhr.send(file);
   });
+}
+
+async function readApiJson<T extends { error?: string }>(response: Response): Promise<T> {
+  const data = (await response.json().catch(() => ({}))) as T;
+  if (!response.ok) {
+    throw new Error(data.error || `Request failed with status ${response.status}`);
+  }
+  return data;
 }
 
 export async function uploadMatchVideoWithResult(
@@ -81,43 +80,36 @@ export async function uploadMatchVideoWithResult(
   file: File,
   onProgress?: (p: VideoUploadProgress) => void
 ): Promise<VideoUploadResult> {
-  const supabase = createClient();
-  const { data: sessionData } = await supabase.auth.getSession();
-  const token = sessionData.session?.access_token;
-  if (!token) return { storagePath: null, error: "Sign in before uploading match video" };
+  try {
+    const response = await fetch("/api/match-video/upload-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        matchId,
+        filename: file.name,
+        contentType: file.type || "application/octet-stream",
+        size: file.size,
+      }),
+    });
+    const data = await readApiJson<UploadUrlResponse>(response);
 
-  const ctx = await getMyTeamContext();
-  if (!ctx?.canManageTeam) {
-    return { storagePath: null, error: "This account does not have head coach upload permissions" };
-  }
+    if (!data.storagePath || !data.uploadUrl) {
+      return { storagePath: null, error: "R2 upload URL response was incomplete" };
+    }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !anonKey) {
-    return { storagePath: null, error: "Supabase environment is not configured" };
-  }
+    const upload = await xhrUpload(data.uploadUrl, file, onProgress);
+    if (!upload.ok) {
+      return { storagePath: null, error: upload.error || "Video upload failed" };
+    }
 
-  const filename = sanitizeFilename(file.name);
-  const storagePath = `${ctx.ownerUserId}/${matchId}/${filename}`;
-  const url = `${supabaseUrl}/storage/v1/object/${BUCKET}/${storagePath}`;
-
-  const upload = await xhrUpload(url, token, anonKey, file, onProgress);
-  if (upload.ok) return { storagePath };
-
-  const { error } = await supabase.storage.from(BUCKET).upload(storagePath, file, {
-    upsert: true,
-    contentType: file.type || undefined,
-  });
-
-  if (!error) {
     onProgress?.({ loaded: file.size, total: file.size, percent: 100 });
-    return { storagePath };
+    return { storagePath: data.storagePath };
+  } catch (error) {
+    return {
+      storagePath: null,
+      error: error instanceof Error ? error.message : "Video upload failed",
+    };
   }
-
-  return {
-    storagePath: null,
-    error: error.message || upload.error || "Video upload failed",
-  };
 }
 
 export async function uploadMatchVideo(
@@ -134,14 +126,15 @@ export async function getMatchVideoSignedUrl(
   expiresInSeconds = 3600
 ): Promise<string | null> {
   try {
-    const supabase = createClient();
-    const { data, error } = await supabase.storage
-      .from(BUCKET)
-      .createSignedUrl(storagePath, expiresInSeconds);
-
-    if (error || !data) return null;
-    return data.signedUrl;
-  } catch {
+    const response = await fetch("/api/match-video/signed-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ storagePath, expiresInSeconds }),
+    });
+    const data = await readApiJson<SignedUrlResponse>(response);
+    return data.signedUrl ?? null;
+  } catch (error) {
+    console.error("Failed to create match video signed URL", error);
     return null;
   }
 }
@@ -150,11 +143,19 @@ export async function refreshVideoSignedUrl(storagePath: string): Promise<string
   return getMatchVideoSignedUrl(storagePath, SIGNED_URL_EXPIRY_SECONDS);
 }
 
-export async function deleteMatchVideo(storagePath: string): Promise<void> {
+export async function deleteMatchVideo(storagePath: string): Promise<{ ok: boolean; error?: string }> {
   try {
-    const supabase = createClient();
-    await supabase.storage.from(BUCKET).remove([storagePath]);
-  } catch {
-    return;
+    const response = await fetch("/api/match-video/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ storagePath }),
+    });
+    const data = await readApiJson<{ success?: boolean; error?: string }>(response);
+    return data.success ? { ok: true } : { ok: false, error: "Video delete failed" };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Video delete failed",
+    };
   }
 }

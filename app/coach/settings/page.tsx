@@ -484,10 +484,18 @@ export default function CoachSettingsPage() {
                     </span>
                   </p>
                 )}
-                {!schemaHealth.bucketExists && (
+                {!schemaHealth.videoStorageConfigured && (
                   <p className="mt-1 text-xs text-muted">
-                    Storage bucket <span className="font-mono text-warning">match-videos</span> not
-                    found — video uploads will fail.
+                    Cloudflare R2 video storage is not configured
+                    {schemaHealth.missingVideoStorageEnv.length > 0 ? (
+                      <>
+                        :{" "}
+                        <span className="font-mono text-warning">
+                          {schemaHealth.missingVideoStorageEnv.join(", ")}
+                        </span>
+                      </>
+                    ) : null}
+                    . Video uploads will fail until this is set in Vercel.
                   </p>
                 )}
               </div>
