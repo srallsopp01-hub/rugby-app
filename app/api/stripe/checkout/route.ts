@@ -28,15 +28,28 @@ export async function POST(request: NextRequest) {
 
   const stripe = new Stripe(stripeSecretKey);
   const origin = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    line_items: [{ price: priceId, quantity: 1 }],
-    subscription_data: { trial_period_days: 14 },
-    customer_email: user.email,
-    success_url: `${origin}/coach?checkout=success`,
-    cancel_url: `${origin}/pricing`,
-    metadata: { userId: user.id },
-  });
+  let session: Stripe.Checkout.Session;
+
+  try {
+    session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      line_items: [{ price: priceId, quantity: 1 }],
+      subscription_data: { trial_period_days: 14 },
+      customer_email: user.email,
+      success_url: `${origin}/coach?checkout=success`,
+      cancel_url: `${origin}/pricing`,
+      metadata: { userId: user.id },
+    });
+  } catch (error) {
+    console.error("Stripe checkout session failed", error);
+    return NextResponse.json(
+      {
+        error:
+          "Stripe could not start checkout. Check that the price IDs and secret key are from the same Stripe mode.",
+      },
+      { status: 500 }
+    );
+  }
 
   return NextResponse.json({ url: session.url });
 }

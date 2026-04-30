@@ -196,7 +196,7 @@ function PricingCard({
 
   async function handleCheckout() {
     if (!hasValidPriceId) {
-      router.push(href);
+      setCheckoutError("Checkout is enabled for USD first. Switch currency to USD to continue.");
       return;
     }
     setLoading(true);
@@ -208,11 +208,12 @@ function PricingCard({
         body: JSON.stringify({ priceId: stripePriceId }),
       });
       if (res.status === 401) {
-        router.push(href);
+        router.push(`/login?next=${encodeURIComponent("/pricing")}`);
         return;
       }
       if (!res.ok) {
-        setCheckoutError("Something went wrong. Please try again.");
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        setCheckoutError(data?.error || "Something went wrong. Please try again.");
         return;
       }
       const { url } = await res.json();
