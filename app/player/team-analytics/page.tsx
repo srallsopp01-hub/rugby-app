@@ -17,7 +17,11 @@ import {
 } from "recharts";
 import { PlayerPicker } from "../PlayerPicker";
 import { usePlayer } from "../PlayerContext";
-import { SAVED_MATCHES_KEY, type SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
+import {
+  SAVED_MATCHES_KEY,
+  subscribeSavedMatchesChanged,
+  type SavedMatchRecord,
+} from "@/app/rugby-tagging/lib/savedMatches";
 import {
   buildReportRowsFromMatch,
   buildSetPieceSummary,
@@ -28,8 +32,6 @@ import {
 import type { EventItem, ReportRow } from "@/app/rugby-tagging/types";
 
 type Tab = "overview" | "players" | "trends";
-
-const noSubscribe = () => () => {};
 
 function parseMatches(snapshot: string): SavedMatchRecord[] {
   try {
@@ -105,7 +107,7 @@ export default function PlayerTeamAnalyticsPage() {
   const [selectedMatchId, setSelectedMatchId] = useState("");
 
   const matchesRaw = useSyncExternalStore(
-    noSubscribe,
+    subscribeSavedMatchesChanged,
     () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
     () => "[]"
   );

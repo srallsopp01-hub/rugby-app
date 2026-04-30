@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { usePlayer } from "../../PlayerContext";
 import { PlayerPicker } from "../../PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
-import { SAVED_MATCHES_KEY } from "@/app/rugby-tagging/lib/savedMatches";
+import { SAVED_MATCHES_KEY, subscribeSavedMatchesChanged } from "@/app/rugby-tagging/lib/savedMatches";
 import { buildReportRowsFromMatch, formatTime } from "@/app/rugby-tagging/helpers";
 import { buildPlayerCoachingPlan } from "../../playerCoachingPlan";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
@@ -52,15 +52,13 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
-const noSubscribe = () => () => {};
-
 export default function GameDetailPage() {
   const params = useParams();
   const gameId = typeof params.gameId === "string" ? params.gameId : "";
   const { currentPlayer, ready } = usePlayer();
 
   const matchesRaw = useSyncExternalStore(
-    noSubscribe,
+    subscribeSavedMatchesChanged,
     () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
     () => "[]"
   );

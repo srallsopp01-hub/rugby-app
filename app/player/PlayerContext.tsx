@@ -18,7 +18,11 @@ const PLAYER_IDENTITY_EVENT = "player-identity-changed";
 
 function subscribePlayerIdentity(cb: () => void) {
   window.addEventListener(PLAYER_IDENTITY_EVENT, cb);
-  return () => window.removeEventListener(PLAYER_IDENTITY_EVENT, cb);
+  window.addEventListener("storage", cb);
+  return () => {
+    window.removeEventListener(PLAYER_IDENTITY_EVENT, cb);
+    window.removeEventListener("storage", cb);
+  };
 }
 
 function getPlayerIdSnapshot(): string {

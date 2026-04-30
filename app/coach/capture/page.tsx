@@ -33,6 +33,9 @@ import {
 import { upsertCloudSavedMatch } from "@/lib/savedMatchesCloud";
 import {
   deleteMatchVideo,
+  getMatchVideoSignedUrl,
+  refreshVideoSignedUrl,
+  SIGNED_URL_EXPIRY_SECONDS,
   uploadMatchVideoWithResult,
   type VideoUploadResult,
 } from "@/lib/matchVideoCloud";
@@ -824,6 +827,31 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
   ]);
 
   useEffect(() => {
+    if (!videoStoragePath || videoLoaded) return;
+    const video = videoRef.current;
+    if (!video || video.src?.startsWith("blob:")) return;
+
+    let cancelled = false;
+    setStatusMessage("Loading match video from cloud...");
+
+    void getMatchVideoSignedUrl(videoStoragePath, SIGNED_URL_EXPIRY_SECONDS).then((url) => {
+      if (cancelled || !url || !videoRef.current) {
+        if (!url) setStatusMessage("Could not load match video from cloud");
+        return;
+      }
+
+      videoRef.current.src = url;
+      videoRef.current.playbackRate = playbackRate;
+      videoRef.current.load();
+      setStatusMessage("Cloud video loaded");
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [playbackRate, videoLoaded, videoStoragePath]);
+
+  useEffect(() => {
     if (playersReady) {
       setShowTeamSheetModal(false);
     }
@@ -962,6 +990,8 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     setStatusMessage("Ready");
     setVideoLoaded(false);
     setVideoStoragePath("");
+    videoUploadPromiseRef.current = null;
+    pendingVideoFileRef.current = null;
     setMatchSubmitStatus("idle");
     setMatchSubmitError("");
     setPlaybackRate(1);
@@ -3097,6 +3127,18 @@ Ellie missed tackle"
                   }
                   onPlay={() => setIsVideoPlaying(true)}
                   onPause={() => setIsVideoPlaying(false)}
+                  onError={() => {
+                    if (!videoStoragePath || videoRef.current?.src?.startsWith("blob:")) return;
+                    void refreshVideoSignedUrl(videoStoragePath).then((url) => {
+                      if (!url || !videoRef.current) {
+                        setStatusMessage("Could not refresh match video from cloud");
+                        return;
+                      }
+                      videoRef.current.src = url;
+                      videoRef.current.load();
+                      setStatusMessage("Cloud video refreshed");
+                    });
+                  }}
                   onClick={toggleVideoPlayback}
                 />
               </div>

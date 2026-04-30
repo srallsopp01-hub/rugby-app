@@ -70,6 +70,16 @@ function emitSavedMatchesChanged() {
   window.dispatchEvent(new Event(SAVED_MATCHES_CHANGED_EVENT));
 }
 
+export function subscribeSavedMatchesChanged(cb: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(SAVED_MATCHES_CHANGED_EVENT, cb);
+  window.addEventListener("storage", cb);
+  return () => {
+    window.removeEventListener(SAVED_MATCHES_CHANGED_EVENT, cb);
+    window.removeEventListener("storage", cb);
+  };
+}
+
 export function replaceSavedMatches(records: SavedMatchRecord[]) {
   if (typeof window === "undefined") return;
   localStorage.setItem(SAVED_MATCHES_KEY, JSON.stringify(records));

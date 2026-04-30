@@ -57,7 +57,10 @@ export function SyncPlayerData() {
         console.error("[SyncPlayerData] saved matches fetch failed:", matchesError);
       }
 
-      if (profile) saveSquadProfile(profile);
+      if (profile) {
+        saveSquadProfile(profile);
+        window.dispatchEvent(new Event("player-identity-changed"));
+      }
       if (cloudMatches.length > 0) replaceSavedMatches(cloudMatches);
     }
 

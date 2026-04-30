@@ -5,7 +5,11 @@ import { PageHelp } from "@/app/components/PageHelp";
 import { PLAYER_PAGE_HELP } from "../help-content";
 import { PlayerPicker } from "../PlayerPicker";
 import { usePlayer } from "../PlayerContext";
-import { SAVED_MATCHES_KEY, type SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
+import {
+  SAVED_MATCHES_KEY,
+  subscribeSavedMatchesChanged,
+  type SavedMatchRecord,
+} from "@/app/rugby-tagging/lib/savedMatches";
 import {
   buildReportRowsFromMatch,
   buildSetPieceSummary,
@@ -42,8 +46,6 @@ type Metric = {
   format: "number" | "percent" | "rate";
   lowerIsBetter?: boolean;
 };
-
-const noSubscribe = () => () => {};
 
 function parseMatches(snapshot: string): SavedMatchRecord[] {
   try {
@@ -288,7 +290,7 @@ export default function PlayerComparePage() {
   const [rightPlayerChoice, setRightPlayerChoice] = useState("");
 
   const matchesRaw = useSyncExternalStore(
-    noSubscribe,
+    subscribeSavedMatchesChanged,
     () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
     () => "[]"
   );

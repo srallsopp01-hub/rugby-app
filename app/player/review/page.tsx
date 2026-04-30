@@ -5,7 +5,7 @@ import { usePlayer } from "../PlayerContext";
 import { PageHelp } from "@/app/components/PageHelp";
 import { PLAYER_PAGE_HELP } from "../help-content";
 import { PlayerPicker } from "../PlayerPicker";
-import { SAVED_MATCHES_KEY } from "@/app/rugby-tagging/lib/savedMatches";
+import { SAVED_MATCHES_KEY, subscribeSavedMatchesChanged } from "@/app/rugby-tagging/lib/savedMatches";
 import { formatTime } from "@/app/rugby-tagging/helpers";
 import {
   buildSetPieceReviewMoments,
@@ -34,8 +34,6 @@ function categoryClass(cat: string | undefined) {
   return CATEGORY_COLOUR[cat] ?? "text-muted-2 border-border bg-panel-2";
 }
 
-const noSubscribe = () => () => {};
-
 export default function ReviewPage() {
   const { currentPlayer, ready } = usePlayer();
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -54,7 +52,7 @@ export default function ReviewPage() {
   const [activeVideoMatchId, setActiveVideoMatchId] = useState<string | null>(null);
 
   const matchesRaw = useSyncExternalStore(
-    noSubscribe,
+    subscribeSavedMatchesChanged,
     () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
     () => "[]"
   );

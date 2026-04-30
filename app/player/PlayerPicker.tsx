@@ -3,22 +3,32 @@
 import { useMemo, useSyncExternalStore } from "react";
 import { getSquadProfile } from "@/app/rugby-tagging/lib/squadProfile";
 import { SQUAD_PROFILE_KEY } from "@/app/rugby-tagging/constants";
-import { SAVED_MATCHES_KEY } from "@/app/rugby-tagging/lib/savedMatches";
+import {
+  SAVED_MATCHES_KEY,
+  subscribeSavedMatchesChanged,
+} from "@/app/rugby-tagging/lib/savedMatches";
 import { usePlayer } from "./PlayerContext";
 import type { SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
 
-const noSubscribe = () => () => {};
+function subscribeSquadProfileChanged(cb: () => void) {
+  window.addEventListener("player-identity-changed", cb);
+  window.addEventListener("storage", cb);
+  return () => {
+    window.removeEventListener("player-identity-changed", cb);
+    window.removeEventListener("storage", cb);
+  };
+}
 
 export function PlayerPicker() {
   const { setCurrentPlayer } = usePlayer();
 
   const squadRaw = useSyncExternalStore(
-    noSubscribe,
+    subscribeSquadProfileChanged,
     () => localStorage.getItem(SQUAD_PROFILE_KEY) ?? "",
     () => ""
   );
   const matchesRaw = useSyncExternalStore(
-    noSubscribe,
+    subscribeSavedMatchesChanged,
     () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
     () => "[]"
   );
