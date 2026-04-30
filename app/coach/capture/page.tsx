@@ -112,9 +112,9 @@ export default function RugbyVoiceTaggingMVP() {
   const pageShellRef = useRef<HTMLDivElement | null>(null);
   const spacebarHeldRef = useRef(false);
   const pendingVideoFileRef = useRef<File | null>(null);
-  const uploadedVideoStoragePathRef = useRef<string>("");
 
   const [activeMode, setActiveMode] = useState<AppMode>("stat");
+  const [videoStoragePath, setVideoStoragePath] = useState("");
 
   const [matchTitle, setMatchTitle] = useState("");
   const [opponent, setOpponent] = useState("");
@@ -678,6 +678,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
               ? savedMatch.showRawTranscript
               : true
           );
+          setVideoStoragePath(savedMatch.videoStoragePath || "");
 
           localStorage.setItem(
             STORAGE_KEY,
@@ -701,6 +702,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
                 typeof savedMatch.showRawTranscript === "boolean"
                   ? savedMatch.showRawTranscript
                   : true,
+              videoStoragePath: savedMatch.videoStoragePath,
             })
           );
 
@@ -732,6 +734,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
           ? saved.showRawTranscript
           : true
       );
+      setVideoStoragePath(saved.videoStoragePath || "");
     } catch (error) {
       console.error("Failed to load saved session", error);
     }
@@ -793,6 +796,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
           coachNotes,
           clips: Array.isArray(existingSession.clips) ? existingSession.clips : [],
           showRawTranscript,
+          videoStoragePath: videoStoragePath || existingSession.videoStoragePath,
         })
       );
     } catch (error) {
@@ -809,6 +813,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     reviewQueue,
     coachNotes,
     showRawTranscript,
+    videoStoragePath,
   ]);
 
   useEffect(() => {
@@ -950,6 +955,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     setDrilldownPlayerName("");
     setStatusMessage("Ready");
     setVideoLoaded(false);
+    setVideoStoragePath("");
     setPlaybackRate(1);
     setPendingResolution(null);
     setResolverSelection("");
@@ -1340,7 +1346,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     void uploadMatchVideoWithResult(matchId, file, (p) => setVideoUploadPercent(p.percent))
       .then((result) => {
         if (result.storagePath) {
-          uploadedVideoStoragePathRef.current = result.storagePath;
+          setVideoStoragePath(result.storagePath);
           const saved = getSavedMatchById(matchId);
           if (saved) {
             const previousStoragePath = saved.videoStoragePath;
@@ -1382,7 +1388,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
       reviewQueue,
       coachNotes,
       showRawTranscript,
-      videoStoragePath: uploadedVideoStoragePathRef.current || getSavedMatchById(matchId)?.videoStoragePath,
+      videoStoragePath: videoStoragePath || getSavedMatchById(matchId)?.videoStoragePath,
     });
 
     persistCurrentMatchId(matchId);

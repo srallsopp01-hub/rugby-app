@@ -39,6 +39,7 @@ type SavedSession = {
   coachNotes?: CoachReviewNote[];
   showRawTranscript?: boolean;
   clips?: ClipAnnotation[];
+  videoStoragePath?: string;
 };
 
 type AnnotationTool = VideoAnnotation["type"] | null;
@@ -242,6 +243,7 @@ export default function ReviewPage() {
           coachNotes: nextCoachNotes,
           clips: nextClips,
           showRawTranscript: nextShowRawTranscript,
+          videoStoragePath: existing.videoStoragePath || savedSession.videoStoragePath,
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
       } catch (error) {
@@ -280,6 +282,7 @@ export default function ReviewPage() {
       reviewQueue,
       rosterRows,
       savedSession.activeMode,
+      savedSession.videoStoragePath,
       selectedPlayer,
       showRawTranscript,
     ]
