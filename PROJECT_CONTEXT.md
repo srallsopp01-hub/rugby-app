@@ -899,18 +899,20 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
 
 - ✅ `stripe` SDK installed
 - ✅ `app/api/stripe/checkout/route.ts` — authenticated Stripe Checkout session endpoint for subscription mode with 14-day trial; returns `401` for logged-out users, validates missing/TODO price IDs, and falls back to request origin if `NEXT_PUBLIC_APP_URL` is missing
-- ✅ `app/(marketing)/pricing/PricingExperience.tsx` — Team Launch and Club 5 CTAs now call `/api/stripe/checkout`; unauthenticated users fall back to `/signup?plan=...`; invalid placeholder prices fall back safely; Organisation remains a contact/demo CTA
-- ✅ `app/(marketing)/pricing/pricingConfig.ts` — USD price IDs added:
+- ✅ `app/(marketing)/pricing/PricingExperience.tsx` — Team Launch and Club 5 CTAs now call `/api/stripe/checkout`; unauthenticated users fall back to login; invalid placeholder prices show an AUD-first fallback message; Organisation remains a contact/demo CTA
+- ✅ `app/(marketing)/pricing/pricingConfig.ts` — AUD test-mode price IDs added:
   - Team Launch monthly: `price_1TRsWbQL0gCVdJZirakOuwQY`
   - Team Launch yearly: `price_1TRsZDQL0gCVdJZit1TBHsuS`
   - Club 5 monthly: `price_1TRsb9QL0gCVdJZiCwAZYVx2`
   - Club 5 yearly: `price_1TRsbAQL0gCVdJZiMeFb2sv0`
 - ✅ `app/coach/page.tsx` — `/coach?checkout=success` shows a dismissible trial-started banner and cleans the URL
+- ✅ Vercel Production `STRIPE_SECRET_KEY` configured with the matching Stripe test-mode secret key
+- ✅ End-to-end test checkout verified in Stripe sandbox: pricing CTA → login/session → Stripe Checkout → trial checkout flow
 - ✅ Verification: `npm run lint` clean, `npm run build` clean
 
 **Still required before full production payments:**
-- Add `STRIPE_SECRET_KEY` to Vercel Production env vars
-- Create GBP/AUD/EUR monthly/yearly Stripe prices, then replace the remaining `"price_TODO"` entries in `pricingConfig.ts`
+- Create live-mode Stripe products/prices for all intended currencies, then replace the relevant `"price_TODO"` entries in `pricingConfig.ts`
+- Switch Vercel Production `STRIPE_SECRET_KEY` to the matching `sk_live_...` key only when live price IDs are in place
 - Optional later batch: add Stripe webhook + subscription table if/when access needs to be gated by active subscription status
 
 ---
@@ -933,7 +935,7 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
    - Update Supabase Auth email sender to `FYNL Whistle <noreply@fynlwhistle.com>`
    - Until done, invite emails silently fail and signup confirmation comes from Supabase's default domain
 
-2. ~~**Batch AM — Stripe payments**~~ ✅ Checkout foundation done for USD Team Launch and Club 5. Remaining manual/payment tasks: add `STRIPE_SECRET_KEY` in Vercel Production, create GBP/AUD/EUR Stripe prices, and replace the remaining `"price_TODO"` entries.
+2. ~~**Batch AM — Stripe payments**~~ ✅ Test checkout verified end-to-end for AUD Team Launch and Club 5. Remaining manual/payment tasks: create live-mode Stripe prices, swap in live `price_...` IDs, switch Vercel to `sk_live_...`, and add webhooks/subscription tracking when paid access needs enforcement.
 
 3. ~~**Batch AL — PDF match report**~~ ✅ Done — "Export PDF" button on Insights; A4 portrait with KPIs, summaries, key players, full player stats table.
 

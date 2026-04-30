@@ -122,10 +122,10 @@ export const pricing: Record<CurrencyCode, CurrencyPricing> = {
 // TODO: Replace these placeholders when Stripe Checkout products are created.
 export const stripePriceIds: Record<CurrencyCode, Record<string, string>> = {
   USD: {
-    teamLaunchMonthly: "price_1TRsWbQL0gCVdJZirakOuwQY",
-    teamLaunchYearly: "price_1TRsZDQL0gCVdJZit1TBHsuS",
-    club5Monthly: "price_1TRsb9QL0gCVdJZiCwAZYVx2",
-    club5Yearly: "price_1TRsbAQL0gCVdJZiMeFb2sv0",
+    teamLaunchMonthly: "price_TODO",
+    teamLaunchYearly: "price_TODO",
+    club5Monthly: "price_TODO",
+    club5Yearly: "price_TODO",
     organisationMonthly: "price_TODO",
     organisationYearly: "price_TODO",
   },
@@ -138,10 +138,10 @@ export const stripePriceIds: Record<CurrencyCode, Record<string, string>> = {
     organisationYearly: "price_TODO",
   },
   AUD: {
-    teamLaunchMonthly: "price_TODO",
-    teamLaunchYearly: "price_TODO",
-    club5Monthly: "price_TODO",
-    club5Yearly: "price_TODO",
+    teamLaunchMonthly: "price_1TRsWbQL0gCVdJZirakOuwQY",
+    teamLaunchYearly: "price_1TRsZDQL0gCVdJZit1TBHsuS",
+    club5Monthly: "price_1TRsb9QL0gCVdJZiCwAZYVx2",
+    club5Yearly: "price_1TRsbAQL0gCVdJZiMeFb2sv0",
     organisationMonthly: "price_TODO",
     organisationYearly: "price_TODO",
   },

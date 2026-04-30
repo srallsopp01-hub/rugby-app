@@ -196,7 +196,7 @@ function PricingCard({
 
   async function handleCheckout() {
     if (!hasValidPriceId) {
-      setCheckoutError("Checkout is enabled for USD first. Switch currency to USD to continue.");
+      setCheckoutError("Checkout is enabled for AUD first. Switch currency to AUD to continue.");
       return;
     }
     setLoading(true);
