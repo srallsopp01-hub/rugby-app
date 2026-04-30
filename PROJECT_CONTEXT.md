@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** April 2026 — dark mode premium refresh + 5 UX wins (Batch AK + Batch AJ)
+**Last updated:** April 2026 — Batch AL: PDF match report export
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -883,11 +883,19 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
 
 ---
 
+### Batch AL (April 2026) — PDF match report
+
+- ✅ `@react-pdf/renderer` installed as new dependency
+- ✅ `app/rugby-tagging/lib/exports/matchReportPdf.tsx` — A4 portrait PDF document component; sections: FYNL Whistle header + match title/date/opponent, 8-KPI grid (tackle%, tries for/against, penalties, lineout%, scrum%, carries, turnovers), game coaching comment + game flow summary, top performers + needs attention players, full colour-coded player stats table (T/MT/C/TO/Tackle%/Grade/Comment), footer
+- ✅ `app/rugby-tagging/lib/exports/downloadPdf.ts` — browser download helper mirroring `downloadWorkbook.ts`
+- ✅ `app/coach/insights/page.tsx` — "Export PDF" button added next to existing "Export Report" button in page header; dynamically imports PDF generator so `@react-pdf/renderer` stays out of SSR bundle; shows "Generating…" loading state during export
+
+---
+
 ### Planned batches (not yet started)
 
 | Batch | Focus | Status |
 |---|---|---|
-| AL | PDF match report — clean one-page PDF via `@react-pdf/renderer` covering match details, team summary, set piece, key player stats | Planned |
 | AM | Stripe payments — products, checkout route, pricing CTA wiring, env vars | Planned |
 | AN | Coach Review improvements — per-clip notes, visual scrubber timeline, fullscreen video, cleaner notes/clips split, clip export PDF | Planned |
 
@@ -910,10 +918,7 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
    - Wire pricing CTA buttons to that route
    - Add `STRIPE_SECRET_KEY` and `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` to Vercel env vars
 
-3. **Batch AL — PDF match report** (highest-value output — coaches hand this to other people)
-   - Use `@react-pdf/renderer` or puppeteer via an API route
-   - One clean page: match details, team summary, set piece, key player stats
-   - Supplements the current `.xlsx` export
+3. ~~**Batch AL — PDF match report**~~ ✅ Done — "Export PDF" button on Insights; A4 portrait with KPIs, summaries, key players, full player stats table.
 
 ### Tier 2 — Medium-term
 
