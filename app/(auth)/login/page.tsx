@@ -95,12 +95,20 @@ function LoginContent() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="password"
-              className="font-mono text-[11px] font-bold uppercase text-muted-2"
-            >
-              Password
-            </label>
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="password"
+                className="font-mono text-[11px] font-bold uppercase text-muted-2"
+              >
+                Password
+              </label>
+              <Link
+                href="/forgot-password"
+                className="text-[11px] text-muted hover:text-foreground-strong"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <input
               id="password"
               type="password"

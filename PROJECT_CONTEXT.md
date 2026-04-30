@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** April 2026 — invite link anon RLS fix (Batch AH)
+**Last updated:** April 2026 — email confirmation redirect fix + forgot password flow (Batch AI)
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -841,6 +841,21 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
 - ✅ `team_invite_links` anon SELECT policy — unauthenticated users (new browser, no session) can now look up a link by token; previously RLS blocked the query and the join page always showed "INVALID LINK"
 - ✅ `squad_profiles` anon SELECT policy — unauthenticated join page can now display the team name ("Join Northside RFC") instead of falling back to "You've been invited"
 - No application code changes — page and API logic was already correct; root cause was the missing `to anon` policy on the table
+
+---
+
+### Batch AI (April 2026) — Email confirmation redirect fix + forgot password
+
+- ✅ **Email confirmation redirect** — root cause identified: Supabase dashboard Site URL was still `localhost:3000` and `https://fynlwhistle.com/auth/callback` was not in the Redirect URLs allowlist, so Supabase ignored the `emailRedirectTo` value and redirected to localhost. Fix: set Site URL to `https://fynlwhistle.com` and add `https://fynlwhistle.com/auth/callback` (+ wildcard variant) to Redirect URLs in Supabase Auth settings. Also confirm `NEXT_PUBLIC_APP_URL=https://fynlwhistle.com` is set in Vercel Production env vars (`.env.local` is local-only).
+- ✅ **Forgot password link** — "Forgot password?" link added inline with the Password label on `/login`
+- ✅ `app/(auth)/forgot-password/page.tsx` — new page: user enters email, calls `supabase.auth.resetPasswordForEmail()` with `redirectTo: .../auth/callback?next=/reset-password`; shows "Check your email" confirmation state regardless of whether the address exists (avoids enumeration)
+- ✅ `app/(auth)/reset-password/page.tsx` — new page: enter + confirm new password, calls `supabase.auth.updateUser({ password })`; guards against no-session state (redirects to `/forgot-password?error=expired`); redirects to `/coach` on success
+- ✅ Existing auth callback at `app/(auth)/auth/callback/route.ts` required no changes — already handles `?next=` redirects
+
+**Supabase dashboard actions required (one-time manual steps):**
+1. Auth → URL Configuration → Site URL: `https://fynlwhistle.com`
+2. Auth → URL Configuration → Redirect URLs: add `https://fynlwhistle.com/auth/callback` and `https://fynlwhistle.com/auth/callback?*`
+3. Vercel → Project Settings → Environment Variables: `NEXT_PUBLIC_APP_URL=https://fynlwhistle.com` (Production)
 
 ---
 
