@@ -111,7 +111,7 @@ app/
     MarketingProductSlider.tsx        ← Client-side homepage app tour slider
     pricing/page.tsx                  ← Pricing route shell
     pricing/PricingExperience.tsx     ← Client-side pricing UI: billing toggle, currency selector, cards, comparison, FAQ
-    pricing/pricingConfig.ts          ← Multi-currency pricing config and Stripe price ID placeholders
+    pricing/pricingConfig.ts          ← Multi-currency pricing config and Stripe price ID mapping
     contact/page.tsx                  ← Organisation demo / pilot placeholder page
     blog/blogData.tsx                 ← Blog post data: BlogPost type, JSX content, seed posts array
     blog/page.tsx                     ← Blog index: marquee, hero, post cards, CTA
@@ -155,6 +155,9 @@ app/
     layout.tsx                        ← Admin layout: h-screen, sidebar + scrollable main
     AdminSidebar.tsx                  ← Admin left sidebar (text-only, accent bar)
     page.tsx + all sub-pages          ← Internal stubs
+
+  api/
+    stripe/checkout/route.ts          ← Stripe Checkout session endpoint for Team Launch and Club 5 subscriptions
 
   rugby-tagging/
     components/
@@ -794,7 +797,7 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
 - Admin pages render as static (○) — should be dynamic with server-side auth check
 - `app/coach/capture/page.tsx` is 3,445 lines — maintenance risk as feature grows
 - No automated test suite
-- Stripe price IDs are all `"price_TODO"` placeholders in `pricingConfig.ts`
+- Stripe checkout is wired for USD Team Launch and Club 5; GBP/AUD/EUR price IDs remain `"price_TODO"` until those Stripe prices are created
 - Contact form not wired to any backend
 - `public/` is now empty — no brand logo or open graph images
 
@@ -892,11 +895,30 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
 
 ---
 
+### Batch AM (April 2026) — Stripe checkout foundation
+
+- ✅ `stripe` SDK installed
+- ✅ `app/api/stripe/checkout/route.ts` — authenticated Stripe Checkout session endpoint for subscription mode with 14-day trial; returns `401` for logged-out users, validates missing/TODO price IDs, and falls back to request origin if `NEXT_PUBLIC_APP_URL` is missing
+- ✅ `app/(marketing)/pricing/PricingExperience.tsx` — Team Launch and Club 5 CTAs now call `/api/stripe/checkout`; unauthenticated users fall back to `/signup?plan=...`; invalid placeholder prices fall back safely; Organisation remains a contact/demo CTA
+- ✅ `app/(marketing)/pricing/pricingConfig.ts` — USD price IDs added:
+  - Team Launch monthly: `price_1TRsWbQL0gCVdJZirakOuwQY`
+  - Team Launch yearly: `price_1TRsZDQL0gCVdJZit1TBHsuS`
+  - Club 5 monthly: `price_1TRsb9QL0gCVdJZiCwAZYVx2`
+  - Club 5 yearly: `price_1TRsbAQL0gCVdJZiMeFb2sv0`
+- ✅ `app/coach/page.tsx` — `/coach?checkout=success` shows a dismissible trial-started banner and cleans the URL
+- ✅ Verification: `npm run lint` clean, `npm run build` clean
+
+**Still required before full production payments:**
+- Add `STRIPE_SECRET_KEY` to Vercel Production env vars
+- Create GBP/AUD/EUR monthly/yearly Stripe prices, then replace the remaining `"price_TODO"` entries in `pricingConfig.ts`
+- Optional later batch: add Stripe webhook + subscription table if/when access needs to be gated by active subscription status
+
+---
+
 ### Planned batches (not yet started)
 
 | Batch | Focus | Status |
 |---|---|---|
-| AM | Stripe payments — products, checkout route, pricing CTA wiring, env vars | Planned |
 | AN | Coach Review improvements — per-clip notes, visual scrubber timeline, fullscreen video, cleaner notes/clips split, clip export PDF | Planned |
 
 ---
@@ -911,12 +933,7 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
    - Update Supabase Auth email sender to `FYNL Whistle <noreply@fynlwhistle.com>`
    - Until done, invite emails silently fail and signup confirmation comes from Supabase's default domain
 
-2. **Batch AM — Stripe payments** (dedicated coding session, do after Resend is verified)
-   - Create products + monthly/yearly prices in Stripe dashboard
-   - Replace `"price_TODO"` placeholders in `app/(marketing)/pricing/pricingConfig.ts`
-   - Add `app/api/stripe/checkout/route.ts` (Stripe Checkout session endpoint)
-   - Wire pricing CTA buttons to that route
-   - Add `STRIPE_SECRET_KEY` and `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` to Vercel env vars
+2. ~~**Batch AM — Stripe payments**~~ ✅ Checkout foundation done for USD Team Launch and Club 5. Remaining manual/payment tasks: add `STRIPE_SECRET_KEY` in Vercel Production, create GBP/AUD/EUR Stripe prices, and replace the remaining `"price_TODO"` entries.
 
 3. ~~**Batch AL — PDF match report**~~ ✅ Done — "Export PDF" button on Insights; A4 portrait with KPIs, summaries, key players, full player stats table.
 

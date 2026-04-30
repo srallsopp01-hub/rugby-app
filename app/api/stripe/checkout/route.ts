@@ -1,0 +1,42 @@
+import { NextRequest, NextResponse } from "next/server";
+import Stripe from "stripe";
+import { createClient } from "@/lib/supabase/server";
+
+export async function POST(request: NextRequest) {
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+  if (!stripeSecretKey) {
+    return NextResponse.json(
+      { error: "Stripe is not configured" },
+      { status: 500 }
+    );
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { priceId } = (await request.json()) as { priceId?: string };
+
+  if (!priceId || priceId === "price_TODO") {
+    return NextResponse.json({ error: "Invalid price ID" }, { status: 400 });
+  }
+
+  const stripe = new Stripe(stripeSecretKey);
+  const origin = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    line_items: [{ price: priceId, quantity: 1 }],
+    subscription_data: { trial_period_days: 14 },
+    customer_email: user.email,
+    success_url: `${origin}/coach?checkout=success`,
+    cancel_url: `${origin}/pricing`,
+    metadata: { userId: user.id },
+  });
+
+  return NextResponse.json({ url: session.url });
+}

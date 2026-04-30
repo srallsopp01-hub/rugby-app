@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSyncExternalStore } from "react";
@@ -161,6 +161,19 @@ export default function CoachHomePage() {
       })()
     : null;
 
+  const [checkoutSuccess, setCheckoutSuccess] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("checkout") === "success";
+  });
+
+  useEffect(() => {
+    if (!checkoutSuccess) return;
+
+    window.history.replaceState({}, "", "/coach");
+    const t = setTimeout(() => setCheckoutSuccess(false), 6000);
+    return () => clearTimeout(t);
+  }, [checkoutSuccess]);
+
   useEffect(() => {
     if (shouldStartCoachOnboarding()) {
       router.replace("/coach/onboarding");
@@ -170,6 +183,18 @@ export default function CoachHomePage() {
   return (
     <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1500px] space-y-5">
+        {checkoutSuccess ? (
+          <div className="flex items-center justify-between rounded-xl border border-success/35 bg-success/10 px-5 py-4 text-sm font-semibold text-success">
+            <span>Your 14-day free trial has started - you&apos;re all set.</span>
+            <button
+              type="button"
+              onClick={() => setCheckoutSuccess(false)}
+              className="ml-4 text-success/60 hover:text-success"
+            >
+              Close
+            </button>
+          </div>
+        ) : null}
         <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div className="max-w-3xl">

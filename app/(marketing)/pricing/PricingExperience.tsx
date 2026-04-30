@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import {
   comparisonRows,
@@ -170,6 +171,10 @@ function PricingCard({
   currency: CurrencyCode;
   cycle: BillingCycle;
 }) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
   const {
     key: planKey,
     name,
@@ -185,6 +190,39 @@ function PricingCard({
   const price = pricing[currency].plans[planKey];
   const stripeLookupKey = `${planKey}${cycle === "monthly" ? "Monthly" : "Yearly"}`;
   const stripePriceId = stripePriceIds[currency][stripeLookupKey];
+
+  const isCheckoutPlan = planKey === "teamLaunch" || planKey === "club5";
+  const hasValidPriceId = stripePriceId && stripePriceId !== "price_TODO";
+
+  async function handleCheckout() {
+    if (!hasValidPriceId) {
+      router.push(href);
+      return;
+    }
+    setLoading(true);
+    setCheckoutError(null);
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceId: stripePriceId }),
+      });
+      if (res.status === 401) {
+        router.push(href);
+        return;
+      }
+      if (!res.ok) {
+        setCheckoutError("Something went wrong. Please try again.");
+        return;
+      }
+      const { url } = await res.json();
+      window.location.href = url;
+    } catch {
+      setCheckoutError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <article
@@ -221,18 +259,34 @@ function PricingCard({
       ) : null}
 
       <div className="mt-6 space-y-3">
-        {/* TODO: Connect Team Launch and Club 5 to Stripe Checkout once Auth and price IDs are ready. */}
-        <Link
-          href={href}
-          data-stripe-price-id={stripePriceId}
-          className={`inline-flex w-full items-center justify-center rounded-lg px-5 py-3 text-sm font-black uppercase transition ${
-            featured
-              ? "bg-foreground-strong text-background hover:opacity-90"
-              : "border border-border-light bg-panel-3 text-foreground-strong hover:bg-panel-2"
-          }`}
-        >
-          {cta}
-        </Link>
+        {isCheckoutPlan ? (
+          <button
+            type="button"
+            onClick={handleCheckout}
+            disabled={loading}
+            className={`inline-flex w-full items-center justify-center rounded-lg px-5 py-3 text-sm font-black uppercase transition disabled:opacity-60 ${
+              featured
+                ? "bg-foreground-strong text-background hover:opacity-90"
+                : "border border-border-light bg-panel-3 text-foreground-strong hover:bg-panel-2"
+            }`}
+          >
+            {loading ? "Loading..." : cta}
+          </button>
+        ) : (
+          <Link
+            href={href}
+            className={`inline-flex w-full items-center justify-center rounded-lg px-5 py-3 text-sm font-black uppercase transition ${
+              featured
+                ? "bg-foreground-strong text-background hover:opacity-90"
+                : "border border-border-light bg-panel-3 text-foreground-strong hover:bg-panel-2"
+            }`}
+          >
+            {cta}
+          </Link>
+        )}
+        {checkoutError ? (
+          <p className="text-center text-xs text-danger">{checkoutError}</p>
+        ) : null}
         {secondaryCta && secondaryHref ? (
           <Link
             href={secondaryHref}
