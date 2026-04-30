@@ -112,6 +112,7 @@ export default function RugbyVoiceTaggingMVP() {
   const pageShellRef = useRef<HTMLDivElement | null>(null);
   const spacebarHeldRef = useRef(false);
   const pendingVideoFileRef = useRef<File | null>(null);
+  const uploadedVideoStoragePathRef = useRef<string>("");
 
   const [activeMode, setActiveMode] = useState<AppMode>("stat");
 
@@ -1339,6 +1340,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     void uploadMatchVideoWithResult(matchId, file, (p) => setVideoUploadPercent(p.percent))
       .then((result) => {
         if (result.storagePath) {
+          uploadedVideoStoragePathRef.current = result.storagePath;
           const saved = getSavedMatchById(matchId);
           if (saved) {
             const previousStoragePath = saved.videoStoragePath;
@@ -1380,6 +1382,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
       reviewQueue,
       coachNotes,
       showRawTranscript,
+      videoStoragePath: uploadedVideoStoragePathRef.current || getSavedMatchById(matchId)?.videoStoragePath,
     });
 
     persistCurrentMatchId(matchId);
