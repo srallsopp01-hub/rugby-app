@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { POSITION_OPTIONS } from "@/app/rugby-tagging/constants";
 import {
   createDefaultSquadProfile,
+  createFixtureId,
   createPlayerId,
+  createTrainingSessionId,
   getSquadProfile,
   removeSquadPlayer,
   saveSquadProfile,
@@ -12,6 +14,7 @@ import {
   type SquadPlayer,
   type SquadProfile,
 } from "@/app/rugby-tagging/lib/squadProfile";
+import type { Fixture, TrainingSession } from "@/app/rugby-tagging/types";
 import { KpiTargetsSection } from "./KpiTargetsSection";
 import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "../help-content";
@@ -105,6 +108,31 @@ const BLANK_FORM = {
   status: "active" as SquadPlayer["status"],
 };
 
+type FixtureForm = { opponent: string; date: string; time: string; homeOrAway: "home" | "away"; round: string; venue: string };
+const BLANK_FIXTURE_FORM: FixtureForm = {
+  opponent: "",
+  date: "",
+  time: "",
+  homeOrAway: "home",
+  round: "",
+  venue: "",
+};
+
+type SessionForm = { dayOfWeek: TrainingSession["dayOfWeek"]; time: string; locationName: string };
+const BLANK_SESSION_FORM: SessionForm = {
+  dayOfWeek: "monday",
+  time: "",
+  locationName: "",
+};
+
+const DOW_LABELS: Record<TrainingSession["dayOfWeek"], string> = {
+  monday: "Monday", tuesday: "Tuesday", wednesday: "Wednesday",
+  thursday: "Thursday", friday: "Friday", saturday: "Saturday", sunday: "Sunday",
+};
+const DOW_ORDER: TrainingSession["dayOfWeek"][] = [
+  "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+];
+
 export default function TeamSetupPage() {
   const [profile, setProfile] = useState<SquadProfile | null>(() => {
     const loaded = getSquadProfile();
@@ -177,6 +205,108 @@ export default function TeamSetupPage() {
     if (!profile) return;
     if (!window.confirm("Remove this player from the squad?")) return;
     persist(removeSquadPlayer(profile, playerId));
+  };
+
+  // Fixture state
+  const [fixtureForm, setFixtureForm] = useState<FixtureForm>(BLANK_FIXTURE_FORM);
+  const [showFixtureForm, setShowFixtureForm] = useState(false);
+  const [editingFixtureId, setEditingFixtureId] = useState<string | null>(null);
+
+  const openAddFixture = () => {
+    setEditingFixtureId(null);
+    setFixtureForm(BLANK_FIXTURE_FORM);
+    setShowFixtureForm(true);
+  };
+
+  const openEditFixture = (fixture: Fixture) => {
+    setEditingFixtureId(fixture.id);
+    setFixtureForm({
+      opponent: fixture.opponent,
+      date: fixture.date,
+      time: fixture.time,
+      homeOrAway: fixture.homeOrAway,
+      round: fixture.round ?? "",
+      venue: fixture.venue ?? "",
+    });
+    setShowFixtureForm(true);
+  };
+
+  const cancelFixtureForm = () => {
+    setShowFixtureForm(false);
+    setEditingFixtureId(null);
+  };
+
+  const saveFixture = () => {
+    if (!profile || !fixtureForm.opponent.trim() || !fixtureForm.date) return;
+    const fixtures = profile.fixtures ?? [];
+    const existing = fixtures.find((f) => f.id === editingFixtureId);
+    const fixture: Fixture = {
+      id: editingFixtureId ?? createFixtureId(),
+      opponent: fixtureForm.opponent.trim(),
+      date: fixtureForm.date,
+      time: fixtureForm.time,
+      homeOrAway: fixtureForm.homeOrAway,
+      round: fixtureForm.round.trim() || undefined,
+      venue: fixtureForm.venue.trim() || undefined,
+      availabilityRequested: existing?.availabilityRequested ?? false,
+    };
+    const updated = editingFixtureId
+      ? fixtures.map((f) => (f.id === editingFixtureId ? fixture : f))
+      : [...fixtures, fixture];
+    persist({ ...profile, fixtures: updated.sort((a, b) => a.date.localeCompare(b.date)), updatedAt: new Date().toISOString() });
+    cancelFixtureForm();
+  };
+
+  const deleteFixture = (id: string) => {
+    if (!profile) return;
+    if (!window.confirm("Remove this fixture?")) return;
+    persist({
+      ...profile,
+      fixtures: (profile.fixtures ?? []).filter((f) => f.id !== id),
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
+  const toggleAvailabilityRequested = (id: string) => {
+    if (!profile) return;
+    persist({
+      ...profile,
+      fixtures: (profile.fixtures ?? []).map((f) =>
+        f.id === id ? { ...f, availabilityRequested: !f.availabilityRequested } : f
+      ),
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
+  // Training session state
+  const [sessionForm, setSessionForm] = useState<SessionForm>(BLANK_SESSION_FORM);
+  const [showSessionForm, setShowSessionForm] = useState(false);
+
+  const saveSession = () => {
+    if (!profile || !sessionForm.time) return;
+    const session: TrainingSession = {
+      id: createTrainingSessionId(),
+      dayOfWeek: sessionForm.dayOfWeek,
+      time: sessionForm.time,
+      locationName: sessionForm.locationName.trim() || undefined,
+    };
+    persist({
+      ...profile,
+      trainingSessions: [...(profile.trainingSessions ?? []), session],
+      updatedAt: new Date().toISOString(),
+    });
+    setSessionForm(BLANK_SESSION_FORM);
+    setShowSessionForm(false);
+  };
+
+  const deleteSession = (id: string) => {
+    if (!profile) return;
+    if (!window.confirm("Remove this training session?")) return;
+    persist({
+      ...profile,
+      trainingSessions: (profile.trainingSessions ?? []).filter((s) => s.id !== id),
+      updatedAt: new Date().toISOString(),
+    });
   };
 
   if (!profile) return null;
@@ -458,6 +588,289 @@ export default function TeamSetupPage() {
 
         {/* KPI Targets */}
         <KpiTargetsSection profile={profile} persist={persist} />
+
+        {/* Fixtures */}
+        <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-foreground-strong">Fixtures</h2>
+              <p className="mt-1 text-sm text-muted">
+                {(profile.fixtures ?? []).length} fixture{(profile.fixtures ?? []).length === 1 ? "" : "s"} scheduled
+              </p>
+            </div>
+            {!showFixtureForm && (
+              <button
+                type="button"
+                onClick={(e) => { openAddFixture(); e.currentTarget.blur(); }}
+                className="rounded-xl border border-border bg-panel-2 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-panel-3"
+              >
+                + Add fixture
+              </button>
+            )}
+          </div>
+
+          {showFixtureForm && (
+            <div className="mt-5 rounded-xl border border-border bg-panel-2 p-5">
+              <h3 className="mb-4 text-sm font-semibold text-foreground-strong">
+                {editingFixtureId ? "Edit fixture" : "Add fixture"}
+              </h3>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs text-muted">Opponent *</label>
+                  <input
+                    value={fixtureForm.opponent}
+                    onChange={(e) => setFixtureForm({ ...fixtureForm, opponent: e.target.value })}
+                    className="w-full rounded-xl border border-border bg-panel-3 px-3 py-2.5 text-sm text-foreground"
+                    placeholder="e.g. Norths"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted">Date *</label>
+                  <input
+                    type="date"
+                    value={fixtureForm.date}
+                    onChange={(e) => setFixtureForm({ ...fixtureForm, date: e.target.value })}
+                    className="w-full rounded-xl border border-border bg-panel-3 px-3 py-2.5 text-sm text-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted">Time</label>
+                  <input
+                    type="time"
+                    value={fixtureForm.time}
+                    onChange={(e) => setFixtureForm({ ...fixtureForm, time: e.target.value })}
+                    className="w-full rounded-xl border border-border bg-panel-3 px-3 py-2.5 text-sm text-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted">Home or Away *</label>
+                  <div className="flex gap-2">
+                    {(["home", "away"] as const).map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={(e) => { setFixtureForm({ ...fixtureForm, homeOrAway: opt }); e.currentTarget.blur(); }}
+                        className={`flex-1 rounded-xl border px-3 py-2.5 text-sm font-medium capitalize transition ${
+                          fixtureForm.homeOrAway === opt
+                            ? "border-accent bg-accent/15 text-accent"
+                            : "border-border bg-panel-3 text-muted hover:text-foreground"
+                        }`}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted">Round (optional)</label>
+                  <input
+                    value={fixtureForm.round}
+                    onChange={(e) => setFixtureForm({ ...fixtureForm, round: e.target.value })}
+                    className="w-full rounded-xl border border-border bg-panel-3 px-3 py-2.5 text-sm text-foreground"
+                    placeholder="e.g. 5"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted">Venue (optional)</label>
+                  <input
+                    value={fixtureForm.venue}
+                    onChange={(e) => setFixtureForm({ ...fixtureForm, venue: e.target.value })}
+                    className="w-full rounded-xl border border-border bg-panel-3 px-3 py-2.5 text-sm text-foreground"
+                    placeholder="e.g. Trumper Park"
+                  />
+                </div>
+              </div>
+              <div className="mt-5 flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={(e) => { saveFixture(); e.currentTarget.blur(); }}
+                  disabled={!fixtureForm.opponent.trim() || !fixtureForm.date}
+                  className="rounded-xl border border-border-light bg-panel-3 px-5 py-2.5 text-sm font-medium text-foreground disabled:opacity-40"
+                >
+                  {editingFixtureId ? "Save changes" : "Add fixture"}
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { cancelFixtureForm(); e.currentTarget.blur(); }}
+                  className="text-sm text-muted hover:text-foreground"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {(profile.fixtures ?? []).length > 0 && (
+            <div className="mt-4 overflow-x-auto rounded-xl border border-border">
+              <table className="w-full text-sm">
+                <thead className="bg-panel-2">
+                  <tr>
+                    <th className="p-3 text-left text-xs text-muted">Date</th>
+                    <th className="p-3 text-left text-xs text-muted">Opponent</th>
+                    <th className="p-3 text-left text-xs text-muted">H/A</th>
+                    <th className="p-3 text-left text-xs text-muted">Round</th>
+                    <th className="p-3 text-left text-xs text-muted">Availability</th>
+                    <th className="p-3"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(profile.fixtures ?? []).map((fixture) => (
+                    <tr key={fixture.id} className="border-t border-border">
+                      <td className="p-3 text-muted">{fixture.date}</td>
+                      <td className="p-3 font-medium text-foreground">vs {fixture.opponent}</td>
+                      <td className="p-3">
+                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                          fixture.homeOrAway === "home"
+                            ? "border-success/30 bg-success/10 text-success"
+                            : "border-border bg-panel-2 text-muted"
+                        }`}>
+                          {fixture.homeOrAway}
+                        </span>
+                      </td>
+                      <td className="p-3 text-muted">{fixture.round ?? "—"}</td>
+                      <td className="p-3">
+                        <button
+                          type="button"
+                          onClick={(e) => { toggleAvailabilityRequested(fixture.id); e.currentTarget.blur(); }}
+                          className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold transition ${
+                            fixture.availabilityRequested
+                              ? "border-success/30 bg-success/10 text-success"
+                              : "border-border bg-panel-2 text-muted hover:text-foreground"
+                          }`}
+                        >
+                          {fixture.availabilityRequested ? "Requested ✓" : "Mark requested"}
+                        </button>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex justify-end gap-3">
+                          <button
+                            type="button"
+                            onClick={(e) => { openEditFixture(fixture); e.currentTarget.blur(); }}
+                            className="text-xs text-muted hover:text-foreground"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { deleteFixture(fixture.id); e.currentTarget.blur(); }}
+                            className="text-xs text-muted hover:text-danger"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Training Sessions */}
+        <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-foreground-strong">Training Sessions</h2>
+              <p className="mt-1 text-sm text-muted">
+                Weekly recurring sessions shown on the dashboard
+              </p>
+            </div>
+            {!showSessionForm && (
+              <button
+                type="button"
+                onClick={(e) => { setShowSessionForm(true); e.currentTarget.blur(); }}
+                className="rounded-xl border border-border bg-panel-2 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-panel-3"
+              >
+                + Add session
+              </button>
+            )}
+          </div>
+
+          {showSessionForm && (
+            <div className="mt-5 rounded-xl border border-border bg-panel-2 p-5">
+              <h3 className="mb-4 text-sm font-semibold text-foreground-strong">Add training session</h3>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div>
+                  <label className="mb-1 block text-xs text-muted">Day of week *</label>
+                  <select
+                    value={sessionForm.dayOfWeek}
+                    onChange={(e) => setSessionForm({ ...sessionForm, dayOfWeek: e.target.value as TrainingSession["dayOfWeek"] })}
+                    className="w-full rounded-xl border border-border bg-panel-3 px-3 py-2.5 text-sm text-foreground"
+                  >
+                    {DOW_ORDER.map((d) => (
+                      <option key={d} value={d}>{DOW_LABELS[d]}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted">Time *</label>
+                  <input
+                    type="time"
+                    value={sessionForm.time}
+                    onChange={(e) => setSessionForm({ ...sessionForm, time: e.target.value })}
+                    className="w-full rounded-xl border border-border bg-panel-3 px-3 py-2.5 text-sm text-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted">Location (optional)</label>
+                  <input
+                    value={sessionForm.locationName}
+                    onChange={(e) => setSessionForm({ ...sessionForm, locationName: e.target.value })}
+                    className="w-full rounded-xl border border-border bg-panel-3 px-3 py-2.5 text-sm text-foreground"
+                    placeholder="e.g. Training Oval 1"
+                  />
+                </div>
+              </div>
+              <div className="mt-5 flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={(e) => { saveSession(); e.currentTarget.blur(); }}
+                  disabled={!sessionForm.time}
+                  className="rounded-xl border border-border-light bg-panel-3 px-5 py-2.5 text-sm font-medium text-foreground disabled:opacity-40"
+                >
+                  Add session
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { setShowSessionForm(false); setSessionForm(BLANK_SESSION_FORM); e.currentTarget.blur(); }}
+                  className="text-sm text-muted hover:text-foreground"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {(profile.trainingSessions ?? []).length > 0 ? (
+            <div className="mt-4 space-y-2">
+              {[...(profile.trainingSessions ?? [])]
+                .sort((a, b) => DOW_ORDER.indexOf(a.dayOfWeek) - DOW_ORDER.indexOf(b.dayOfWeek))
+                .map((session) => (
+                  <div key={session.id} className="flex items-center justify-between rounded-xl border border-border bg-panel-2 px-4 py-3">
+                    <div>
+                      <span className="text-sm font-medium text-foreground-strong">{DOW_LABELS[session.dayOfWeek]}</span>
+                      <span className="ml-3 text-sm text-muted">{session.time}</span>
+                      {session.locationName && (
+                        <span className="ml-3 text-xs text-muted-2">{session.locationName}</span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => { deleteSession(session.id); e.currentTarget.blur(); }}
+                      className="text-xs text-muted hover:text-danger"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+            </div>
+          ) : (
+            !showSessionForm && (
+              <p className="mt-4 text-sm text-muted">No training sessions added yet.</p>
+            )
+          )}
+        </div>
 
       </div>
     </main>

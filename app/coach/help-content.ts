@@ -3,16 +3,17 @@ import type { PageHelpProps } from "@/app/components/PageHelp";
 export const COACH_PAGE_HELP: Record<string, PageHelpProps> = {
   "/coach": {
     title: "Coach Dashboard",
-    description: "Your home base. Get a quick read on your squad status and jump to any section of the platform.",
+    description: "Your coaching hub — fixtures, training, match insights, and your AI assistant coach in one place.",
     steps: [
-      { title: "Check Season at a Glance", body: "If you have 2+ saved matches, a summary strip shows your season-wide tackle rate, match count, and try differential at a glance." },
-      { title: "Use quick links to navigate", body: "Each card links directly to a key section — Capture, Insights, Team Setup, Review, and more. Hover to see a description of what each section does." },
-      { title: "Start your workflow here", body: "A typical match day goes: Team Setup → Capture (during the match) → Insights (after) → Review (video). Return here between sessions." },
+      { title: "Add fixtures first", body: "Go to Team Setup to add your upcoming fixtures. Once fixtures exist, the Season at a Glance strip and Next Fixture card appear on this dashboard." },
+      { title: "Check your next fixture", body: "The Next Fixture card shows your upcoming game, player availability dots, and a summary of how many players have confirmed. Players set their availability from the Player platform." },
+      { title: "Log training sessions", body: "After a training session (today or yesterday), a Post-session check-in card appears. Rate the session, pick focus areas, and note any players — this feeds the AI assistant's context." },
+      { title: "Use the AI assistant", body: "The 'Focus for next game' panel gives a rules-based recommendation from your last match data. The AI chat at the bottom lets you ask anything — it has your team context loaded." },
     ],
     tips: [
-      "Set up your squad in Team Setup before your first match so voice recognition works correctly.",
-      "Save matches regularly in Capture — local data syncs to your coach account when cloud storage is reachable.",
-      "Use Settings > Export after every session to create an Excel backup of your data.",
+      "Set up training sessions in Team Setup so they appear in the Training This Week section each week.",
+      "The Players to Watch section pulls from your last saved match — run Insights to see the full breakdown.",
+      "The AI assistant's recommendations improve the more match and session data you log.",
     ],
   },
 

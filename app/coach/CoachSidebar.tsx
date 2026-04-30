@@ -7,7 +7,7 @@ import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
 
 const navItems = [
   {
-    label: "Home",
+    label: "Dashboard",
     href: "/coach",
     exact: true,
     icon: (

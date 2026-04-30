@@ -128,3 +128,40 @@ export type ClipAnnotation = {
   category?: string;
   annotations?: VideoAnnotation[];
 };
+
+export type Fixture = {
+  id: string;
+  opponent: string;
+  date: string;
+  time: string;
+  homeOrAway: "home" | "away";
+  round?: string;
+  venue?: string;
+  availabilityRequested: boolean;
+};
+
+export type TrainingSession = {
+  id: string;
+  dayOfWeek: "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+  time: string;
+  locationName?: string;
+};
+
+export type AvailabilityResponse = {
+  playerId: string;
+  fixtureId?: string;
+  trainingSessionId?: string;
+  response: "available" | "unavailable" | "maybe";
+  note?: string;
+  updatedAt: string;
+};
+
+export type SessionLog = {
+  id: string;
+  trainingSessionId: string;
+  date: string;
+  focusAreas: string[];
+  playerNotes?: string;
+  sessionRating: "good" | "okay" | "tough";
+  loggedAt: string;
+};

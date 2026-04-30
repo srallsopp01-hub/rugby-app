@@ -1,5 +1,8 @@
 import { SQUAD_PROFILE_KEY } from "../constants";
 import { levenshtein } from "../helpers";
+import type { Fixture, TrainingSession, AvailabilityResponse, SessionLog } from "../types";
+
+export const SQUAD_PROFILE_CHANGED_EVENT = "rugby-squad-profile-changed";
 
 export type SquadPlayerStatus = "active" | "injured" | "unavailable";
 
@@ -76,6 +79,11 @@ export type SquadProfile = {
   actionSamples: ActionSample[];
   correctionMemory: CorrectionMemoryEntry[];
   kpiTargets?: CustomKpiConfig[];
+  leaguePosition?: number;
+  fixtures?: Fixture[];
+  trainingSessions?: TrainingSession[];
+  availabilityResponses?: AvailabilityResponse[];
+  sessionLogs?: SessionLog[];
   createdAt: string;
   updatedAt: string;
 };
@@ -86,6 +94,18 @@ export function createPlayerId(): string {
 
 export function createSquadProfileId(): string {
   return `squad_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function createFixtureId(): string {
+  return `fixture_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function createTrainingSessionId(): string {
+  return `tsession_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function createSessionLogId(): string {
+  return `slog_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export function createDefaultSquadProfile(): SquadProfile {
@@ -122,6 +142,7 @@ export function getSquadProfile(): SquadProfile | null {
 export function saveSquadProfile(profile: SquadProfile): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(SQUAD_PROFILE_KEY, JSON.stringify(profile));
+  window.dispatchEvent(new Event(SQUAD_PROFILE_CHANGED_EVENT));
   import("@/lib/squadProfileCloud")
     .then(({ upsertCloudSquadProfile }) => void upsertCloudSquadProfile(profile))
     .catch(() => {});
