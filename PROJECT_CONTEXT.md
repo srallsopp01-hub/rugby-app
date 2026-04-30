@@ -899,8 +899,8 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
 
 - ✅ `stripe` SDK installed
 - ✅ `app/api/stripe/checkout/route.ts` — authenticated Stripe Checkout session endpoint for subscription mode with 14-day trial; returns `401` for logged-out users, validates missing/TODO price IDs, and falls back to request origin if `NEXT_PUBLIC_APP_URL` is missing
-- ✅ `app/(marketing)/pricing/PricingExperience.tsx` — Team Launch and Club 5 CTAs now call `/api/stripe/checkout`; unauthenticated users fall back to login; invalid placeholder prices show an AUD-first fallback message; Organisation remains a contact/demo CTA
-- ✅ `app/(marketing)/pricing/pricingConfig.ts` — AUD test-mode price IDs added:
+- ✅ `app/(marketing)/pricing/PricingExperience.tsx` — Team Launch and Club 5 CTAs now call `/api/stripe/checkout`; unauthenticated users fall back to login; invalid placeholder prices fail safely; Organisation remains a contact/demo CTA
+- ✅ `app/(marketing)/pricing/pricingConfig.ts` — test-mode Stripe Price IDs added for Team Launch and Club 5; each Price has manual currency options for USD, AUD, EUR, and GBP:
   - Team Launch monthly: `price_1TRsWbQL0gCVdJZirakOuwQY`
   - Team Launch yearly: `price_1TRsZDQL0gCVdJZit1TBHsuS`
   - Club 5 monthly: `price_1TRsb9QL0gCVdJZiCwAZYVx2`
@@ -911,7 +911,7 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
 - ✅ Verification: `npm run lint` clean, `npm run build` clean
 
 **Still required before full production payments:**
-- Create live-mode Stripe products/prices for all intended currencies, then replace the relevant `"price_TODO"` entries in `pricingConfig.ts`
+- Create live-mode Stripe Prices with the same manual currency options, then replace the four test-mode `price_...` IDs in `pricingConfig.ts`
 - Switch Vercel Production `STRIPE_SECRET_KEY` to the matching `sk_live_...` key only when live price IDs are in place
 - Optional later batch: add Stripe webhook + subscription table if/when access needs to be gated by active subscription status
 
@@ -935,7 +935,7 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
    - Update Supabase Auth email sender to `FYNL Whistle <noreply@fynlwhistle.com>`
    - Until done, invite emails silently fail and signup confirmation comes from Supabase's default domain
 
-2. ~~**Batch AM — Stripe payments**~~ ✅ Test checkout verified end-to-end for AUD Team Launch and Club 5. Remaining manual/payment tasks: create live-mode Stripe prices, swap in live `price_...` IDs, switch Vercel to `sk_live_...`, and add webhooks/subscription tracking when paid access needs enforcement.
+2. ~~**Batch AM — Stripe payments**~~ ✅ Test checkout verified end-to-end for Team Launch and Club 5 with Stripe manual currency options across USD/AUD/EUR/GBP. Remaining manual/payment tasks: create live-mode Stripe prices, swap in live `price_...` IDs, switch Vercel to `sk_live_...`, and add webhooks/subscription tracking when paid access needs enforcement.
 
 3. ~~**Batch AL — PDF match report**~~ ✅ Done — "Export PDF" button on Insights; A4 portrait with KPIs, summaries, key players, full player stats table.
 

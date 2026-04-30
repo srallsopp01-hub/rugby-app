@@ -119,21 +119,21 @@ export const pricing: Record<CurrencyCode, CurrencyPricing> = {
   },
 };
 
-// TODO: Replace these placeholders when Stripe Checkout products are created.
+// Stripe prices include manual currency options for USD, AUD, EUR, and GBP.
 export const stripePriceIds: Record<CurrencyCode, Record<string, string>> = {
   USD: {
-    teamLaunchMonthly: "price_TODO",
-    teamLaunchYearly: "price_TODO",
-    club5Monthly: "price_TODO",
-    club5Yearly: "price_TODO",
+    teamLaunchMonthly: "price_1TRsWbQL0gCVdJZirakOuwQY",
+    teamLaunchYearly: "price_1TRsZDQL0gCVdJZit1TBHsuS",
+    club5Monthly: "price_1TRsb9QL0gCVdJZiCwAZYVx2",
+    club5Yearly: "price_1TRsbAQL0gCVdJZiMeFb2sv0",
     organisationMonthly: "price_TODO",
     organisationYearly: "price_TODO",
   },
   GBP: {
-    teamLaunchMonthly: "price_TODO",
-    teamLaunchYearly: "price_TODO",
-    club5Monthly: "price_TODO",
-    club5Yearly: "price_TODO",
+    teamLaunchMonthly: "price_1TRsWbQL0gCVdJZirakOuwQY",
+    teamLaunchYearly: "price_1TRsZDQL0gCVdJZit1TBHsuS",
+    club5Monthly: "price_1TRsb9QL0gCVdJZiCwAZYVx2",
+    club5Yearly: "price_1TRsbAQL0gCVdJZiMeFb2sv0",
     organisationMonthly: "price_TODO",
     organisationYearly: "price_TODO",
   },
@@ -146,10 +146,10 @@ export const stripePriceIds: Record<CurrencyCode, Record<string, string>> = {
     organisationYearly: "price_TODO",
   },
   EUR: {
-    teamLaunchMonthly: "price_TODO",
-    teamLaunchYearly: "price_TODO",
-    club5Monthly: "price_TODO",
-    club5Yearly: "price_TODO",
+    teamLaunchMonthly: "price_1TRsWbQL0gCVdJZirakOuwQY",
+    teamLaunchYearly: "price_1TRsZDQL0gCVdJZit1TBHsuS",
+    club5Monthly: "price_1TRsb9QL0gCVdJZiCwAZYVx2",
+    club5Yearly: "price_1TRsbAQL0gCVdJZiMeFb2sv0",
     organisationMonthly: "price_TODO",
     organisationYearly: "price_TODO",
   },

@@ -196,7 +196,7 @@ function PricingCard({
 
   async function handleCheckout() {
     if (!hasValidPriceId) {
-      setCheckoutError("Checkout is enabled for AUD first. Switch currency to AUD to continue.");
+      setCheckoutError("Checkout is not available for this plan yet.");
       return;
     }
     setLoading(true);
