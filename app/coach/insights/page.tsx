@@ -93,6 +93,7 @@ export default function InsightsPage() {
   const [playerFilter, setPlayerFilter] = useState<PlayerFilter>("all");
   const [expandedTrendPlayer, setExpandedTrendPlayer] = useState<string | null>(null);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+  const [pdfExporting, setPdfExporting] = useState(false);
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
 
   const savedMatchesSnapshot = useSyncExternalStore(
@@ -469,6 +470,44 @@ export default function InsightsPage() {
               className="rounded-xl border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground transition hover:border-border-light hover:bg-panel-2 disabled:cursor-not-allowed disabled:opacity-40"
             >
               ↓ Export Report
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                setPdfExporting(true);
+                try {
+                  const { generateMatchReportPdf } = await import("@/app/rugby-tagging/lib/exports/matchReportPdf");
+                  const { downloadPdf } = await import("@/app/rugby-tagging/lib/exports/downloadPdf");
+                  const blob = await generateMatchReportPdf({
+                    matchTitle,
+                    opponent,
+                    matchDate,
+                    reportRows,
+                    forwardsRows,
+                    unitSummaryRows,
+                    teamTotals,
+                    teamTacklePct,
+                    setPieceSummary,
+                    teamEventSummary,
+                    bestDefender,
+                    bestCarrier,
+                    mostInvolved,
+                    gameCoachingComment,
+                    gameFlowSummary,
+                    headlineInsights,
+                  });
+                  const safeTitle = (matchTitle || "match-report").replace(/[^a-z0-9-_]+/gi, "_");
+                  downloadPdf(blob, `${safeTitle}_MatchReport.pdf`);
+                } catch (err) {
+                  console.error("Failed to generate PDF", err);
+                } finally {
+                  setPdfExporting(false);
+                }
+              }}
+              disabled={reportRows.length === 0 || pdfExporting}
+              className="rounded-xl border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground transition hover:border-border-light hover:bg-panel-2 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {pdfExporting ? "Generating…" : "↓ Export PDF"}
             </button>
           </div>
         </div>
