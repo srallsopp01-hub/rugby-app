@@ -8,7 +8,6 @@ import TranscriptPanel from "@/app/rugby-tagging/components/TranscriptPanel";
 import NeedsReviewPanel from "@/app/rugby-tagging/components/NeedsReviewPanel";
 import CoachReviewPanel from "@/app/rugby-tagging/components/CoachReviewPanel";
 import TeamSnapshotPanel from "@/app/rugby-tagging/components/TeamSnapshotPanel";
-import StatsPanel from "@/app/rugby-tagging/components/StatsPanel";
 import MatchReportModal from "@/app/rugby-tagging/components/MatchReportModal";
 import PlayerDrilldownModal from "@/app/rugby-tagging/components/PlayerDrilldownModal";
 import GameReviewTimelinePanel from "@/app/rugby-tagging/components/GameReviewTimelinePanel";
@@ -29,8 +28,14 @@ import {
   getSavedMatchById,
   setCurrentMatchId as persistCurrentMatchId,
   upsertSavedMatch,
+  type SavedMatchRecord,
 } from "@/app/rugby-tagging/lib/savedMatches";
-import { deleteMatchVideo, uploadMatchVideoWithResult } from "@/lib/matchVideoCloud";
+import { upsertCloudSavedMatch } from "@/lib/savedMatchesCloud";
+import {
+  deleteMatchVideo,
+  uploadMatchVideoWithResult,
+  type VideoUploadResult,
+} from "@/lib/matchVideoCloud";
 import {
   getSquadProfile,
   resolvePlayerName,
@@ -77,7 +82,6 @@ import type {
   MilestoneType,
   PendingResolution,
   PlayerAction,
-  PlayerStats,
   ReportRow,
   ReviewItem,
   RosterRow,
@@ -112,6 +116,7 @@ export default function RugbyVoiceTaggingMVP() {
   const pageShellRef = useRef<HTMLDivElement | null>(null);
   const spacebarHeldRef = useRef(false);
   const pendingVideoFileRef = useRef<File | null>(null);
+  const videoUploadPromiseRef = useRef<Promise<VideoUploadResult> | null>(null);
 
   const [activeMode, setActiveMode] = useState<AppMode>("stat");
   const [videoStoragePath, setVideoStoragePath] = useState("");
@@ -148,7 +153,6 @@ export default function RugbyVoiceTaggingMVP() {
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [stats, setStats] = useState<Record<string, PlayerStats> | null>(null);
   const [statusMessage, setStatusMessage] = useState("Ready");
   const [showRawTranscript, setShowRawTranscript] = useState(true);
   const [videoLoaded, setVideoLoaded] = useState(false);
@@ -185,6 +189,9 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
   const [videoUploadStatus, setVideoUploadStatus] = useState<VideoUploadStatus>("idle");
   const [videoUploadPercent, setVideoUploadPercent] = useState(0);
   const [videoUploadError, setVideoUploadError] = useState("");
+  const [matchSubmitStatus, setMatchSubmitStatus] =
+    useState<"idle" | "submitting" | "submitted" | "error">("idle");
+  const [matchSubmitError, setMatchSubmitError] = useState("");
   const videoUploadLabel =
     videoUploadPercent >= 100
       ? "Finalising cloud save..."
@@ -949,13 +956,14 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     setRecording(false);
     setTranscribing(false);
     setCurrentTime(0);
-    setStats(null);
     setShowReportBuilder(false);
     setShowPlayerDrilldownModal(false);
     setDrilldownPlayerName("");
     setStatusMessage("Ready");
     setVideoLoaded(false);
     setVideoStoragePath("");
+    setMatchSubmitStatus("idle");
+    setMatchSubmitError("");
     setPlaybackRate(1);
     setPendingResolution(null);
     setResolverSelection("");
@@ -988,7 +996,6 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
       },
     ]);
 
-    setStats(null);
   };
 
   const addStructuredPlayerEvent = (
@@ -1017,7 +1024,6 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
       },
     ]);
 
-    setStats(null);
   };
 
   const addPendingEvent = (timestamp: number) => {
@@ -1223,7 +1229,6 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
 
   const undoLast = () => {
     setEvents((prev) => prev.slice(0, -1));
-    setStats(null);
     setStatusMessage("Last tag removed");
   };
 
@@ -1235,12 +1240,10 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
           : event
       )
     );
-    setStats(null);
   };
 
   const deleteEvent = (id: number) => {
     setEvents((prev) => prev.filter((event) => event.id !== id));
-    setStats(null);
     setStatusMessage("Tag deleted");
   };
 
@@ -1339,14 +1342,15 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     setStatusMessage("Review item skipped");
   };
 
-  const triggerVideoUpload = (file: File, matchId: string) => {
+  const triggerVideoUpload = (file: File, matchId: string): Promise<VideoUploadResult> => {
     setVideoUploadStatus("uploading");
     setVideoUploadPercent(0);
     setVideoUploadError("");
-    void uploadMatchVideoWithResult(matchId, file, (p) => setVideoUploadPercent(p.percent))
+    const uploadPromise = uploadMatchVideoWithResult(matchId, file, (p) => setVideoUploadPercent(p.percent))
       .then((result) => {
         if (result.storagePath) {
           setVideoStoragePath(result.storagePath);
+          pendingVideoFileRef.current = null;
           const saved = getSavedMatchById(matchId);
           if (saved) {
             const previousStoragePath = saved.videoStoragePath;
@@ -1362,21 +1366,33 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
           setVideoUploadError(result.error ?? "Video upload failed");
           setVideoUploadStatus("error");
         }
+        return result;
       })
       .catch((error) => {
-        setVideoUploadError(error instanceof Error ? error.message : "Video upload failed");
+        const message = error instanceof Error ? error.message : "Video upload failed";
+        setVideoUploadError(message);
         setVideoUploadStatus("error");
+        return { storagePath: null, error: message };
+      })
+      .finally(() => {
+        videoUploadPromiseRef.current = null;
       });
+
+    videoUploadPromiseRef.current = uploadPromise;
+    return uploadPromise;
   };
 
-  const saveCurrentMatchRecord = () => {
+  const buildCurrentMatchRecord = (
+    matchId: string,
+    nowIso: string,
+    nextVideoStoragePath?: string
+  ): SavedMatchRecord => {
     const persistedEvents = events.filter((event) => !event.isPending);
-    const matchId = currentMatchId || createMatchId();
-    const nowIso = new Date().toISOString();
+    const existing = getSavedMatchById(matchId);
 
-    upsertSavedMatch({
+    return {
       id: matchId,
-      createdAt: nowIso,
+      createdAt: existing?.createdAt ?? nowIso,
       updatedAt: nowIso,
       matchTitle: matchTitle.trim(),
       opponent: opponent.trim(),
@@ -1388,8 +1404,16 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
       reviewQueue,
       coachNotes,
       showRawTranscript,
-      videoStoragePath: videoStoragePath || getSavedMatchById(matchId)?.videoStoragePath,
-    });
+      videoStoragePath: nextVideoStoragePath || videoStoragePath || existing?.videoStoragePath,
+    };
+  };
+
+  const saveCurrentMatchRecord = (nextVideoStoragePath?: string) => {
+    const matchId = currentMatchId || createMatchId();
+    const nowIso = new Date().toISOString();
+    const record = buildCurrentMatchRecord(matchId, nowIso, nextVideoStoragePath);
+
+    upsertSavedMatch(record);
 
     persistCurrentMatchId(matchId);
     setCurrentMatchId(matchId);
@@ -1403,23 +1427,63 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     return matchId;
   };
 
-  const submitReport = () => {
+  const submitMatch = async () => {
     if (reviewQueue.length > 0) {
       setStatusMessage(
         `Resolve ${reviewQueue.length} review item${
           reviewQueue.length === 1 ? "" : "s"
-        } before submitting report`
+        } before submitting the match`
       );
       return;
     }
 
     if (!playersReady) {
-      setStatusMessage("Add a team sheet before submitting report");
+      setStatusMessage("Add a team sheet before submitting the match");
       return;
     }
 
-    setShowReportSetupModal(true);
-    setStatusMessage("Add or check player minutes before saving and opening the next screen");
+    setMatchSubmitStatus("submitting");
+    setMatchSubmitError("");
+    setStatusMessage("Submitting match to the team...");
+
+    const matchId = currentMatchId || createMatchId();
+    persistCurrentMatchId(matchId);
+    setCurrentMatchId(matchId);
+
+    let submittedVideoStoragePath = videoStoragePath || getSavedMatchById(matchId)?.videoStoragePath || "";
+
+    if (pendingVideoFileRef.current && !videoUploadPromiseRef.current) {
+      videoUploadPromiseRef.current = triggerVideoUpload(pendingVideoFileRef.current, matchId);
+    }
+
+    if (videoUploadPromiseRef.current) {
+      const uploadResult = await videoUploadPromiseRef.current;
+      if (!uploadResult.storagePath) {
+        const message = uploadResult.error || "Video upload failed";
+        setMatchSubmitError(message);
+        setMatchSubmitStatus("error");
+        setStatusMessage(`Match not submitted - ${message}`);
+        return;
+      }
+      submittedVideoStoragePath = uploadResult.storagePath;
+    }
+
+    const nowIso = new Date().toISOString();
+    const record = buildCurrentMatchRecord(matchId, nowIso, submittedVideoStoragePath);
+    upsertSavedMatch(record);
+
+    const result = await upsertCloudSavedMatch(record);
+    if (!result.ok) {
+      const message = result.error || "Cloud save failed";
+      setMatchSubmitError(message);
+      setMatchSubmitStatus("error");
+      setStatusMessage(`Match saved locally but not submitted - ${message}`);
+      return;
+    }
+
+    setVideoStoragePath(submittedVideoStoragePath);
+    setMatchSubmitStatus("submitted");
+    setStatusMessage("Match submitted to your team");
   };
 
   const openTeamReview = () => {
@@ -1447,28 +1511,6 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     setDrilldownPlayerName(playerName);
     setShowPlayerDrilldownModal(true);
     setStatusMessage(`Opened ${playerName} breakdown`);
-  };
-
-  const generateStats = () => {
-    if (reviewQueue.length > 0) {
-      setStatusMessage(
-        `Resolve ${reviewQueue.length} review item${
-          reviewQueue.length === 1 ? "" : "s"
-        } before generating final stats`
-      );
-      setStats(null);
-      return;
-    }
-
-    if (players.length === 0) {
-      setStatusMessage("Add players before generating stats");
-      setStats(null);
-      return;
-    }
-
-    const result = buildBasicStats(players, events);
-    setStats(result);
-    setStatusMessage("Stats generated");
   };
 
   const duckVideoAudio = () => {
@@ -2340,7 +2382,6 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
 
     setEvents((prev) => [...prev, ...nextEvents]);
     setReviewQueue((prev) => [...prev, ...nextReviewItems]);
-    setStats(null);
     setCleanedTranscriptItems([]);
     setCleanedTranscriptText("");
     setTranscriptCleanSummary(null);
@@ -2990,12 +3031,13 @@ Ellie missed tackle"
                         setVideoUploadStatus("idle");
                         setVideoUploadPercent(0);
                         setVideoUploadError("");
+                        setMatchSubmitStatus("idle");
+                        setMatchSubmitError("");
                         setStatusMessage("Video loaded");
+                        pendingVideoFileRef.current = file;
                         // Upload immediately if match is already saved, otherwise queue
                         if (currentMatchId) {
-                          triggerVideoUpload(file, currentMatchId);
-                        } else {
-                          pendingVideoFileRef.current = file;
+                          void triggerVideoUpload(file, currentMatchId);
                         }
                       } else {
                         setVideoLoaded(false);
@@ -3004,6 +3046,9 @@ Ellie missed tackle"
                         setPlaybackRate(1);
                         setVideoUploadStatus("idle");
                         setVideoUploadError("");
+                        setMatchSubmitStatus("idle");
+                        setMatchSubmitError("");
+                        pendingVideoFileRef.current = null;
                         sessionStorage.removeItem("rugby-tagging-video-src");
                       }
                     }}
@@ -3401,8 +3446,10 @@ Ellie missed tackle"
                   }}
                   onUpdateEvent={updateEvent}
                   onDeleteEvent={deleteEvent}
-                  onGenerateStats={generateStats}
-                  onSubmitReport={submitReport}
+                  onSubmitMatch={submitMatch}
+                  submitMatchDisabled={matchSubmitStatus === "submitting"}
+                  submitMatchStatus={matchSubmitStatus}
+                  submitMatchError={matchSubmitError}
                 />
 
                 <TeamSnapshotPanel
@@ -3418,10 +3465,6 @@ Ellie missed tackle"
                   triesConceded={teamEventSummary.triesConceded}
                   canCopySummary={reportRows.length > 0}
                   onCopySummary={handleCopyStatsSummary}
-                />
-
-                <StatsPanel
-                  stats={stats}
                 />
               </>
             ) : (

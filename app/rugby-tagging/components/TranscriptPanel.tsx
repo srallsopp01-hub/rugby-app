@@ -9,8 +9,10 @@ type TranscriptPanelProps = {
   onJumpToTimestamp: (timestamp: number) => void;
   onUpdateEvent: (id: number, text: string) => void;
   onDeleteEvent: (id: number) => void;
-  onGenerateStats: () => void;
-  onSubmitReport: () => void;
+  onSubmitMatch: () => void;
+  submitMatchDisabled?: boolean;
+  submitMatchStatus?: "idle" | "submitting" | "submitted" | "error";
+  submitMatchError?: string;
 };
 
 export default function TranscriptPanel({
@@ -20,8 +22,10 @@ export default function TranscriptPanel({
   onJumpToTimestamp,
   onUpdateEvent,
   onDeleteEvent,
-  onGenerateStats,
-  onSubmitReport,
+  onSubmitMatch,
+  submitMatchDisabled = false,
+  submitMatchStatus = "idle",
+  submitMatchError = "",
 }: TranscriptPanelProps) {
   return (
     <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-panel)]">
@@ -194,20 +198,24 @@ export default function TranscriptPanel({
         })()}
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-2">
+      <div className="mt-4">
         <button
-          onClick={onGenerateStats}
-          className="w-full rounded-xl border border-border-light bg-panel-3 py-2.5 text-sm font-medium text-foreground"
+          onClick={onSubmitMatch}
+          disabled={submitMatchDisabled}
+          className="w-full rounded-xl border border-accent bg-accent px-4 py-3 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(237,106,31,0.24)] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
         >
-          Generate Stats
+          {submitMatchStatus === "submitting" ? "Submitting Match..." : "Submit Match"}
         </button>
-
-        <button
-          onClick={onSubmitReport}
-          className="w-full rounded-xl border border-border py-2.5 text-sm font-medium text-foreground"
-        >
-          Submit Report
-        </button>
+        {submitMatchStatus === "submitted" && (
+          <p className="mt-2 text-xs text-success">
+            Match submitted to the team.
+          </p>
+        )}
+        {submitMatchStatus === "error" && (
+          <p className="mt-2 text-xs text-danger">
+            Submit failed - {submitMatchError || "match was saved locally only"}
+          </p>
+        )}
       </div>
     </div>
   );
