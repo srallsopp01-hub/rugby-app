@@ -18,6 +18,8 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("token");
   const joinToken = searchParams.get("join_token");
+  const next = searchParams.get("next");
+  const safeNext = next?.startsWith("/") && !next.startsWith("//") ? next : null;
   const prefillEmail = searchParams.get("email") ?? "";
 
   const [email, setEmail] = useState(prefillEmail);
@@ -64,7 +66,7 @@ function LoginContent() {
       }
     }
 
-    router.push("/coach");
+    router.push(safeNext || "/coach");
     router.refresh();
   }
 
