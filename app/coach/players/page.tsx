@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "../help-content";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -12,8 +12,14 @@ import {
 import {
   CURRENT_MATCH_ID_KEY,
   SAVED_MATCHES_KEY,
+  subscribeSavedMatchesChanged,
   type SavedMatchRecord,
 } from "@/app/rugby-tagging/lib/savedMatches";
+import {
+  getMatchVideoSignedUrl,
+  refreshVideoSignedUrl,
+  SIGNED_URL_EXPIRY_SECONDS,
+} from "@/lib/matchVideoCloud";
 import {
   buildBasicStats,
   buildCoachComment,
@@ -119,7 +125,7 @@ function PlayersContent() {
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
 
   const savedMatchesSnapshot = useSyncExternalStore(
-    subscribeToStorage,
+    subscribeSavedMatchesChanged,
     () => getStorageSnapshot(SAVED_MATCHES_KEY, emptyArraySnapshot),
     () => emptyArraySnapshot
   );
@@ -129,7 +135,7 @@ function PlayersContent() {
     () => ""
   );
   const allMatches = useMemo(() => parseSavedMatches(savedMatchesSnapshot), [savedMatchesSnapshot]);
-  const effectiveMatchId = selectedMatchId ?? currentMatchId;
+  const effectiveMatchId = selectedMatchId || currentMatchId || allMatches[0]?.id || "";
   const selectedMatch = useMemo(
     () => allMatches.find((m) => m.id === effectiveMatchId) || null,
     [allMatches, effectiveMatchId]
@@ -156,13 +162,55 @@ function PlayersContent() {
           : [],
     [selectedMatch, savedSession.events]
   );
-  const [videoSrc] = useState(loadPlayersVideoSrc);
+  const [videoSrc, setVideoSrc] = useState(loadPlayersVideoSrc);
+  const [videoLoading, setVideoLoading] = useState(false);
+  const [videoCloudStatus, setVideoCloudStatus] =
+    useState<"idle" | "loading" | "loaded" | "unavailable">("idle");
   const [currentTime, setCurrentTime] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [activeEventIndex, setActiveEventIndex] = useState(0);
 
   const players = rosterRows.map((row) => row.name.trim()).filter(Boolean);
   const selectedPlayerName = searchParams.get("player") || players[0] || "";
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!selectedMatch?.videoStoragePath) {
+      queueMicrotask(() => {
+        if (cancelled) return;
+        setActiveEventIndex(0);
+        setCurrentTime(0);
+        setVideoSrc(loadPlayersVideoSrc());
+        setVideoCloudStatus("idle");
+        setVideoLoading(false);
+      });
+      return;
+    }
+
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setActiveEventIndex(0);
+      setCurrentTime(0);
+      setVideoLoading(true);
+      setVideoCloudStatus("loading");
+    });
+    void getMatchVideoSignedUrl(selectedMatch.videoStoragePath, SIGNED_URL_EXPIRY_SECONDS).then((url) => {
+      if (cancelled) return;
+      if (url) {
+        setVideoSrc(url);
+        setVideoCloudStatus("loaded");
+      } else {
+        setVideoSrc(loadPlayersVideoSrc());
+        setVideoCloudStatus("unavailable");
+      }
+      setVideoLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedMatch?.id, selectedMatch?.videoStoragePath]);
 
   const reportRows = useMemo(() => {
     const baseStats = buildBasicStats(players, events);
@@ -368,7 +416,11 @@ function PlayersContent() {
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
             <section className="space-y-5 xl:col-span-8">
               <div className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
-                {videoSrc ? (
+                {videoLoading ? (
+                  <div className="rounded-xl border border-border bg-panel-2 px-4 py-4 text-sm text-muted">
+                    Loading match video from cloud...
+                  </div>
+                ) : videoSrc ? (
                   <>
                     <div className="overflow-hidden rounded-2xl border border-border bg-black shadow-[var(--shadow-panel)]">
                       <video
@@ -384,6 +436,20 @@ function PlayersContent() {
                         onTimeUpdate={() =>
                           setCurrentTime(videoRef.current?.currentTime || 0)
                         }
+                        onError={() => {
+                          if (!selectedMatch?.videoStoragePath || videoSrc.startsWith("blob:")) return;
+                          setVideoLoading(true);
+                          setVideoCloudStatus("loading");
+                          void refreshVideoSignedUrl(selectedMatch.videoStoragePath).then((url) => {
+                            if (url) {
+                              setVideoSrc(url);
+                              setVideoCloudStatus("loaded");
+                            } else {
+                              setVideoCloudStatus("unavailable");
+                            }
+                            setVideoLoading(false);
+                          });
+                        }}
                       />
                     </div>
 
@@ -426,7 +492,9 @@ function PlayersContent() {
                   </>
                 ) : (
                   <div className="rounded-xl border border-border bg-panel-2 px-4 py-4 text-sm text-muted">
-                    No video is available in this session yet. Open Capture and load a match video first.
+                    {videoCloudStatus === "unavailable"
+                      ? "Could not load this match video from cloud. Check the submitted match video and try again."
+                      : "No video is available for this match yet. Submit the match with a video from Capture first."}
                   </div>
                 )}
               </div>

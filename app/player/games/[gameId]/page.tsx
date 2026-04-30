@@ -84,20 +84,25 @@ export default function GameDetailPage() {
   const playlistRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    return () => { if (videoUrl) URL.revokeObjectURL(videoUrl); };
+    return () => { if (videoUrl.startsWith("blob:")) URL.revokeObjectURL(videoUrl); };
   }, [videoUrl]);
 
   // Auto-load from cloud if match has a stored video path and no local URL yet
   useEffect(() => {
     if (videoUrl || !match?.videoStoragePath) return;
-    setVideoLoading(true);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) setVideoLoading(true);
+    });
     void getMatchVideoSignedUrl(match.videoStoragePath, SIGNED_URL_EXPIRY_SECONDS).then((url) => {
+      if (cancelled) return;
       if (url) setVideoUrl(url);
       setVideoLoading(false);
     });
-  // Run only when the match changes (new game loaded)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [match?.id]);
+    return () => {
+      cancelled = true;
+    };
+  }, [match?.videoStoragePath, videoUrl]);
 
   function handleVideoFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
