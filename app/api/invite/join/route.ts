@@ -221,8 +221,12 @@ export async function POST(req: Request) {
   });
 
   if (insertError) {
-    console.error("Failed to insert team member", insertError);
-    return NextResponse.json({ error: "Failed to join team" }, { status: 500 });
+    console.error("Failed to insert team member", JSON.stringify(insertError));
+    return NextResponse.json({
+      error: "Failed to join team",
+      detail: insertError.message,
+      code: (insertError as { code?: string }).code,
+    }, { status: 500 });
   }
 
   // Link squad player's linkedUserId in the squad profile (player only)
