@@ -12,7 +12,7 @@ import { buildPlayerCoachingPlan } from "../../playerCoachingPlan";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { EventItem } from "@/app/rugby-tagging/types";
 import type { SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
-import { getMatchVideoSignedUrl, refreshVideoSignedUrl, SIGNED_URL_EXPIRY_SECONDS } from "@/lib/matchVideoCloud";
+import { getMatchVideoSignedUrlWithResult, refreshVideoSignedUrl, SIGNED_URL_EXPIRY_SECONDS } from "@/lib/matchVideoCloud";
 
 const ACTION_LABELS: Record<string, string> = {
   tackle: "Tackle",
@@ -80,6 +80,7 @@ export default function GameDetailPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoUrl, setVideoUrl] = useState("");
   const [videoLoading, setVideoLoading] = useState(false);
+  const [videoError, setVideoError] = useState<string | null>(null);
   const [activeEventIdx, setActiveEventIdx] = useState<number | null>(null);
   const playlistRef = useRef<HTMLDivElement>(null);
 
@@ -94,9 +95,10 @@ export default function GameDetailPage() {
     queueMicrotask(() => {
       if (!cancelled) setVideoLoading(true);
     });
-    void getMatchVideoSignedUrl(match.videoStoragePath, SIGNED_URL_EXPIRY_SECONDS).then((url) => {
+    void getMatchVideoSignedUrlWithResult(match.videoStoragePath, SIGNED_URL_EXPIRY_SECONDS).then(({ url, error }) => {
       if (cancelled) return;
       if (url) setVideoUrl(url);
+      if (error) setVideoError(error);
       setVideoLoading(false);
     });
     return () => {
@@ -280,7 +282,13 @@ export default function GameDetailPage() {
         </div>
       ) : (
         /* No video — invite to load */
-        <label className="block cursor-pointer">
+        <div className="flex flex-col gap-3">
+          {videoError && (
+            <p className="rounded-lg border border-danger/30 bg-danger/10 px-4 py-2 text-xs text-danger">
+              Could not load video: {videoError}
+            </p>
+          )}
+          <label className="block cursor-pointer">
           <input type="file" accept="video/*" onChange={handleVideoFile} className="hidden" />
           <div className="rounded-xl border border-dashed border-border bg-panel-2/50 px-6 py-8 text-center transition-colors hover:border-border-light hover:bg-panel-2">
             <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-panel-3">
@@ -292,6 +300,7 @@ export default function GameDetailPage() {
             <p className="mt-1 text-xs text-muted-2">Select the video file to watch and step through your tagged moments</p>
           </div>
         </label>
+        </div>
       )}
 
       {/* Stat grid */}

@@ -17,6 +17,7 @@ import {
 } from "@/app/rugby-tagging/lib/savedMatches";
 import {
   getMatchVideoSignedUrl,
+  getMatchVideoSignedUrlWithResult,
   refreshVideoSignedUrl,
   SIGNED_URL_EXPIRY_SECONDS,
 } from "@/lib/matchVideoCloud";
@@ -166,6 +167,7 @@ function PlayersContent() {
   const [videoLoading, setVideoLoading] = useState(false);
   const [videoCloudStatus, setVideoCloudStatus] =
     useState<"idle" | "loading" | "loaded" | "unavailable">("idle");
+  const [videoCloudError, setVideoCloudError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [activeEventIndex, setActiveEventIndex] = useState(0);
@@ -195,14 +197,16 @@ function PlayersContent() {
       setVideoLoading(true);
       setVideoCloudStatus("loading");
     });
-    void getMatchVideoSignedUrl(selectedMatch.videoStoragePath, SIGNED_URL_EXPIRY_SECONDS).then((url) => {
+    void getMatchVideoSignedUrlWithResult(selectedMatch.videoStoragePath, SIGNED_URL_EXPIRY_SECONDS).then(({ url, error }) => {
       if (cancelled) return;
       if (url) {
         setVideoSrc(url);
         setVideoCloudStatus("loaded");
+        setVideoCloudError(null);
       } else {
         setVideoSrc(loadPlayersVideoSrc());
         setVideoCloudStatus("unavailable");
+        setVideoCloudError(error ?? null);
       }
       setVideoLoading(false);
     });
@@ -493,7 +497,9 @@ function PlayersContent() {
                 ) : (
                   <div className="rounded-xl border border-border bg-panel-2 px-4 py-4 text-sm text-muted">
                     {videoCloudStatus === "unavailable"
-                      ? "Could not load this match video from cloud. Check the submitted match video and try again."
+                      ? videoCloudError
+                        ? `Could not load video: ${videoCloudError}`
+                        : "Could not load this match video from cloud. Check the submitted match video and try again."
                       : "No video is available for this match yet. Submit the match with a video from Capture first."}
                   </div>
                 )}

@@ -121,10 +121,12 @@ export async function uploadMatchVideo(
   return result.storagePath;
 }
 
-export async function getMatchVideoSignedUrl(
+export type VideoSignedUrlResult = { url: string | null; error?: string };
+
+export async function getMatchVideoSignedUrlWithResult(
   storagePath: string,
   expiresInSeconds = 3600
-): Promise<string | null> {
+): Promise<VideoSignedUrlResult> {
   try {
     const response = await fetch("/api/match-video/signed-url", {
       method: "POST",
@@ -132,11 +134,19 @@ export async function getMatchVideoSignedUrl(
       body: JSON.stringify({ storagePath, expiresInSeconds }),
     });
     const data = await readApiJson<SignedUrlResponse>(response);
-    return data.signedUrl ?? null;
+    return { url: data.signedUrl ?? null };
   } catch (error) {
-    console.error("Failed to create match video signed URL", error);
-    return null;
+    const message = error instanceof Error ? error.message : "Could not load video";
+    return { url: null, error: message };
   }
+}
+
+export async function getMatchVideoSignedUrl(
+  storagePath: string,
+  expiresInSeconds = 3600
+): Promise<string | null> {
+  const result = await getMatchVideoSignedUrlWithResult(storagePath, expiresInSeconds);
+  return result.url;
 }
 
 export async function refreshVideoSignedUrl(storagePath: string): Promise<string | null> {

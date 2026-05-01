@@ -34,6 +34,7 @@ import { upsertCloudSavedMatch } from "@/lib/savedMatchesCloud";
 import {
   deleteMatchVideo,
   getMatchVideoSignedUrl,
+  getMatchVideoSignedUrlWithResult,
   refreshVideoSignedUrl,
   SIGNED_URL_EXPIRY_SECONDS,
   uploadMatchVideoWithResult,
@@ -834,9 +835,9 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     let cancelled = false;
     setStatusMessage("Loading match video from cloud...");
 
-    void getMatchVideoSignedUrl(videoStoragePath, SIGNED_URL_EXPIRY_SECONDS).then((url) => {
+    void getMatchVideoSignedUrlWithResult(videoStoragePath, SIGNED_URL_EXPIRY_SECONDS).then(({ url, error }) => {
       if (cancelled || !url || !videoRef.current) {
-        if (!url) setStatusMessage("Could not load match video from cloud");
+        if (!url) setStatusMessage(error ? `Could not load video: ${error}` : "Could not load match video from cloud");
         return;
       }
 
