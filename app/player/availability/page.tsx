@@ -169,6 +169,7 @@ export default function PlayerAvailabilityPage() {
         (patch.fixtureId ? r.fixtureId === patch.fixtureId : r.trainingSessionId === patch.trainingSessionId)
     );
     const next: AvailabilityResponse = {
+      id: existing >= 0 ? responses[existing].id : crypto.randomUUID(),
       playerId: currentPlayer.id,
       ...patch,
       updatedAt: new Date().toISOString(),

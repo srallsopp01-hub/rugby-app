@@ -155,11 +155,12 @@ export type TrainingSession = {
 };
 
 export type AvailabilityResponse = {
+  id: string;
   playerId: string;
   fixtureId?: string;
   trainingSessionId?: string;
   response: "available" | "unavailable" | "maybe";
-  note?: string;
+  reason?: string;
   updatedAt: string;
 };
 

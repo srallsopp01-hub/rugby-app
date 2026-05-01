@@ -349,6 +349,8 @@ export default function CoachDashboardPage() {
   const [showAvailDetails, setShowAvailDetails] = useState(false);
   type RemindStatus = "idle" | "sending" | "sent" | "error";
   const [remindStatus, setRemindStatus] = useState<RemindStatus>("idle");
+  const [expandedFixtureId, setExpandedFixtureId] = useState<string | null>(null);
+  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
 
   async function sendAvailabilityReminder(fixtureId: string) {
     setRemindStatus("sending");
@@ -728,9 +730,17 @@ export default function CoachDashboardPage() {
                               </div>
                             )}
                             {noPlayers.length > 0 && (
-                              <div>
-                                <span className="font-semibold text-danger">Can&apos;t make it · </span>
-                                <span className="text-foreground">{noPlayers.map(playerName).join(", ")}</span>
+                              <div className="space-y-0.5">
+                                <span className="font-semibold text-danger">Can&apos;t make it</span>
+                                {noPlayers.map((p) => {
+                                  const r = responses.find((res) => res.playerId === p.id && res.response === "unavailable");
+                                  return (
+                                    <div key={p.id} className="text-foreground">
+                                      {playerName(p)}
+                                      {r?.reason && <span className="ml-1 text-muted-2"> — &ldquo;{r.reason}&rdquo;</span>}
+                                    </div>
+                                  );
+                                })}
                               </div>
                             )}
                             {maybePlayers.length > 0 && (
@@ -834,41 +844,85 @@ export default function CoachDashboardPage() {
                       const sessionLabel = session.dayOfWeek
                         ? session.dayOfWeek.charAt(0).toUpperCase() + session.dayOfWeek.slice(1)
                         : session.oneOffDate ?? "One-off";
+                      const sessionExpanded = expandedSessionId === session.id;
+                      const sessionYes = activePlayers.filter((p) => responses.find((r) => r.playerId === p.id)?.response === "available");
+                      const sessionNo = activePlayers.filter((p) => responses.find((r) => r.playerId === p.id)?.response === "unavailable");
+                      const sessionMaybe = activePlayers.filter((p) => responses.find((r) => r.playerId === p.id)?.response === "maybe");
+                      const sessionPending = activePlayers.filter((p) => !responses.find((r) => r.playerId === p.id));
                       return (
-                        <div key={session.id} className="flex items-center justify-between px-4 py-3">
-                          <div>
-                            <span className="text-sm font-semibold text-foreground-strong">{sessionLabel}</span>
-                            <span className="ml-2 text-sm text-muted">{session.time}</span>
-                            {session.locationName && <div className="mt-0.5 text-xs text-muted-2">{session.locationName}</div>}
+                        <div key={session.id} className="px-4 py-3">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="text-sm font-semibold text-foreground-strong">{sessionLabel}</span>
+                              <span className="ml-2 text-sm text-muted">{session.time}</span>
+                              {session.locationName && <div className="mt-0.5 text-xs text-muted-2">{session.locationName}</div>}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.currentTarget.blur();
+                                  if (!profile) return;
+                                  const updated = {
+                                    ...profile,
+                                    trainingSessions: (profile.trainingSessions ?? []).map((s) =>
+                                      s.id === session.id ? { ...s, availabilityRequested: !s.availabilityRequested } : s
+                                    ),
+                                    updatedAt: new Date().toISOString(),
+                                  };
+                                  saveSquadProfile(updated);
+                                }}
+                                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold transition ${
+                                  session.availabilityRequested
+                                    ? "border-success/30 bg-success/10 text-success"
+                                    : "border-border bg-panel-2 text-muted hover:text-foreground"
+                                }`}
+                              >
+                                {session.availabilityRequested ? "Requested ✓" : "Request"}
+                              </button>
+                              {activePlayers.length > 0 && responses.length > 0 && (
+                                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${badgeColor}`}>
+                                  {confirmed}/{activePlayers.length}
+                                </span>
+                              )}
+                              {responses.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.currentTarget.blur(); setExpandedSessionId(sessionExpanded ? null : session.id); }}
+                                  className="text-[11px] text-accent underline-offset-2 hover:underline"
+                                >
+                                  {sessionExpanded ? "Hide" : "Details"}
+                                </button>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (!profile) return;
-                                const updated = {
-                                  ...profile,
-                                  trainingSessions: (profile.trainingSessions ?? []).map((s) =>
-                                    s.id === session.id ? { ...s, availabilityRequested: !s.availabilityRequested } : s
-                                  ),
-                                  updatedAt: new Date().toISOString(),
-                                };
-                                saveSquadProfile(updated);
-                              }}
-                              className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold transition ${
-                                session.availabilityRequested
-                                  ? "border-success/30 bg-success/10 text-success"
-                                  : "border-border bg-panel-2 text-muted hover:text-foreground"
-                              }`}
-                            >
-                              {session.availabilityRequested ? "Requested ✓" : "Request"}
-                            </button>
-                            {activePlayers.length > 0 && responses.length > 0 && (
-                              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${badgeColor}`}>
-                                {confirmed}/{activePlayers.length}
-                              </span>
-                            )}
-                          </div>
+                          {sessionExpanded && (
+                            <div className="mt-2 space-y-1 border-t border-border pt-2 text-xs">
+                              {sessionYes.length > 0 && (
+                                <div><span className="font-semibold text-success">Going · </span><span className="text-foreground">{sessionYes.map((p) => p.preferredName || p.fullName).join(", ")}</span></div>
+                              )}
+                              {sessionNo.length > 0 && (
+                                <div className="space-y-0.5">
+                                  <span className="font-semibold text-danger">Can&apos;t make it</span>
+                                  {sessionNo.map((p) => {
+                                    const r = responses.find((res) => res.playerId === p.id && res.response === "unavailable");
+                                    return (
+                                      <div key={p.id} className="text-foreground">
+                                        {p.preferredName || p.fullName}
+                                        {r?.reason && <span className="ml-1 text-muted-2"> — &ldquo;{r.reason}&rdquo;</span>}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              {sessionMaybe.length > 0 && (
+                                <div><span className="font-semibold text-warning">Maybe · </span><span className="text-foreground">{sessionMaybe.map((p) => p.preferredName || p.fullName).join(", ")}</span></div>
+                              )}
+                              {sessionPending.length > 0 && (
+                                <div><span className="font-semibold text-muted">No reply · </span><span className="text-muted">{sessionPending.map((p) => p.preferredName || p.fullName).join(", ")}</span></div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -981,23 +1035,69 @@ export default function CoachDashboardPage() {
                     badge = { label: `${available}/${activePlayers.length} available`, cls: "border-warning/30 bg-warning/10 text-warning" };
                   }
 
+                  const fixtureExpanded = expandedFixtureId === fixture.id;
+                  const fYes = activePlayers.filter((p) => responses.find((r) => r.playerId === p.id)?.response === "available");
+                  const fNo = activePlayers.filter((p) => responses.find((r) => r.playerId === p.id)?.response === "unavailable");
+                  const fMaybe = activePlayers.filter((p) => responses.find((r) => r.playerId === p.id)?.response === "maybe");
+                  const fPending = activePlayers.filter((p) => !responses.find((r) => r.playerId === p.id));
+
                   return (
-                    <div key={fixture.id} className={`flex items-center justify-between px-4 py-3 ${isPast ? "opacity-50" : ""}`}>
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className="w-16 shrink-0 text-xs font-semibold text-muted">{compactFixtureDate(fixture.date)}</div>
-                        <div className="min-w-0">
-                          <span className="text-sm font-medium text-foreground-strong">vs {fixture.opponent}</span>
-                          {fixture.round && <span className="ml-1.5 text-xs text-muted-2">Rd {fixture.round}</span>}
+                    <div key={fixture.id} className={`px-4 py-3 ${isPast ? "opacity-50" : ""}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="w-16 shrink-0 text-xs font-semibold text-muted">{compactFixtureDate(fixture.date)}</div>
+                          <div className="min-w-0">
+                            <span className="text-sm font-medium text-foreground-strong">vs {fixture.opponent}</span>
+                            {fixture.round && <span className="ml-1.5 text-xs text-muted-2">Rd {fixture.round}</span>}
+                          </div>
+                          <span className={`hidden shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase sm:inline-block ${
+                            fixture.homeOrAway === "home" ? "border-success/20 bg-success/10 text-success" : "border-border bg-panel-3 text-muted"
+                          }`}>
+                            {fixture.homeOrAway}
+                          </span>
                         </div>
-                        <span className={`hidden shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase sm:inline-block ${
-                          fixture.homeOrAway === "home" ? "border-success/20 bg-success/10 text-success" : "border-border bg-panel-3 text-muted"
-                        }`}>
-                          {fixture.homeOrAway}
-                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${badge.cls}`}>
+                            {badge.label}
+                          </span>
+                          {responses.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.currentTarget.blur(); setExpandedFixtureId(fixtureExpanded ? null : fixture.id); }}
+                              className="text-[11px] text-accent underline-offset-2 hover:underline"
+                            >
+                              {fixtureExpanded ? "Hide" : "Details"}
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${badge.cls}`}>
-                        {badge.label}
-                      </span>
+                      {fixtureExpanded && (
+                        <div className="mt-2 space-y-1 border-t border-border pt-2 text-xs">
+                          {fYes.length > 0 && (
+                            <div><span className="font-semibold text-success">Available · </span><span className="text-foreground">{fYes.map((p) => p.preferredName || p.fullName).join(", ")}</span></div>
+                          )}
+                          {fNo.length > 0 && (
+                            <div className="space-y-0.5">
+                              <span className="font-semibold text-danger">Unavailable</span>
+                              {fNo.map((p) => {
+                                const r = responses.find((res) => res.playerId === p.id && res.response === "unavailable");
+                                return (
+                                  <div key={p.id} className="text-foreground">
+                                    {p.preferredName || p.fullName}
+                                    {r?.reason && <span className="ml-1 text-muted-2"> — &ldquo;{r.reason}&rdquo;</span>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                          {fMaybe.length > 0 && (
+                            <div><span className="font-semibold text-warning">Maybe · </span><span className="text-foreground">{fMaybe.map((p) => p.preferredName || p.fullName).join(", ")}</span></div>
+                          )}
+                          {fPending.length > 0 && (
+                            <div><span className="font-semibold text-muted">No reply · </span><span className="text-muted">{fPending.map((p) => p.preferredName || p.fullName).join(", ")}</span></div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
