@@ -19,6 +19,11 @@ function SignupContent() {
   const inviteToken = searchParams.get("token");
   const joinToken = searchParams.get("join_token");
   const prefillEmail = searchParams.get("email") ?? "";
+  const inviteLoginHref = inviteToken
+    ? `/login?token=${inviteToken}${prefillEmail ? `&email=${encodeURIComponent(prefillEmail)}` : ""}`
+    : joinToken
+      ? `/login?join_token=${joinToken}`
+      : "/login";
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState(prefillEmail);
@@ -68,22 +73,7 @@ function SignupContent() {
       }
 
       if (inviteToken) {
-        try {
-          const res = await fetch("/api/invite/redeem", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token: inviteToken }),
-          });
-          const result = (await res.json()) as { role?: string };
-          if (result.role === "player") {
-            router.push("/player");
-            router.refresh();
-            return;
-          }
-        } catch {
-          // fall through to /coach on error
-        }
-        router.push("/coach");
+        router.push(`/invite/accept?token=${inviteToken}`);
       } else {
         router.push("/coach/onboarding");
       }
@@ -119,7 +109,7 @@ function SignupContent() {
           </p>
           <p className="mt-4 text-xs text-muted-2">
             Already confirmed?{" "}
-            <Link href="/login" className="font-bold text-foreground-strong hover:underline">
+            <Link href={inviteLoginHref} className="font-bold text-foreground-strong hover:underline">
               Sign in
             </Link>
           </p>
@@ -134,7 +124,11 @@ function SignupContent() {
         <h1 className="text-xl font-black uppercase text-foreground-strong">
           Create account
         </h1>
-        <p className="mt-1 text-sm text-muted">Start your 14-day free trial.</p>
+        <p className="mt-1 text-sm text-muted">
+          {inviteToken || joinToken
+            ? "Create your account to join the team."
+            : "Start your 14-day free trial."}
+        </p>
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
@@ -233,7 +227,7 @@ function SignupContent() {
       <p className="mt-5 text-center text-xs text-muted">
         Already have an account?{" "}
         <Link
-          href="/login"
+          href={inviteLoginHref}
           className="font-bold text-foreground-strong hover:underline"
         >
           Sign in

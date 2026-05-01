@@ -1,10 +1,21 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { linkSquadPlayerToUser } from "@/lib/inviteServer";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { redeemInviteToken } from "@/lib/inviteServer";
+import AcceptPlayerInviteForm from "./AcceptPlayerInviteForm";
 
 type Params = {
   searchParams: Promise<{ token?: string }>;
+};
+
+type SquadPlayer = {
+  id: string;
+  fullName: string;
+  preferredName?: string;
+  primaryPosition?: string;
+  linkedUserId?: string;
+  status?: string;
 };
 
 function formatCoachRoleLabel(label: string | null | undefined, canManageTeam: boolean) {
@@ -46,7 +57,7 @@ export default async function InviteAcceptPage({ searchParams }: Params) {
   // Get the team_member row to show role + coach info
   const { data: member } = await supabase
     .from("team_members")
-    .select("role, email, owner_user_id, coach_label, can_manage_team")
+    .select("role, email, owner_user_id, coach_label, can_manage_team, player_squad_id")
     .eq("id", tokenRow.team_member_id)
     .single();
 
@@ -57,39 +68,61 @@ export default async function InviteAcceptPage({ searchParams }: Params) {
 
   if (user) {
     const userEmail = user.email?.toLowerCase().trim();
-    // Already authenticated — redeem inline then redirect
-    const { data: member } = await supabase
+    const { data: authMember } = await supabase
       .from("team_members")
       .select("id, role, player_squad_id, owner_user_id, email")
       .eq("id", tokenRow.team_member_id)
       .single();
 
-    if (member && userEmail && member.email.toLowerCase().trim() === userEmail) {
-      const { error: acceptError } = await supabase.from("team_members").update({
-        member_user_id: user.id,
-        status: "accepted",
-        accepted_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }).eq("id", member.id);
-
-      if (acceptError) {
-        return <InvalidInvite message="We could not accept this invite. Try signing in again with the invited email address." />;
-      }
-
-      await supabase.from("invite_tokens")
-        .update({ used_at: new Date().toISOString() })
-        .eq("id", tokenRow.id);
-
-      if (member.role === "player" && member.player_squad_id) {
-        await linkSquadPlayerToUser({
-          ownerUserId: member.owner_user_id,
-          playerSquadId: member.player_squad_id,
-          memberUserId: user.id,
-        });
-        redirect("/player");
-      }
-    } else {
+    if (!authMember || !userEmail || authMember.email.toLowerCase().trim() !== userEmail) {
       return <InvalidInvite message="Sign in with the email address this invite was sent to." />;
+    }
+
+    if (authMember.role === "player") {
+      const admin = createAdminClient();
+      let squadPlayers: SquadPlayer[] = [];
+      if (admin) {
+        const { data: profile } = await admin
+          .from("squad_profiles")
+          .select("players")
+          .eq("user_id", authMember.owner_user_id)
+          .maybeSingle<{ players: SquadPlayer[] | null }>();
+
+        squadPlayers = (profile?.players ?? []).filter(
+          (player) =>
+            player.status === "active" &&
+            (!player.linkedUserId || player.id === authMember.player_squad_id)
+        );
+      }
+
+      return (
+        <main className="flex min-h-screen items-center justify-center bg-background px-4 py-12 text-foreground">
+          <div className="w-full max-w-xl rounded-2xl border border-border bg-panel p-8 shadow-[var(--shadow-soft)]">
+            <div className="text-center">
+              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full border border-border bg-panel-2 text-2xl">
+                🏉
+              </div>
+              <h1 className="text-2xl font-bold text-foreground-strong">
+                Choose your player profile
+              </h1>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Select your name from the squad. If you are not listed, create your player profile
+                and we&apos;ll connect it to this account.
+              </p>
+            </div>
+            <AcceptPlayerInviteForm
+              token={token}
+              invitedPlayerId={authMember.player_squad_id}
+              squadPlayers={squadPlayers}
+            />
+          </div>
+        </main>
+      );
+    }
+
+    const result = await redeemInviteToken({ supabase, token, user });
+    if (!result.ok) {
+      return <InvalidInvite message={result.error} />;
     }
     redirect("/coach");
   }

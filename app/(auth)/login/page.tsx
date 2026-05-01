@@ -21,6 +21,11 @@ function LoginContent() {
   const next = searchParams.get("next");
   const safeNext = next?.startsWith("/") && !next.startsWith("//") ? next : null;
   const prefillEmail = searchParams.get("email") ?? "";
+  const inviteSignupHref = inviteToken
+    ? `/signup?token=${inviteToken}${prefillEmail ? `&email=${encodeURIComponent(prefillEmail)}` : ""}`
+    : joinToken
+      ? `/signup?join_token=${joinToken}`
+      : "/signup";
 
   const [email, setEmail] = useState(prefillEmail);
   const [password, setPassword] = useState("");
@@ -49,21 +54,9 @@ function LoginContent() {
     }
 
     if (inviteToken) {
-      try {
-        const res = await fetch("/api/invite/redeem", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: inviteToken }),
-        });
-        const data = (await res.json()) as { role?: string };
-        if (data.role === "player") {
-          router.push("/player");
-          router.refresh();
-          return;
-        }
-      } catch {
-        // fall through to /coach on error
-      }
+      router.push(`/invite/accept?token=${inviteToken}`);
+      router.refresh();
+      return;
     }
 
     router.push(safeNext || "/coach");
@@ -76,7 +69,9 @@ function LoginContent() {
         <h1 className="text-xl font-black uppercase text-foreground-strong">
           Sign in
         </h1>
-        <p className="mt-1 text-sm text-muted">Welcome back, coach.</p>
+        <p className="mt-1 text-sm text-muted">
+          {inviteToken || joinToken ? "Sign in to join your team." : "Welcome back, coach."}
+        </p>
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
@@ -163,7 +158,7 @@ function LoginContent() {
       <p className="mt-5 text-center text-xs text-muted">
         Don&apos;t have an account?{" "}
         <Link
-          href="/signup"
+          href={inviteSignupHref}
           className="font-bold text-foreground-strong hover:underline"
         >
           Sign up

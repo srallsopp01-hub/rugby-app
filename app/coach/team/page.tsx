@@ -10,6 +10,9 @@ import {
   revokeTeamMember,
   approveTeamMember,
   rejectTeamMember,
+  resendTeamMemberInvite,
+  updateTeamMemberEmail,
+  sendTeamMemberPasswordReset,
   createInviteLink,
   deactivateInviteLink,
   type TeamMember,
@@ -193,6 +196,38 @@ export default function TeamPage() {
     setMembers((prev) => prev.filter((m) => m.id !== memberId));
     setStatusMessage("Access revoked");
   }
+
+  async function handleResendInvite(memberId: string) {
+    setStatusMessage("Resending invite...");
+    const result = await resendTeamMemberInvite(memberId);
+    setStatusMessage(result.ok ? "Invite resent" : result.error ?? "Failed to resend invite");
+  }
+
+  async function handleUpdateMemberEmail(memberId: string, email: string) {
+    setStatusMessage("Updating invite email...");
+    const result = await updateTeamMemberEmail(memberId, email);
+    if (!result.ok) {
+      setStatusMessage(result.error ?? "Failed to update invite email");
+      return false;
+    }
+
+    const updated = await fetchTeamMembers();
+    setMembers(updated);
+    setStatusMessage("Invite email updated");
+    return true;
+  }
+
+  async function handleSendPasswordReset(memberId: string) {
+    setStatusMessage("Sending password reset...");
+    const result = await sendTeamMemberPasswordReset(memberId);
+    setStatusMessage(
+      result.ok ? "Password reset link sent" : result.error ?? "Failed to send reset link"
+    );
+  }
+
+  const invitedCount = members.filter((member) => member.status === "pending").length;
+  const joinedCount = members.filter((member) => member.status === "accepted").length;
+  const requestedCount = pendingApprovals.length;
 
   return (
     <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
@@ -520,6 +555,11 @@ export default function TeamPage() {
           <p className="mt-1 text-sm leading-6 text-muted">
             Active and pending invites for this workspace.
           </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <AccessStat label="Joined" value={joinedCount} tone="success" />
+            <AccessStat label="Invited" value={invitedCount} tone="warning" />
+            <AccessStat label="Requests" value={requestedCount} tone="muted" />
+          </div>
 
           <div className="mt-5 space-y-3">
             {loading && (
@@ -536,6 +576,9 @@ export default function TeamPage() {
                 member={member}
                 squadPlayers={squadPlayers}
                 onRevoke={() => void handleRevoke(member.id)}
+                onResendInvite={() => void handleResendInvite(member.id)}
+                onUpdateEmail={(email) => handleUpdateMemberEmail(member.id, email)}
+                onSendPasswordReset={() => void handleSendPasswordReset(member.id)}
               />
             ))}
           </div>
@@ -569,18 +612,53 @@ function RolePill({
   );
 }
 
+function AccessStat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "success" | "warning" | "muted";
+}) {
+  const toneStyles = {
+    success: "border-success/30 bg-success/10 text-success",
+    warning: "border-amber-500/30 bg-amber-500/10 text-amber-400",
+    muted: "border-border bg-panel-2 text-muted",
+  };
+
+  return (
+    <div className={`rounded-xl border px-3 py-2 ${toneStyles[tone]}`}>
+      <span className="text-sm font-semibold">{value}</span>
+      <span className="ml-1.5 text-xs">{label}</span>
+    </div>
+  );
+}
+
 function MemberRow({
   member,
   squadPlayers,
   onRevoke,
+  onResendInvite,
+  onUpdateEmail,
+  onSendPasswordReset,
 }: {
   member: TeamMember;
   squadPlayers: SquadPlayer[];
   onRevoke: () => void;
+  onResendInvite: () => void;
+  onUpdateEmail: (email: string) => Promise<boolean>;
+  onSendPasswordReset: () => void;
 }) {
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [emailDraft, setEmailDraft] = useState(member.email);
+  const [savingEmail, setSavingEmail] = useState(false);
   const linkedPlayer = member.playerSquadId
     ? squadPlayers.find((p) => p.id === member.playerSquadId)
     : null;
+  const canEditInviteEmail = member.status === "pending";
+  const canResendInvite = member.status === "pending";
+  const canSendPasswordReset = member.status === "accepted";
 
   const statusStyles: Record<string, string> = {
     pending: "bg-amber-500/10 text-amber-400 border-amber-500/30",
@@ -589,13 +667,54 @@ function MemberRow({
     revoked: "bg-danger/10 text-danger border-danger/30",
   };
 
+  async function handleSaveEmail() {
+    const nextEmail = emailDraft.trim();
+    if (!nextEmail) return;
+    setSavingEmail(true);
+    const ok = await onUpdateEmail(nextEmail);
+    setSavingEmail(false);
+    if (ok) setEditingEmail(false);
+  }
+
   return (
-    <div className="flex items-start justify-between gap-3 rounded-xl border border-border bg-panel-2 px-4 py-3">
+    <div className="rounded-xl border border-border bg-panel-2 px-4 py-3">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="truncate text-sm font-medium text-foreground-strong">
-            {member.email}
-          </span>
+          {editingEmail ? (
+            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+              <input
+                type="email"
+                value={emailDraft}
+                onChange={(event) => setEmailDraft(event.target.value)}
+                className="min-w-0 flex-1 rounded-lg border border-border bg-panel px-3 py-2 text-sm text-foreground-strong outline-none transition focus:border-border-light"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleSaveEmail()}
+                  disabled={savingEmail}
+                  className="rounded-lg border border-success/30 bg-success/10 px-2.5 py-1 text-xs font-semibold text-success transition hover:border-success/60 disabled:opacity-50"
+                >
+                  {savingEmail ? "Saving..." : "Save"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingEmail(false);
+                    setEmailDraft(member.email);
+                  }}
+                  className="rounded-lg border border-border bg-panel px-2.5 py-1 text-xs font-semibold text-muted transition hover:border-border-light"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <span className="truncate text-sm font-medium text-foreground-strong">
+              {member.email}
+            </span>
+          )}
           <span
             className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusStyles[member.status] ?? ""}`}
           >
@@ -616,14 +735,54 @@ function MemberRow({
             {linkedPlayer.linkedUserId ? " - joined" : " - invite pending"}
           </p>
         )}
+        {member.status === "pending" && (
+          <p className="mt-1 text-xs text-muted-2">
+            Invite sent. This person has not accepted yet.
+          </p>
+        )}
+        {member.status === "accepted" && member.acceptedAt && (
+          <p className="mt-1 text-xs text-muted-2">
+            Joined {new Date(member.acceptedAt).toLocaleDateString("en-GB")}
+          </p>
+        )}
       </div>
-      <button
-        type="button"
-        onClick={onRevoke}
-        className="shrink-0 rounded-lg border border-danger/30 bg-danger/10 px-2.5 py-1 text-xs font-semibold text-danger transition hover:border-danger/60"
-      >
-        Revoke
-      </button>
+      <div className="flex shrink-0 flex-wrap gap-2">
+        {canEditInviteEmail && !editingEmail && (
+          <button
+            type="button"
+            onClick={() => setEditingEmail(true)}
+            className="rounded-lg border border-border bg-panel px-2.5 py-1 text-xs font-semibold text-foreground-strong transition hover:border-border-light"
+          >
+            Change email
+          </button>
+        )}
+        {canResendInvite && (
+          <button
+            type="button"
+            onClick={onResendInvite}
+            className="rounded-lg border border-border bg-panel px-2.5 py-1 text-xs font-semibold text-foreground-strong transition hover:border-border-light"
+          >
+            Resend invite
+          </button>
+        )}
+        {canSendPasswordReset && (
+          <button
+            type="button"
+            onClick={onSendPasswordReset}
+            className="rounded-lg border border-border bg-panel px-2.5 py-1 text-xs font-semibold text-foreground-strong transition hover:border-border-light"
+          >
+            Send password reset
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onRevoke}
+          className="rounded-lg border border-danger/30 bg-danger/10 px-2.5 py-1 text-xs font-semibold text-danger transition hover:border-danger/60"
+        >
+          Revoke
+        </button>
+      </div>
+      </div>
     </div>
   );
 }

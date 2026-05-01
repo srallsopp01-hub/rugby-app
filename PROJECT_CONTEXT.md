@@ -960,6 +960,16 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
   - Fresh signup confirmation email arrives through Supabase/Resend SMTP and redirects to production, not localhost.
   - Password reset email arrives and opens `https://fynlwhistle.com/auth/callback?next=/reset-password`.
 
+### Batch AP (May 2026) — Player invite claim + team access admin controls
+
+- ✅ Email player invites now stay player-scoped through signup/login instead of falling back to coach onboarding/dashboard.
+- ✅ `/invite/accept` now shows authenticated player invitees a player-claim screen where they can choose their squad profile or create a basic new player profile if missing.
+- ✅ Invite redemption is centralized through `lib/inviteServer.ts`; `/api/invite/redeem` accepts optional `playerSquadId` / `displayName`, links existing players, or creates and links a new active player.
+- ✅ Player picker layout widened into a full player-app page with responsive grid cards instead of a narrow centered list.
+- ✅ Coach Team Access now shows joined/invited/request counts and per-member admin actions: change pending invite email, resend invite, send password reset to joined members, and revoke access.
+- ✅ Revoking a player member now also unlinks that user from the squad player record.
+- ✅ Verification: `npm run typecheck` passed; `npm run build` passed.
+
 ---
 
 ### Planned batches (not yet started)

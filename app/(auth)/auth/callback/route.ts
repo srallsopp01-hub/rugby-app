@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { linkSquadPlayerToUser } from "@/lib/inviteServer";
+import { redeemInviteToken } from "@/lib/inviteServer";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -34,29 +34,17 @@ export async function GET(request: Request) {
             .single();
 
           if (member && userEmail && member.email.toLowerCase().trim() === userEmail) {
-            const { error: acceptError } = await supabase.from("team_members").update({
-              member_user_id: user.id,
-              status: "accepted",
-              accepted_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            }).eq("id", member.id);
-
-            if (acceptError) {
+            if (member.role === "player") {
               return NextResponse.redirect(`${origin}/invite/accept?token=${inviteToken}`);
             }
 
-            await supabase.from("invite_tokens")
-              .update({ used_at: new Date().toISOString() })
-              .eq("id", tokenRow.id);
+            const result = await redeemInviteToken({
+              supabase,
+              token: inviteToken,
+              user,
+            });
 
-            if (member.role === "player" && member.player_squad_id) {
-              await linkSquadPlayerToUser({
-                ownerUserId: member.owner_user_id,
-                playerSquadId: member.player_squad_id,
-                memberUserId: user.id,
-              });
-              return NextResponse.redirect(`${origin}/player`);
-            }
+            if (result.ok) return NextResponse.redirect(`${origin}/coach`);
           }
         }
       }

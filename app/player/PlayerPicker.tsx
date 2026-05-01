@@ -59,47 +59,56 @@ export function PlayerPicker() {
   }, [players, matchesRaw]);
 
   return (
-    <div className="flex h-full items-center justify-center p-8">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-panel-3 border border-border">
+    <div className="min-h-full bg-background px-4 py-6 text-foreground sm:px-6 lg:px-8">
+      <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-6xl flex-col">
+        <div className="flex flex-col gap-5 border-b border-border pb-6 md:flex-row md:items-end md:justify-between">
+          <div className="max-w-2xl">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-panel-3 text-foreground-strong">
             <svg width="22" height="22" viewBox="0 0 16 16" fill="none">
               <circle cx="8" cy="6" r="3" stroke="currentColor" strokeWidth="1.25"/>
               <path d="M2.5 14c0-3.038 2.462-5.5 5.5-5.5s5.5 2.462 5.5 5.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round"/>
             </svg>
           </div>
-          <h1 className="text-xl font-semibold text-foreground-strong">Who are you?</h1>
-          <p className="mt-1.5 text-sm text-muted">Select your name to view your personal dashboard.</p>
+            <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
+              Choose your player profile
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Select your name to connect this device to your personal dashboard.
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-panel px-4 py-3 text-sm text-muted">
+            {players.length} active {players.length === 1 ? "player" : "players"}
+          </div>
         </div>
 
         {players.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border p-8 text-center">
+          <div className="mt-8 rounded-xl border border-dashed border-border bg-panel p-8 text-center">
             <p className="text-sm text-muted">No squad set up yet.</p>
             <p className="mt-1 text-xs text-muted-2">Ask your coach to add the squad in Team Setup.</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="mt-6 grid max-h-[calc(100vh-13rem)] grid-cols-1 gap-3 overflow-y-auto pr-1 md:grid-cols-2">
             {players.map((player) => (
               <button
                 key={player.id}
                 type="button"
                 onClick={() => setCurrentPlayer(player)}
-                className="flex w-full items-center justify-between rounded-xl border border-border bg-panel px-4 py-3.5 text-left transition-all duration-150 hover:border-border-light hover:bg-panel-2 active:scale-[0.99]"
+                className="flex min-h-24 w-full items-center justify-between gap-4 rounded-xl border border-border bg-panel px-4 py-4 text-left transition-all duration-150 hover:border-border-light hover:bg-panel-2 active:scale-[0.99]"
               >
-                <div>
-                  <span className="block text-sm font-medium text-foreground-strong">
+                <div className="min-w-0">
+                  <span className="block truncate text-sm font-semibold text-foreground-strong">
                     {player.preferredName || player.fullName}
                   </span>
                   {player.fullName !== (player.preferredName || player.fullName) && (
-                    <span className="block text-xs text-muted">{player.fullName}</span>
+                    <span className="mt-0.5 block truncate text-xs text-muted">{player.fullName}</span>
                   )}
-                  <span className="block text-xs text-muted-2 mt-0.5">
+                  <span className="mt-2 block text-xs text-muted-2">
                     {lastGameDates.get(player.id)
                       ? `Last game: ${lastGameDates.get(player.id)}`
                       : "No games yet"}
                   </span>
                 </div>
-                <span className="text-xs text-muted-2 bg-panel-3 border border-border rounded-full px-2 py-0.5">
+                <span className="shrink-0 rounded-full border border-border bg-panel-3 px-2.5 py-1 text-xs text-muted-2">
                   {player.primaryPosition || "—"}
                 </span>
               </button>

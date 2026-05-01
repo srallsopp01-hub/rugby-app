@@ -111,13 +111,69 @@ export async function fetchTeamMembers(): Promise<TeamMember[]> {
 
 export async function revokeTeamMember(memberId: string): Promise<void> {
   try {
-    const supabase = createClient();
-    await supabase
-      .from("team_members")
-      .update({ status: "revoked", updated_at: new Date().toISOString() })
-      .eq("id", memberId);
+    await fetch("/api/invite/revoke", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memberId }),
+    });
   } catch {
     return;
+  }
+}
+
+export async function resendTeamMemberInvite(memberId: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/invite/resend", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memberId }),
+    });
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      return { ok: false, error: data.error ?? "Failed to resend invite" };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Failed to resend invite" };
+  }
+}
+
+export async function updateTeamMemberEmail(
+  memberId: string,
+  email: string
+): Promise<{ ok: boolean; email?: string; error?: string }> {
+  try {
+    const res = await fetch("/api/invite/member-email", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memberId, email }),
+    });
+    const data = (await res.json().catch(() => ({}))) as { email?: string; error?: string };
+    if (!res.ok) {
+      return { ok: false, error: data.error ?? "Failed to update email" };
+    }
+    return { ok: true, email: data.email };
+  } catch {
+    return { ok: false, error: "Failed to update email" };
+  }
+}
+
+export async function sendTeamMemberPasswordReset(
+  memberId: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/invite/password-reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memberId }),
+    });
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      return { ok: false, error: data.error ?? "Failed to send password reset" };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Failed to send password reset" };
   }
 }
 
