@@ -501,7 +501,11 @@ export function buildBasicStats(players: string[], events: EventItem[]) {
   events
     .filter((event) => !event.isPending && event.category === "player")
     .forEach((event) => {
-      const matchedPlayer = event.playerName || findMatchingPlayer(players, event.text);
+      let matchedPlayer: string | null = event.playerName || findMatchingPlayer(players, event.text);
+      if (matchedPlayer && !result[matchedPlayer]) {
+        // playerName is set but doesn't match any roster key (e.g. typo) — try fuzzy fallback
+        matchedPlayer = findMatchingPlayer(players, matchedPlayer) ?? findMatchingPlayer(players, event.text);
+      }
       if (!matchedPlayer || !result[matchedPlayer]) return;
 
       if (event.playerAction === "missed tackle") {
