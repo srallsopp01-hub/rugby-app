@@ -197,11 +197,14 @@ export default function JoinForm({ token, role, squadPlayers, preFilledSquadPlay
       const data = (await res.json().catch(() => ({}))) as {
         success?: boolean;
         error?: string;
+        detail?: string;
+        code?: string;
         role?: string;
       };
 
       if (!res.ok || !data.success) {
-        setError(data.error ?? "Failed to join. Please try again.");
+        const msg = [data.error, data.detail, data.code].filter(Boolean).join(" — ");
+        setError(msg || "Failed to join. Please try again.");
         setSubmitting(false);
         return;
       }
