@@ -14,7 +14,7 @@ import {
   type SquadPlayer,
   type SquadProfile,
 } from "@/app/rugby-tagging/lib/squadProfile";
-import type { Fixture, TrainingSession } from "@/app/rugby-tagging/types";
+import type { Fixture, TrainingSession, TrainingSessionDayOfWeek } from "@/app/rugby-tagging/types";
 import { KpiTargetsSection } from "./KpiTargetsSection";
 import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "../help-content";
@@ -118,20 +118,40 @@ const BLANK_FIXTURE_FORM: FixtureForm = {
   venue: "",
 };
 
-type SessionForm = { dayOfWeek: TrainingSession["dayOfWeek"]; time: string; locationName: string };
+type SessionForm = {
+  sessionType: "recurring" | "oneOff";
+  dayOfWeek: TrainingSessionDayOfWeek;
+  oneOffDate: string;
+  time: string;
+  locationName: string;
+};
 const BLANK_SESSION_FORM: SessionForm = {
+  sessionType: "recurring",
   dayOfWeek: "monday",
+  oneOffDate: "",
   time: "",
   locationName: "",
 };
 
-const DOW_LABELS: Record<TrainingSession["dayOfWeek"], string> = {
+const DOW_LABELS: Record<TrainingSessionDayOfWeek, string> = {
   monday: "Monday", tuesday: "Tuesday", wednesday: "Wednesday",
   thursday: "Thursday", friday: "Friday", saturday: "Saturday", sunday: "Sunday",
 };
-const DOW_ORDER: TrainingSession["dayOfWeek"][] = [
+const DOW_ORDER: TrainingSessionDayOfWeek[] = [
   "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
 ];
+
+function formatSessionLabel(session: TrainingSession): string {
+  if (session.dayOfWeek) return DOW_LABELS[session.dayOfWeek];
+  if (session.oneOffDate) {
+    try {
+      return new Date(session.oneOffDate + "T00:00:00").toLocaleDateString("en-AU", {
+        day: "numeric", month: "short", year: "numeric",
+      });
+    } catch { return session.oneOffDate; }
+  }
+  return "—";
+}
 
 export default function TeamSetupPage() {
   const [profile, setProfile] = useState<SquadProfile | null>(() => {
@@ -281,22 +301,51 @@ export default function TeamSetupPage() {
   // Training session state
   const [sessionForm, setSessionForm] = useState<SessionForm>(BLANK_SESSION_FORM);
   const [showSessionForm, setShowSessionForm] = useState(false);
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+
+  const openEditSession = (session: TrainingSession) => {
+    setEditingSessionId(session.id);
+    setSessionForm({
+      sessionType: session.oneOffDate ? "oneOff" : "recurring",
+      dayOfWeek: session.dayOfWeek ?? "monday",
+      oneOffDate: session.oneOffDate ?? "",
+      time: session.time,
+      locationName: session.locationName ?? "",
+    });
+    setShowSessionForm(true);
+  };
+
+  const cancelSessionForm = () => {
+    setShowSessionForm(false);
+    setEditingSessionId(null);
+    setSessionForm(BLANK_SESSION_FORM);
+  };
 
   const saveSession = () => {
     if (!profile || !sessionForm.time) return;
+    const isOneOff = sessionForm.sessionType === "oneOff";
+    if (isOneOff && !sessionForm.oneOffDate) return;
+    const sessions = profile.trainingSessions ?? [];
+    const existing = sessions.find((s) => s.id === editingSessionId);
     const session: TrainingSession = {
-      id: createTrainingSessionId(),
-      dayOfWeek: sessionForm.dayOfWeek,
+      id: editingSessionId ?? createTrainingSessionId(),
+      ...(isOneOff
+        ? { oneOffDate: sessionForm.oneOffDate }
+        : { dayOfWeek: sessionForm.dayOfWeek }),
       time: sessionForm.time,
       locationName: sessionForm.locationName.trim() || undefined,
+      availabilityRequested: existing?.availabilityRequested,
+      skipDates: existing?.skipDates,
     };
+    const updated = editingSessionId
+      ? sessions.map((s) => (s.id === editingSessionId ? session : s))
+      : [...sessions, session];
     persist({
       ...profile,
-      trainingSessions: [...(profile.trainingSessions ?? []), session],
+      trainingSessions: updated,
       updatedAt: new Date().toISOString(),
     });
-    setSessionForm(BLANK_SESSION_FORM);
-    setShowSessionForm(false);
+    cancelSessionForm();
   };
 
   const deleteSession = (id: string) => {
@@ -305,6 +354,17 @@ export default function TeamSetupPage() {
     persist({
       ...profile,
       trainingSessions: (profile.trainingSessions ?? []).filter((s) => s.id !== id),
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
+  const toggleSessionAvailabilityRequested = (id: string) => {
+    if (!profile) return;
+    persist({
+      ...profile,
+      trainingSessions: (profile.trainingSessions ?? []).map((s) =>
+        s.id === id ? { ...s, availabilityRequested: !s.availabilityRequested } : s
+      ),
       updatedAt: new Date().toISOString(),
     });
   };
@@ -789,19 +849,52 @@ export default function TeamSetupPage() {
 
           {showSessionForm && (
             <div className="mt-5 rounded-xl border border-border bg-panel-2 p-5">
-              <h3 className="mb-4 text-sm font-semibold text-foreground-strong">Add training session</h3>
+              <h3 className="mb-4 text-sm font-semibold text-foreground-strong">
+                {editingSessionId ? "Edit training session" : "Add training session"}
+              </h3>
+
+              {/* Recurring / One-off toggle */}
+              <div className="mb-4 flex rounded-lg border border-border bg-panel-3 p-1 w-fit">
+                {(["recurring", "oneOff"] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={(e) => { setSessionForm({ ...sessionForm, sessionType: type }); e.currentTarget.blur(); }}
+                    className={`rounded-md px-4 py-1.5 text-xs font-bold uppercase transition ${
+                      sessionForm.sessionType === type ? "bg-foreground-strong text-background" : "text-muted hover:text-foreground"
+                    }`}
+                  >
+                    {type === "recurring" ? "Recurring" : "One-off"}
+                  </button>
+                ))}
+              </div>
+
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
-                  <label className="mb-1 block text-xs text-muted">Day of week *</label>
-                  <select
-                    value={sessionForm.dayOfWeek}
-                    onChange={(e) => setSessionForm({ ...sessionForm, dayOfWeek: e.target.value as TrainingSession["dayOfWeek"] })}
-                    className="w-full rounded-xl border border-border bg-panel-3 px-3 py-2.5 text-sm text-foreground"
-                  >
-                    {DOW_ORDER.map((d) => (
-                      <option key={d} value={d}>{DOW_LABELS[d]}</option>
-                    ))}
-                  </select>
+                  {sessionForm.sessionType === "recurring" ? (
+                    <>
+                      <label className="mb-1 block text-xs text-muted">Day of week *</label>
+                      <select
+                        value={sessionForm.dayOfWeek}
+                        onChange={(e) => setSessionForm({ ...sessionForm, dayOfWeek: e.target.value as TrainingSessionDayOfWeek })}
+                        className="w-full rounded-xl border border-border bg-panel-3 px-3 py-2.5 text-sm text-foreground"
+                      >
+                        {DOW_ORDER.map((d) => (
+                          <option key={d} value={d}>{DOW_LABELS[d]}</option>
+                        ))}
+                      </select>
+                    </>
+                  ) : (
+                    <>
+                      <label className="mb-1 block text-xs text-muted">Date *</label>
+                      <input
+                        type="date"
+                        value={sessionForm.oneOffDate}
+                        onChange={(e) => setSessionForm({ ...sessionForm, oneOffDate: e.target.value })}
+                        className="w-full rounded-xl border border-border bg-panel-3 px-3 py-2.5 text-sm text-foreground"
+                      />
+                    </>
+                  )}
                 </div>
                 <div>
                   <label className="mb-1 block text-xs text-muted">Time *</label>
@@ -826,14 +919,14 @@ export default function TeamSetupPage() {
                 <button
                   type="button"
                   onClick={(e) => { saveSession(); e.currentTarget.blur(); }}
-                  disabled={!sessionForm.time}
+                  disabled={!sessionForm.time || (sessionForm.sessionType === "oneOff" && !sessionForm.oneOffDate)}
                   className="rounded-xl border border-border-light bg-panel-3 px-5 py-2.5 text-sm font-medium text-foreground disabled:opacity-40"
                 >
-                  Add session
+                  {editingSessionId ? "Save changes" : "Add session"}
                 </button>
                 <button
                   type="button"
-                  onClick={(e) => { setShowSessionForm(false); setSessionForm(BLANK_SESSION_FORM); e.currentTarget.blur(); }}
+                  onClick={(e) => { cancelSessionForm(); e.currentTarget.blur(); }}
                   className="text-sm text-muted hover:text-foreground"
                 >
                   Cancel
@@ -843,27 +936,70 @@ export default function TeamSetupPage() {
           )}
 
           {(profile.trainingSessions ?? []).length > 0 ? (
-            <div className="mt-4 space-y-2">
-              {[...(profile.trainingSessions ?? [])]
-                .sort((a, b) => DOW_ORDER.indexOf(a.dayOfWeek) - DOW_ORDER.indexOf(b.dayOfWeek))
-                .map((session) => (
-                  <div key={session.id} className="flex items-center justify-between rounded-xl border border-border bg-panel-2 px-4 py-3">
-                    <div>
-                      <span className="text-sm font-medium text-foreground-strong">{DOW_LABELS[session.dayOfWeek]}</span>
-                      <span className="ml-3 text-sm text-muted">{session.time}</span>
-                      {session.locationName && (
-                        <span className="ml-3 text-xs text-muted-2">{session.locationName}</span>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(e) => { deleteSession(session.id); e.currentTarget.blur(); }}
-                      className="text-xs text-muted hover:text-danger"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
+            <div className="mt-4 overflow-x-auto rounded-xl border border-border">
+              <table className="w-full text-sm">
+                <thead className="bg-panel-2">
+                  <tr>
+                    <th className="p-3 text-left text-xs text-muted">When</th>
+                    <th className="p-3 text-left text-xs text-muted">Time</th>
+                    <th className="p-3 text-left text-xs text-muted">Location</th>
+                    <th className="p-3 text-left text-xs text-muted">Availability</th>
+                    <th className="p-3"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...(profile.trainingSessions ?? [])]
+                    .sort((a, b) => {
+                      const ai = a.dayOfWeek ? DOW_ORDER.indexOf(a.dayOfWeek) : 999;
+                      const bi = b.dayOfWeek ? DOW_ORDER.indexOf(b.dayOfWeek) : 999;
+                      if (ai !== bi) return ai - bi;
+                      return (a.oneOffDate ?? "").localeCompare(b.oneOffDate ?? "");
+                    })
+                    .map((session) => (
+                      <tr key={session.id} className="border-t border-border">
+                        <td className="p-3 font-medium text-foreground-strong">
+                          {formatSessionLabel(session)}
+                          {session.oneOffDate && (
+                            <span className="ml-2 text-[10px] uppercase tracking-wider text-muted-2">one-off</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-muted">{session.time}</td>
+                        <td className="p-3 text-muted">{session.locationName ?? "—"}</td>
+                        <td className="p-3">
+                          <button
+                            type="button"
+                            onClick={(e) => { toggleSessionAvailabilityRequested(session.id); e.currentTarget.blur(); }}
+                            className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold transition ${
+                              session.availabilityRequested
+                                ? "border-success/30 bg-success/10 text-success"
+                                : "border-border bg-panel-2 text-muted hover:text-foreground"
+                            }`}
+                          >
+                            {session.availabilityRequested ? "Requested ✓" : "Mark requested"}
+                          </button>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex justify-end gap-3">
+                            <button
+                              type="button"
+                              onClick={(e) => { openEditSession(session); e.currentTarget.blur(); }}
+                              className="text-xs text-muted hover:text-foreground"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => { deleteSession(session.id); e.currentTarget.blur(); }}
+                              className="text-xs text-muted hover:text-danger"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
             </div>
           ) : (
             !showSessionForm && (

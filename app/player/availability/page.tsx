@@ -11,7 +11,7 @@ import {
   SQUAD_PROFILE_CHANGED_EVENT,
   type SquadProfile,
 } from "@/app/rugby-tagging/lib/squadProfile";
-import type { AvailabilityResponse, Fixture, TrainingSession } from "@/app/rugby-tagging/types";
+import type { AvailabilityResponse, Fixture, TrainingSession, TrainingSessionDayOfWeek } from "@/app/rugby-tagging/types";
 
 // ---------------------------------------------------------------------------
 // Storage subscription — reacts to saveSquadProfile() calls
@@ -56,12 +56,13 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-const DOW_LABELS: Record<TrainingSession["dayOfWeek"], string> = {
+const DOW_LABELS: Record<TrainingSessionDayOfWeek, string> = {
   monday: "Monday", tuesday: "Tuesday", wednesday: "Wednesday",
   thursday: "Thursday", friday: "Friday", saturday: "Saturday", sunday: "Sunday",
 };
 
-function nextOccurrence(dayOfWeek: TrainingSession["dayOfWeek"]): string {
+function nextOccurrence(dayOfWeek: TrainingSessionDayOfWeek | undefined): string {
+  if (!dayOfWeek) return "";
   const dayMap: Record<string, number> = {
     sunday: 0, monday: 1, tuesday: 2, wednesday: 3,
     thursday: 4, friday: 5, saturday: 6,
@@ -142,7 +143,7 @@ export default function PlayerAvailabilityPage() {
   const trainingSessions = useMemo(
     () => [...(profile?.trainingSessions ?? [])].sort((a, b) => {
       const order = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-      return order.indexOf(a.dayOfWeek) - order.indexOf(b.dayOfWeek);
+      return order.indexOf(a.dayOfWeek ?? "") - order.indexOf(b.dayOfWeek ?? "");
     }),
     [profile]
   );
@@ -266,10 +267,12 @@ export default function PlayerAvailabilityPage() {
               {trainingSessions.map((session: TrainingSession) => (
                 <div key={session.id} className="rounded-xl border border-border bg-panel-2 p-4">
                   <div className="mb-3">
-                    <div className="text-sm font-semibold text-foreground-strong">{DOW_LABELS[session.dayOfWeek]}</div>
+                    <div className="text-sm font-semibold text-foreground-strong">
+                      {session.dayOfWeek ? DOW_LABELS[session.dayOfWeek] : session.oneOffDate ?? "One-off"}
+                    </div>
                     <div className="mt-0.5 text-xs text-muted">
                       {session.time}{session.locationName ? ` · ${session.locationName}` : ""}
-                      {" · next: "}{nextOccurrence(session.dayOfWeek)}
+                      {session.dayOfWeek && <>{" · next: "}{nextOccurrence(session.dayOfWeek)}</>}
                     </div>
                   </div>
                   <AvailabilityButtons

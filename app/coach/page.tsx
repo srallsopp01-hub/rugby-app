@@ -93,7 +93,14 @@ function isSessionThisWeek(session: TrainingSession): boolean {
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
   sunday.setHours(23, 59, 59, 999);
-  const sessionDay = DOW_INDEX[session.dayOfWeek] ?? -1;
+
+  if (session.oneOffDate) {
+    const d = new Date(session.oneOffDate + "T00:00:00");
+    return d >= monday && d <= sunday;
+  }
+
+  const sessionDay = DOW_INDEX[session.dayOfWeek ?? ""] ?? -1;
+  if (sessionDay === -1) return false;
   const sessionDate = new Date(monday);
   const daysFromMonday = sessionDay === 0 ? 6 : sessionDay - 1;
   sessionDate.setDate(monday.getDate() + daysFromMonday);
@@ -438,6 +445,7 @@ export default function CoachDashboardPage() {
     const todayStr = todayIso();
     const yestStr = yesterdayIso();
     for (const session of trainingSessions) {
+      if (!session.dayOfWeek) continue;
       if (session.dayOfWeek !== todayDowStr && session.dayOfWeek !== yestDowStr) continue;
       const sessionDate = session.dayOfWeek === todayDowStr ? todayStr : yestStr;
       const alreadyLogged = sessionLogs.some(
@@ -724,7 +732,7 @@ export default function CoachDashboardPage() {
               {thisWeekSessions.length > 0 ? (
                 <div className="divide-y divide-border">
                   {thisWeekSessions
-                    .sort((a, b) => (DOW_INDEX[a.dayOfWeek] ?? 0) - (DOW_INDEX[b.dayOfWeek] ?? 0))
+                    .sort((a, b) => (DOW_INDEX[a.dayOfWeek ?? ""] ?? 99) - (DOW_INDEX[b.dayOfWeek ?? ""] ?? 99))
                     .map((session) => {
                       const responses = availabilityResponses.filter((r) => r.trainingSessionId === session.id);
                       const activePlayers = profile?.players?.filter((p) => p.status === "active") ?? [];
@@ -732,18 +740,44 @@ export default function CoachDashboardPage() {
                       const badgeColor = confirmed >= activePlayers.length * 0.7
                         ? "border-success/30 bg-success/10 text-success"
                         : "border-warning/30 bg-warning/10 text-warning";
+                      const sessionLabel = session.dayOfWeek
+                        ? session.dayOfWeek.charAt(0).toUpperCase() + session.dayOfWeek.slice(1)
+                        : session.oneOffDate ?? "One-off";
                       return (
                         <div key={session.id} className="flex items-center justify-between px-4 py-3">
                           <div>
-                            <span className="text-sm font-semibold text-foreground-strong capitalize">{session.dayOfWeek}</span>
+                            <span className="text-sm font-semibold text-foreground-strong">{sessionLabel}</span>
                             <span className="ml-2 text-sm text-muted">{session.time}</span>
                             {session.locationName && <div className="mt-0.5 text-xs text-muted-2">{session.locationName}</div>}
                           </div>
-                          {activePlayers.length > 0 && (
-                            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${badgeColor}`}>
-                              {confirmed}/{activePlayers.length}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!profile) return;
+                                const updated = {
+                                  ...profile,
+                                  trainingSessions: (profile.trainingSessions ?? []).map((s) =>
+                                    s.id === session.id ? { ...s, availabilityRequested: !s.availabilityRequested } : s
+                                  ),
+                                  updatedAt: new Date().toISOString(),
+                                };
+                                saveSquadProfile(updated);
+                              }}
+                              className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold transition ${
+                                session.availabilityRequested
+                                  ? "border-success/30 bg-success/10 text-success"
+                                  : "border-border bg-panel-2 text-muted hover:text-foreground"
+                              }`}
+                            >
+                              {session.availabilityRequested ? "Requested ✓" : "Request"}
+                            </button>
+                            {activePlayers.length > 0 && responses.length > 0 && (
+                              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${badgeColor}`}>
+                                {confirmed}/{activePlayers.length}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
@@ -923,7 +957,7 @@ function CheckInCard({
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
           <path d="M3 8l4 4 6-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
-        Session logged for {session.dayOfWeek.charAt(0).toUpperCase() + session.dayOfWeek.slice(1)}
+        Session logged for {session.dayOfWeek ? session.dayOfWeek.charAt(0).toUpperCase() + session.dayOfWeek.slice(1) : session.oneOffDate ?? "this session"}
       </div>
     );
   }
@@ -953,7 +987,9 @@ function CheckInCard({
     setLogged(true);
   }
 
-  const dayLabel = session.dayOfWeek.charAt(0).toUpperCase() + session.dayOfWeek.slice(1);
+  const dayLabel = session.dayOfWeek
+    ? session.dayOfWeek.charAt(0).toUpperCase() + session.dayOfWeek.slice(1)
+    : session.oneOffDate ?? "Session";
 
   return (
     <section className="rounded-2xl border border-border bg-panel shadow-[var(--shadow-soft)] overflow-hidden">

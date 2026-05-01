@@ -140,11 +140,16 @@ export type Fixture = {
   availabilityRequested: boolean;
 };
 
+export type TrainingSessionDayOfWeek = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+
 export type TrainingSession = {
   id: string;
-  dayOfWeek: "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+  dayOfWeek?: TrainingSessionDayOfWeek;
+  oneOffDate?: string;
   time: string;
   locationName?: string;
+  skipDates?: string[];
+  availabilityRequested?: boolean;
 };
 
 export type AvailabilityResponse = {

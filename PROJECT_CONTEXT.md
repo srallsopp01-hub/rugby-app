@@ -1004,7 +1004,7 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
 | AT | Player login UX — Coach/Player toggle on login page; direct post-login redirect to /player | ✅ Done |
 | AU | AI chat memory — save last 30 messages to squad_profiles.ai_chat_history; load on dashboard mount | ✅ Done |
 | AV | Video error display — surface specific R2 error in video components instead of silent failure | ✅ Done |
-| AW | Smarter training management — inline session editing (time/venue), one-off sessions, skip occurrences, availability request button | Planned |
+| AW | Smarter training management — inline session editing (time/venue), one-off sessions, skip occurrences, availability request button | ✅ Done |
 | AX | Coach Review improvements — per-clip notes, visual scrubber timeline, fullscreen video, cleaner notes/clips split, clip export PDF | Planned |
 
 **Batch AU dependency:** Requires SQL migration — add `ai_chat_history jsonb DEFAULT '[]'` column to `squad_profiles` before implementing.
