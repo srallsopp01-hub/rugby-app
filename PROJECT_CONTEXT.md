@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** May 2026 — Batch AZ: Video loading 403 fix + R2 path organisation
+**Last updated:** May 2026 — Batch BA: Player dashboard rebuild + availability reasons
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -75,7 +75,8 @@ The app is split into four clearly separated layers with independent layouts and
 ### Player platform
 | Route | Status | Purpose |
 |---|---|---|
-| `/player` | Live | Player home — recent grade, personal stats, constructive coaching plan and next-week targets |
+| `/player` | Live | Player dashboard — greeting + unanswered-response badge, inline availability picker with reason input, season stats strip, next game + last grade cards, coach feedback, targets this week, last-game stats table |
+| `/player/availability` | Live | Standalone availability picker for upcoming fixtures and training sessions |
 | `/player/performance` | Live | Season averages, grade profile cards, season bests, trend charts vs team avg |
 | `/player/team-analytics` | Live | Read-only team analytics for players — shared stats only, no other-player grades/coaching comments |
 | `/player/compare` | Live | Read-only match and player comparison inside the player app — shared stats only except own-player coaching plan |
@@ -142,7 +143,8 @@ app/
     PlayerContext.tsx                 ← Player identity context (localStorage key PLAYER_IDENTITY_KEY)
     PlayerPicker.tsx                  ← Full-screen squad picker shown when no player identity set
     playerCoachingPlan.ts             ← Builds player-only constructive feedback and next-week targets from ReportRow
-    page.tsx                          ← Player Home (latest match, season averages, constructive coaching plan)
+    page.tsx                          ← Player dashboard (greeting, availability picker with inline reason input, season strip, next game, coach feedback, targets, last-game stats)
+    availability/page.tsx             ← Standalone availability page (fixtures + training sessions)
     performance/page.tsx              ← Season trends, recharts charts, grade progression table
     team-analytics/page.tsx           ← Read-only team analytics shared into the player app
     compare/page.tsx                  ← Read-only match/player comparison for players
@@ -1039,6 +1041,33 @@ New uploads use a human-readable folder derived from the match title, opponent, 
 - ✅ `lib/r2.ts` — `createMatchVideoObjectKey` accepts optional `matchTitle`; falls back to sanitised `matchId`
 - ✅ `lib/matchVideoCloud.ts` — `uploadMatchVideoWithResult` / `uploadMatchVideo` forward `matchTitle`
 - ✅ `app/coach/capture/page.tsx` — composes `pathTitle` from matchTitle + opponent + matchDate and passes to upload
+
+---
+
+### Batch BA (May 2026) — Player dashboard rebuild + availability reasons
+
+**AvailabilityResponse type extended:**
+- `id: string` added (generated with `crypto.randomUUID()` on first write)
+- `note?` renamed to `reason?` — free-text field populated only when `response === "unavailable"`
+- `app/player/availability/page.tsx` updated to generate and preserve `id` in `upsertResponse`
+
+**Player dashboard — `app/player/page.tsx` rebuilt:**
+Full replacement of the minimal match-summary page with a proper six-section dashboard. All sections use `useSyncExternalStore` for storage reads (no `useEffect + setState`). Data sources: `subscribeSquadProfile` + `SQUAD_PROFILE_KEY` for team/availability data; `subscribeSavedMatchesChanged` + `SAVED_MATCHES_KEY` for match stats.
+
+Sections:
+1. **Header** — time-of-day greeting, team + position, amber badge counting unanswered events
+2. **Availability** — upcoming fixtures + training sessions; fixtures use "Available/Unavailable/Maybe" labels, training uses "Going/Can't make it/Maybe"; tapping the negative option expands an inline reason input (not a modal); after Save the row shows the coloured response + "Change" link; available/maybe responses save immediately
+3. **Season at a glance** — 4 metric cards: latest grade, tackle % with trend indicator, carries with season avg, games count
+4. **Next game + last grade** — two-column row; left: next fixture from profile (date/opponent/home-away/time/days until); right: grade badge + last opponent + date, linked to `/player/games/[id]`
+5. **Coach feedback** — left blue-border accent card; "What went well" + "Focus area" from `buildPlayerCoachingPlan()`
+6. **Targets this week** — up to 3 targets from `coachingPlan.nextWeekTargets`; small blue dot + target text
+7. **Stats last game** — table of tackles, missed tackles, carries, turnovers won, minutes; trend indicator per stat vs season average (↑ green / ↓ red / → muted)
+
+**Coach dashboard — `app/coach/page.tsx` updated:**
+- Next fixture details panel: "Can't make it" now lists each player individually with reason inline (`— "reason text"`)
+- Training sessions this week: each row gets a "Details" toggle when any responses exist; breakdown shows Going/Can't make it (with reasons)/Maybe/No reply
+- Upcoming fixtures list: same expandable "Details" per row with full player breakdown and reasons for unavailable players
+- Two new state vars: `expandedFixtureId: string | null`, `expandedSessionId: string | null`
 
 ---
 
