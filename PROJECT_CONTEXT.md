@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** May 2026 — Batch BB: Player game detail involvement playlist + event text-fallback fix
+**Last updated:** May 2026 — Batch BB: Player game detail involvement playlist + full roster fuzzy-match fix for event resolution
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
