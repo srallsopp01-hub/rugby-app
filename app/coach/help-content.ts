@@ -130,15 +130,16 @@ export const COACH_PAGE_HELP: Record<string, PageHelpProps> = {
 
   "/coach/team": {
     title: "Team Access",
-    description: "Manage your team name and invite players or coaches into the shared FYNL Whistle workspace.",
+    description: "Share your join link so players can claim their squad slot directly — no approval needed.",
     steps: [
-      { title: "Set the team name", body: "Edit the team name here when the squad name changes. It updates the same squad profile used across coach and player screens." },
-      { title: "Invite players", body: "Choose Player, then link the invite to an active squad player so the player app opens with the right identity." },
-      { title: "Invite coaches", body: "Choose Coach and add a label such as Head, Forwards, Backs, or 2nd team. Tick head coach permissions only for coaches who should edit shared team data." },
+      { title: "Copy your join link", body: "Share it in your team WhatsApp group or anywhere players will see it. Anyone who opens it can pick their squad slot and join immediately." },
+      { title: "Send a personal link", body: "For a specific player, click 'Send invite to…' next to their squad slot — enter their email and a pre-filled link with their slot locked is copied to your clipboard." },
+      { title: "Players join directly", body: "When a player taps the link, they sign up or sign in, pick their slot, and are added automatically. No approval step required." },
+      { title: "Pending requests", body: "If a player couldn't find themselves on the squad list, they can notify you. An amber card appears on your home page. Use 'Add to squad' to create their profile and accept them." },
     ],
     tips: [
-      "Coach labels are display labels by default. Head coach permissions are a separate access switch.",
-      "Revoking a member removes them from this workspace without deleting squad or match data.",
+      "Revoke a member's access from the Team members list at any time. Their squad player slot becomes available again.",
+      "Use 'Revoke & regenerate' if you've shared the join link too widely — old links stop working immediately.",
     ],
   },
 

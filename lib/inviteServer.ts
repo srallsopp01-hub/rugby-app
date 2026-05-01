@@ -52,14 +52,14 @@ function normaliseEmail(email: string | null | undefined) {
   return email?.toLowerCase().trim() ?? "";
 }
 
-function createInvitePlayer(fullName: string, memberUserId: string): SquadPlayer {
+function createInvitePlayer(fullName: string, memberUserId: string, position?: string): SquadPlayer {
   const trimmedName = fullName.trim();
   return {
     id: createPlayerId(),
     fullName: trimmedName,
     preferredName: trimmedName.split(/\s+/)[0] ?? trimmedName,
     nicknames: [],
-    primaryPosition: "",
+    primaryPosition: position?.trim() ?? "",
     secondaryPositions: [],
     jerseyNumber: null,
     voiceSamples: [],
@@ -128,14 +128,16 @@ export async function unlinkSquadPlayerFromUser({
     .eq("user_id", ownerUserId);
 }
 
-async function createAndLinkSquadPlayer({
+export async function createAndLinkSquadPlayer({
   ownerUserId,
   displayName,
   memberUserId,
+  position,
 }: {
   ownerUserId: string;
   displayName: string;
   memberUserId: string;
+  position?: string;
 }): Promise<string | null> {
   const admin = createAdminClient();
   if (!admin) return null;
@@ -146,7 +148,7 @@ async function createAndLinkSquadPlayer({
     .eq("user_id", ownerUserId)
     .single();
 
-  const newPlayer = createInvitePlayer(displayName, memberUserId);
+  const newPlayer = createInvitePlayer(displayName, memberUserId, position);
   const existingPlayers = Array.isArray(profileRow?.players)
     ? (profileRow.players as SquadPlayer[])
     : [];

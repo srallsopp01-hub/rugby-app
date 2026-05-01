@@ -43,22 +43,71 @@ function SignupContent() {
     setLoading(true);
 
     const supabase = createClient();
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
 
-    // Build redirect URL — forward relevant tokens through email confirmation
-    let redirectTo = `${appUrl}/auth/callback`;
+    // For invited users: create a pre-confirmed account server-side so Supabase
+    // never sends a verification email (which would go to junk).
     if (inviteToken) {
-      redirectTo += `?invite_token=${inviteToken}`;
-    } else if (joinToken) {
-      redirectTo += `?join_token=${joinToken}`;
+      const res = await fetch("/api/invite/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, name, token: inviteToken }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string; userExists?: boolean };
+
+      if (!res.ok || !json.ok) {
+        setError(json.error ?? "Failed to create account. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      // Account created (or already existed) — sign in directly
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) {
+        setError(signInError.message);
+        setLoading(false);
+        return;
+      }
+
+      router.push(`/invite/accept?token=${inviteToken}&email=${encodeURIComponent(email)}`);
+      router.refresh();
+      return;
     }
 
+    if (joinToken) {
+      // Link invite signup: create a pre-confirmed account so no verification email fires
+      const res = await fetch("/api/invite/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, name, join_token: joinToken }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string; userExists?: boolean };
+
+      if (!res.ok || !json.ok) {
+        setError(json.error ?? "Failed to create account. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) {
+        setError(signInError.message);
+        setLoading(false);
+        return;
+      }
+
+      router.push(`/invite/join?token=${joinToken}`);
+      router.refresh();
+      return;
+    }
+
+    // Standard coach signup — send email confirmation
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: isPlayerInvite ? { account_role: "player" } : { coach_name: name },
-        emailRedirectTo: redirectTo,
+        data: { coach_name: name },
+        emailRedirectTo: `${appUrl}/auth/callback`,
       },
     });
 
@@ -68,24 +117,12 @@ function SignupContent() {
       return;
     }
 
-    // If session is present, email confirm is disabled — go straight
     if (data.session) {
-      if (joinToken) {
-        router.push(`/invite/join?token=${joinToken}`);
-        router.refresh();
-        return;
-      }
-
-      if (inviteToken) {
-        router.push(`/invite/accept?token=${inviteToken}`);
-      } else {
-        router.push("/coach/onboarding");
-      }
+      router.push("/coach/onboarding");
       router.refresh();
       return;
     }
 
-    // Otherwise show the "check your email" message
     setCheckEmail(true);
     setLoading(false);
   }

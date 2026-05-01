@@ -19,6 +19,7 @@ FYNL Whistle lets rugby coaches tag live match events by voice or tap, then auto
 6. **Compare** (/coach/compare) — Select two saved matches side by side to compare team and player performance.
 7. **Saved Matches** (/coach/saved-matches) — Manage all stored matches. Export to Excel or delete old ones.
 8. **Settings** (/coach/settings) — Export all data, reset the app, or re-run onboarding.
+9. **Team Access** (/coach/team) — Manage who can access the team workspace. Share a reusable join link for players to claim their squad slot directly (no approval needed). For a specific player, use "Send invite to…" next to their slot to generate a personal single-use link. If a player couldn't find themselves on the squad list, they can notify you — a pending request appears on your home page; use "Add to squad" to create their profile and accept them. Revoke a member's access at any time from the Team members list.
 
 ## The Player Flow
 Players select their name from the squad using the Player Picker at the top of the sidebar.

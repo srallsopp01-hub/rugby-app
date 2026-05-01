@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { role?: string; label?: string };
+  let body: { role?: string; label?: string; email?: string; squadPlayerId?: string };
   try {
     body = await req.json();
   } catch {
@@ -37,9 +37,17 @@ export async function POST(req: Request) {
 
   const role = body.role === "assistant_coach" ? "assistant_coach" : "player";
   const label = body.label?.trim() || null;
+  const preFillEmail = body.email?.toLowerCase().trim() || null;
+  const preFillSquadPlayerId = body.squadPlayerId?.trim() || null;
 
   const token =
     crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
+
+  // Pre-filled single-use links expire in 30 days; reusable links never expire
+  const isPrefilled = Boolean(preFillEmail || preFillSquadPlayerId);
+  const expiresAt = isPrefilled
+    ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    : null;
 
   const { data: link, error } = await supabase
     .from("team_invite_links")
@@ -48,6 +56,9 @@ export async function POST(req: Request) {
       token,
       role,
       label,
+      pre_filled_email: preFillEmail,
+      pre_filled_squad_player_id: preFillSquadPlayerId,
+      expires_at: expiresAt,
     })
     .select("id")
     .single();
@@ -58,10 +69,8 @@ export async function POST(req: Request) {
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  return NextResponse.json({
-    linkId: link.id,
-    linkUrl: `${appUrl}/invite/join?token=${token}`,
-  });
+  const url = `${appUrl}/invite/join?token=${token}`;
+  return NextResponse.json({ url, token, linkId: link.id });
 }
 
 export async function DELETE(req: Request) {

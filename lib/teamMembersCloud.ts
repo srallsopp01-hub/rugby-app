@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 
-export type TeamMemberStatus = "pending" | "accepted" | "revoked" | "pending_approval";
+export type TeamMemberStatus = "pending" | "accepted" | "revoked" | "pending_approval" | "notify_request";
 
 export type TeamMember = {
   id: string;
@@ -16,6 +16,8 @@ export type TeamMember = {
   status: TeamMemberStatus;
   invitedAt: string;
   acceptedAt: string | null;
+  requestedName: string | null;
+  requestedPosition: string | null;
 };
 
 export type InviteLink = {
@@ -27,6 +29,8 @@ export type InviteLink = {
   isActive: boolean;
   expiresAt: string | null;
   createdAt: string;
+  preFillEmail: string | null;
+  preFillSquadPlayerId: string | null;
 };
 
 type TeamMemberRow = {
@@ -43,6 +47,8 @@ type TeamMemberRow = {
   status: TeamMemberStatus;
   invited_at: string;
   accepted_at: string | null;
+  requested_name: string | null;
+  requested_position: string | null;
 };
 
 type InviteLinkRow = {
@@ -54,6 +60,8 @@ type InviteLinkRow = {
   is_active: boolean;
   expires_at: string | null;
   created_at: string;
+  pre_filled_email: string | null;
+  pre_filled_squad_player_id: string | null;
 };
 
 function rowToMember(row: TeamMemberRow): TeamMember {
@@ -71,6 +79,8 @@ function rowToMember(row: TeamMemberRow): TeamMember {
     status: row.status,
     invitedAt: row.invited_at,
     acceptedAt: row.accepted_at,
+    requestedName: row.requested_name,
+    requestedPosition: row.requested_position,
   };
 }
 
@@ -84,6 +94,8 @@ function rowToInviteLink(row: InviteLinkRow): InviteLink {
     isActive: row.is_active,
     expiresAt: row.expires_at,
     createdAt: row.created_at,
+    preFillEmail: row.pre_filled_email,
+    preFillSquadPlayerId: row.pre_filled_squad_player_id,
   };
 }
 
@@ -100,6 +112,7 @@ export async function fetchTeamMembers(): Promise<TeamMember[]> {
       .select("*")
       .eq("owner_user_id", user.id)
       .neq("status", "revoked")
+      .neq("status", "notify_request")
       .order("invited_at", { ascending: false });
 
     if (error || !data) return [];
@@ -199,6 +212,28 @@ export async function fetchPendingApprovals(): Promise<TeamMember[]> {
   }
 }
 
+export async function fetchNotifyRequests(): Promise<TeamMember[]> {
+  try {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data, error } = await supabase
+      .from("team_members")
+      .select("*")
+      .eq("owner_user_id", user.id)
+      .eq("status", "notify_request")
+      .order("invited_at", { ascending: false });
+
+    if (error || !data) return [];
+    return (data as TeamMemberRow[]).map(rowToMember);
+  } catch {
+    return [];
+  }
+}
+
 export async function approveTeamMember(memberId: string): Promise<void> {
   await fetch("/api/invite/approve", {
     method: "POST",
@@ -217,16 +252,16 @@ export async function rejectTeamMember(memberId: string): Promise<void> {
 
 export async function createInviteLink(
   role: "assistant_coach" | "player",
-  label?: string
-): Promise<{ linkId: string; linkUrl: string } | null> {
+  options?: { label?: string; email?: string; squadPlayerId?: string }
+): Promise<{ url: string; token: string; linkId: string } | null> {
   try {
     const res = await fetch("/api/invite/link", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role, label }),
+      body: JSON.stringify({ role, label: options?.label, email: options?.email, squadPlayerId: options?.squadPlayerId }),
     });
     if (!res.ok) return null;
-    return (await res.json()) as { linkId: string; linkUrl: string };
+    return (await res.json()) as { url: string; token: string; linkId: string };
   } catch {
     return null;
   }

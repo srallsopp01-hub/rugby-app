@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import JoinForm from "./JoinForm";
+import SignOutButton from "./SignOutButton";
 
 type Params = {
   searchParams: Promise<{ token?: string }>;
@@ -16,14 +16,26 @@ type InviteLinkRow = {
   label: string | null;
   expires_at: string | null;
   is_active: boolean;
+  pre_filled_email: string | null;
+  pre_filled_squad_player_id: string | null;
+  consumed_at: string | null;
 };
 
-type SquadPlayer = {
+type SquadPlayerRaw = {
   id: string;
   fullName: string;
-  primaryPosition?: string;
+  preferredName: string;
+  primaryPosition: string;
   linkedUserId?: string;
   status?: string;
+};
+
+export type SquadPlayerPublic = {
+  id: string;
+  fullName: string;
+  preferredName: string;
+  primaryPosition: string;
+  claimed: boolean;
 };
 
 export default async function InviteJoinPage({ searchParams }: Params) {
@@ -38,42 +50,100 @@ export default async function InviteJoinPage({ searchParams }: Params) {
 
   const { data: link, error: linkError } = await supabase
     .from("team_invite_links")
-    .select("id, owner_user_id, role, label, expires_at, is_active")
+    .select(
+      "id, owner_user_id, role, label, expires_at, is_active, pre_filled_email, pre_filled_squad_player_id, consumed_at"
+    )
     .eq("token", token)
     .single<InviteLinkRow>();
 
   if (linkError || !link) {
     return <ErrorCard message="This invite link is invalid or has been revoked." />;
   }
-
   if (!link.is_active) {
     return <ErrorCard message="This invite link has been deactivated by the coach." />;
   }
-
   if (link.expires_at && new Date(link.expires_at) < new Date()) {
     return <ErrorCard message="This invite link has expired. Ask your coach for a new one." />;
   }
 
-  // Fetch team name
+  const preFilled = Boolean(link.pre_filled_email || link.pre_filled_squad_player_id);
+  if (preFilled && link.consumed_at) {
+    return (
+      <ErrorCard message="This invite has already been used. Contact your coach if you need access." />
+    );
+  }
+
+  // Squad players — anon-readable per RLS migration 20260429
   const { data: squadProfile } = await supabase
     .from("squad_profiles")
     .select("team_name, players")
     .eq("user_id", link.owner_user_id)
-    .maybeSingle<{ team_name: string | null; players: SquadPlayer[] | null }>();
+    .maybeSingle<{ team_name: string | null; players: SquadPlayerRaw[] | null }>();
 
   const teamName = squadProfile?.team_name ?? null;
-  const roleLabel = link.role === "assistant_coach" ? "Assistant Coach" : "Player";
+  const squadPlayers: SquadPlayerPublic[] = (squadProfile?.players ?? [])
+    .filter((p) => p.status !== "unavailable")
+    .map((p) => ({
+      id: p.id,
+      fullName: p.fullName,
+      preferredName: p.preferredName,
+      primaryPosition: p.primaryPosition,
+      claimed: Boolean(p.linkedUserId),
+    }));
 
-  // Check auth
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Unauthenticated — show landing
-  if (!user) {
-    const loginUrl = `${appUrl}/login?join_token=${token}`;
-    const signupUrl = `${appUrl}/signup?join_token=${token}`;
+  // ── Not logged in ────────────────────────────────────────────────────────────
 
+  if (!user) {
+    if (link.pre_filled_email) {
+      const signupUrl = `${appUrl}/signup?join_token=${token}&email=${encodeURIComponent(link.pre_filled_email)}`;
+      const loginUrl = `${appUrl}/login?join_token=${token}&email=${encodeURIComponent(link.pre_filled_email)}`;
+      return (
+        <PageShell>
+          <div className="text-center">
+            <div className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-muted-2">
+              Team invite
+            </div>
+            <h1 className="mt-3 text-2xl font-black uppercase text-foreground-strong">
+              {teamName ? `Join ${teamName}` : "You've been invited"}
+            </h1>
+            <p className="mt-3 text-sm leading-6 text-muted">
+              You&apos;re invited to join as{" "}
+              <strong className="text-foreground">{link.pre_filled_email}</strong>.
+            </p>
+          </div>
+          <div className="mt-8 flex flex-col gap-3">
+            <Link
+              href={signupUrl}
+              className="flex items-center justify-center rounded-xl bg-foreground-strong px-4 py-3 text-sm font-black uppercase text-background transition hover:opacity-90"
+            >
+              Create account
+            </Link>
+            <Link
+              href={loginUrl}
+              className="flex items-center justify-center rounded-xl border border-border bg-panel-2 px-4 py-3 text-sm font-semibold text-foreground-strong transition hover:border-border-light"
+            >
+              Sign in
+            </Link>
+          </div>
+          <p className="mt-5 text-center text-xs text-muted-2">
+            Not {link.pre_filled_email}?{" "}
+            <Link
+              href={`${appUrl}/invite/join?token=${token}`}
+              className="font-bold text-foreground-strong hover:underline"
+            >
+              Use a different account
+            </Link>
+          </p>
+        </PageShell>
+      );
+    }
+
+    const signupUrl = `${appUrl}/signup?join_token=${token}`;
+    const loginUrl = `${appUrl}/login?join_token=${token}`;
     return (
       <PageShell>
         <div className="text-center">
@@ -84,12 +154,9 @@ export default async function InviteJoinPage({ searchParams }: Params) {
             {teamName ? `Join ${teamName}` : "You've been invited"}
           </h1>
           <p className="mt-2 text-sm text-muted">
-            You&apos;ve been invited to join{teamName ? ` ${teamName}` : " this team"} as a{" "}
-            <strong className="text-foreground-strong">{roleLabel}</strong>. Sign up or sign in to
-            continue.
+            Sign up or sign in to claim your squad slot.
           </p>
         </div>
-
         <div className="mt-8 flex flex-col gap-3">
           <Link
             href={signupUrl}
@@ -108,6 +175,31 @@ export default async function InviteJoinPage({ searchParams }: Params) {
     );
   }
 
+  // ── Logged in ────────────────────────────────────────────────────────────────
+
+  // Wrong account for pre-filled link
+  if (link.pre_filled_email) {
+    const userEmail = (user.email ?? "").toLowerCase().trim();
+    const linkEmail = link.pre_filled_email.toLowerCase().trim();
+    if (userEmail !== linkEmail) {
+      return (
+        <PageShell>
+          <div className="text-center">
+            <h1 className="text-xl font-black uppercase text-foreground-strong">Wrong account</h1>
+            <p className="mt-3 text-sm leading-6 text-muted">
+              You&apos;re signed in as{" "}
+              <strong className="text-foreground">{user.email}</strong>, but this invite is for{" "}
+              <strong className="text-foreground">{link.pre_filled_email}</strong>.
+            </p>
+          </div>
+          <div className="mt-6">
+            <SignOutButton returnUrl={`${appUrl}/invite/join?token=${token}`} />
+          </div>
+        </PageShell>
+      );
+    }
+  }
+
   // Check for existing membership
   const { data: existing } = await supabase
     .from("team_members")
@@ -115,14 +207,6 @@ export default async function InviteJoinPage({ searchParams }: Params) {
     .eq("owner_user_id", link.owner_user_id)
     .eq("member_user_id", user.id)
     .maybeSingle<{ id: string; status: string }>();
-
-  if (existing?.status === "pending_approval") {
-    return (
-      <PageShell>
-        <AlreadySubmitted />
-      </PageShell>
-    );
-  }
 
   if (existing?.status === "accepted") {
     return (
@@ -132,7 +216,7 @@ export default async function InviteJoinPage({ searchParams }: Params) {
             You&apos;re already in
           </h1>
           <p className="mt-2 text-sm text-muted">
-            You already have access to this team.
+            You already have access to {teamName ?? "this team"}.
           </p>
           <Link
             href={link.role === "player" ? "/player" : "/coach"}
@@ -145,22 +229,45 @@ export default async function InviteJoinPage({ searchParams }: Params) {
     );
   }
 
-  // Fetch squad players for player role (needs admin client since user isn't accepted yet)
-  let squadPlayers: SquadPlayer[] = [];
-  if (link.role === "player") {
-    const admin = createAdminClient();
-    if (admin) {
-      const { data: adminProfile } = await admin
-        .from("squad_profiles")
-        .select("players")
-        .eq("user_id", link.owner_user_id)
-        .maybeSingle<{ players: SquadPlayer[] | null }>();
-
-      squadPlayers = (adminProfile?.players ?? []).filter(
-        (p) => p.status === "active" && !p.linkedUserId
-      );
-    }
+  if (existing?.status === "notify_request") {
+    return (
+      <PageShell>
+        <div className="text-center">
+          <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full border border-border bg-panel-2">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              />
+              <path
+                d="M8 12L11 15L16 9"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+          <h1 className="text-xl font-black uppercase text-foreground-strong">
+            Coach notified
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            We&apos;ve already let your coach know. They&apos;ll add you to the squad and get back to you.
+          </p>
+        </div>
+      </PageShell>
+    );
   }
+
+  // ── Ready to claim ──────────────────────────────────────────────────────────
+
+  const isPlayerRole = link.role === "player";
+  const subtext = isPlayerRole
+    ? preFilled && link.pre_filled_squad_player_id
+      ? "Your slot is ready. Confirm below to join."
+      : "Select yourself from the squad to claim your slot."
+    : "Confirm below to join the team as an assistant coach.";
 
   return (
     <PageShell>
@@ -171,18 +278,14 @@ export default async function InviteJoinPage({ searchParams }: Params) {
         <h1 className="mt-3 text-2xl font-black uppercase text-foreground-strong">
           {teamName ? `Join ${teamName}` : "Join the team"}
         </h1>
-        <p className="mt-2 text-sm text-muted">
-          Joining as a <strong className="text-foreground-strong">{roleLabel}</strong>.
-          {link.role === "player" && squadPlayers.length > 0
-            ? " Select yourself from the squad below."
-            : ""}
-        </p>
+        <p className="mt-2 text-sm text-muted">{subtext}</p>
       </div>
 
       <JoinForm
         token={token}
         role={link.role}
-        squadPlayers={squadPlayers}
+        squadPlayers={isPlayerRole ? squadPlayers : []}
+        preFilledSquadPlayerId={link.pre_filled_squad_player_id ?? null}
       />
     </PageShell>
   );
@@ -212,32 +315,5 @@ function ErrorCard({ message }: { message: string }) {
         </Link>
       </div>
     </PageShell>
-  );
-}
-
-function AlreadySubmitted() {
-  return (
-    <div className="text-center">
-      <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full border border-border bg-panel-2">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
-            stroke="currentColor"
-            strokeWidth="1.5"
-          />
-          <path
-            d="M8 12L11 15L16 9"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </div>
-      <h1 className="text-xl font-black uppercase text-foreground-strong">Request sent</h1>
-      <p className="mt-2 text-sm leading-6 text-muted">
-        Your join request is pending approval. The coach will confirm your access shortly.
-      </p>
-    </div>
   );
 }

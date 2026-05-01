@@ -110,11 +110,19 @@ export async function upsertCloudSquadProfile(
     if (!ctx?.canManageTeam) return { ok: false, error: "No write permission" };
 
     const supabase = createClient();
-    const { error } = await supabase
+    const payload = profileToUpsertPayload(profile, ctx.ownerUserId);
+    let { error } = await supabase
       .from("squad_profiles")
-      .upsert(profileToUpsertPayload(profile, ctx.ownerUserId), {
-        onConflict: "user_id",
-      });
+      .upsert(payload, { onConflict: "user_id" });
+
+    // Migration not yet applied — retry without the column
+    if (error?.message?.includes("ai_chat_history")) {
+      const { ai_chat_history: _omit, ...payloadWithoutChat } = payload;
+      const { error: retryError } = await supabase
+        .from("squad_profiles")
+        .upsert(payloadWithoutChat, { onConflict: "user_id" });
+      error = retryError;
+    }
 
     if (error) return { ok: false, error: `Squad profile upsert failed: ${error.message}` };
     return { ok: true };

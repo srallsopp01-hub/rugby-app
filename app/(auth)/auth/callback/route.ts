@@ -18,6 +18,7 @@ export async function GET(request: Request) {
         data: { user },
       } = await supabase.auth.getUser();
 
+      let memberEmail: string | null = null;
       if (user) {
         const userEmail = user.email?.toLowerCase().trim();
         const { data: tokenRow } = await supabase
@@ -33,9 +34,13 @@ export async function GET(request: Request) {
             .eq("id", tokenRow.team_member_id)
             .single();
 
+          memberEmail = member?.email ?? null;
+
           if (member && userEmail && member.email.toLowerCase().trim() === userEmail) {
             if (member.role === "player") {
-              return NextResponse.redirect(`${origin}/invite/accept?token=${inviteToken}`);
+              return NextResponse.redirect(
+                `${origin}/invite/accept?token=${inviteToken}&email=${encodeURIComponent(member.email)}`
+              );
             }
 
             const result = await redeemInviteToken({
@@ -48,7 +53,9 @@ export async function GET(request: Request) {
           }
         }
       }
-      return NextResponse.redirect(`${origin}/invite/accept?token=${inviteToken}`);
+      return NextResponse.redirect(
+        `${origin}/invite/accept?token=${inviteToken}${memberEmail ? `&email=${encodeURIComponent(memberEmail)}` : ""}`
+      );
     }
 
     if (!error) {

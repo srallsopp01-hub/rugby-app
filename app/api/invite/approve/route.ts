@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { linkSquadPlayerToUser } from "@/lib/inviteServer";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { linkSquadPlayerToUser, createAndLinkSquadPlayer } from "@/lib/inviteServer";
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -23,19 +24,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "memberId is required" }, { status: 400 });
   }
 
-  // Fetch the member row — RLS ensures coach can only touch their own team
   const { data: member, error: fetchError } = await supabase
     .from("team_members")
-    .select("id, owner_user_id, member_user_id, role, player_squad_id, status")
+    .select("id, owner_user_id, member_user_id, role, player_squad_id, status, requested_name, requested_position")
     .eq("id", body.memberId)
-    .eq("status", "pending_approval")
+    .in("status", ["pending_approval", "notify_request"])
     .single();
 
   if (fetchError || !member) {
-    return NextResponse.json({ error: "Member not found or not pending approval" }, { status: 404 });
+    return NextResponse.json({ error: "Member not found or not pending" }, { status: 404 });
   }
 
-  // Verify caller can manage this team
   const ownerIsUser = member.owner_user_id === user.id;
   if (!ownerIsUser) {
     const { data: callerMembership } = await supabase
@@ -48,6 +47,34 @@ export async function POST(req: Request) {
 
     if (!callerMembership?.can_manage_team) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+  }
+
+  const admin = createAdminClient();
+
+  let resolvedPlayerSquadId: string | null = member.player_squad_id;
+
+  // For notify_request: create a new squad player from the requested name/position
+  if (member.status === "notify_request" && member.member_user_id && member.requested_name) {
+    if (!admin) {
+      return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+    }
+    const newPlayerId = await createAndLinkSquadPlayer({
+      ownerUserId: member.owner_user_id,
+      displayName: member.requested_name as string,
+      memberUserId: member.member_user_id as string,
+      position: (member.requested_position as string | null) ?? undefined,
+    });
+    if (!newPlayerId) {
+      return NextResponse.json({ error: "Failed to create squad player" }, { status: 500 });
+    }
+    resolvedPlayerSquadId = newPlayerId;
+
+    if (admin) {
+      await admin
+        .from("team_members")
+        .update({ player_squad_id: newPlayerId })
+        .eq("id", member.id);
     }
   }
 
@@ -64,11 +91,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to approve member" }, { status: 500 });
   }
 
-  if (member.role === "player" && member.player_squad_id && member.member_user_id) {
+  // For pending_approval rows that already have a player_squad_id and member_user_id
+  if (
+    member.status === "pending_approval" &&
+    member.role === "player" &&
+    resolvedPlayerSquadId &&
+    member.member_user_id
+  ) {
     await linkSquadPlayerToUser({
       ownerUserId: member.owner_user_id,
-      playerSquadId: member.player_squad_id,
-      memberUserId: member.member_user_id,
+      playerSquadId: resolvedPlayerSquadId,
+      memberUserId: member.member_user_id as string,
     });
   }
 

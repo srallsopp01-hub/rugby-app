@@ -28,6 +28,7 @@ import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "./help-content";
 import { DashboardChat } from "./DashboardChat";
 import { upsertCloudSquadProfile } from "@/lib/squadProfileCloud";
+import { fetchNotifyRequests } from "@/lib/teamMembersCloud";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -340,6 +341,11 @@ export default function CoachDashboardPage() {
     if (shouldStartCoachOnboarding()) router.replace("/coach/onboarding");
   }, [router]);
 
+  const [notifyRequestCount, setNotifyRequestCount] = useState(0);
+  useEffect(() => {
+    void fetchNotifyRequests().then((reqs) => setNotifyRequestCount(reqs.length));
+  }, []);
+
   const today = todayIso();
   const fixtures = useMemo(() => profile?.fixtures ?? [], [profile]);
   const trainingSessions = useMemo(() => profile?.trainingSessions ?? [], [profile]);
@@ -512,6 +518,20 @@ export default function CoachDashboardPage() {
             );
           })()}
         </div>
+
+        {/* Pending requests notification */}
+        {notifyRequestCount > 0 && (
+          <Link
+            href="/coach/team"
+            className="flex items-center justify-between rounded-xl border border-amber-500/40 bg-amber-500/10 px-5 py-3.5 text-sm transition hover:border-amber-500/60"
+          >
+            <span className="text-amber-300">
+              <span className="font-semibold">{notifyRequestCount} player{notifyRequestCount !== 1 ? "s" : ""}</span>
+              {" couldn't find themselves on your squad"}
+            </span>
+            <span className="shrink-0 font-semibold text-amber-400">View on team page →</span>
+          </Link>
+        )}
 
         {/* Season at a glance — only when fixtures exist */}
         {fixtures.length > 0 && (
