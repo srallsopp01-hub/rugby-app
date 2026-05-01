@@ -274,7 +274,7 @@ export default function JoinForm({ token, role, squadPlayers, preFilledSquadPlay
         {submitting ? "Joining…" : "Join team"}
       </button>
 
-      {isPlayer && hasUnclaimed && (
+      {isPlayer && (hasUnclaimed || squadPlayers.length === 0) && (
         <button
           type="button"
           onClick={() => { setView("notify"); setError(null); }}

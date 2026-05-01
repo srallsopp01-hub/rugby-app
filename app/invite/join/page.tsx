@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import JoinForm from "./JoinForm";
 import SignOutButton from "./SignOutButton";
 
@@ -73,8 +74,9 @@ export default async function InviteJoinPage({ searchParams }: Params) {
     );
   }
 
-  // Squad players — anon-readable per RLS migration 20260429
-  const { data: squadProfile } = await supabase
+  // Squad players — read via admin client to bypass RLS (player has no team membership yet)
+  const admin = createAdminClient();
+  const { data: squadProfile } = await (admin ?? supabase)
     .from("squad_profiles")
     .select("team_name, players")
     .eq("user_id", link.owner_user_id)
