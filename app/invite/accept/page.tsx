@@ -7,7 +7,7 @@ import AcceptPlayerInviteForm from "./AcceptPlayerInviteForm";
 import { WrongAccountActions } from "./WrongAccountActions";
 
 type Params = {
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{ token?: string; role?: string; email?: string }>;
 };
 
 type SquadPlayer = {
@@ -32,7 +32,7 @@ function formatCoachRoleLabel(label: string | null | undefined, canManageTeam: b
 }
 
 export default async function InviteAcceptPage({ searchParams }: Params) {
-  const { token } = await searchParams;
+  const { token, role: urlRole, email: urlEmail } = await searchParams;
 
   if (!token) {
     return (
@@ -79,6 +79,9 @@ export default async function InviteAcceptPage({ searchParams }: Params) {
     member = adminMember;
   }
 
+  const effectiveRole = member?.role ?? urlRole;
+  const effectiveEmail = member?.email ?? (urlEmail ? decodeURIComponent(urlEmail) : "");
+
   // Check if the current user is already logged in
   const {
     data: { user },
@@ -101,10 +104,10 @@ export default async function InviteAcceptPage({ searchParams }: Params) {
     invitedPlayer = allPlayers.find((player) => player.id === member.player_squad_id) ?? null;
   }
 
-  const isPlayerInvite = member?.role === "player";
+  const isPlayerInvite = effectiveRole === "player";
   const invitedName =
     invitedPlayer?.preferredName || invitedPlayer?.fullName || (isPlayerInvite ? "player" : null);
-  const inviteEmail = member?.email ?? "";
+  const inviteEmail = effectiveEmail;
 
   if (user) {
     const userEmail = user.email?.toLowerCase().trim();
@@ -167,8 +170,8 @@ export default async function InviteAcceptPage({ searchParams }: Params) {
   }
 
   const roleLabel =
-    member?.role === "assistant_coach"
-      ? formatCoachRoleLabel(member.coach_label, Boolean(member.can_manage_team))
+    effectiveRole === "assistant_coach"
+      ? formatCoachRoleLabel(member?.coach_label, Boolean(member?.can_manage_team))
       : "player";
   const signupHref = `/signup?token=${token}&email=${encodeURIComponent(inviteEmail)}${
     isPlayerInvite ? "&role=player" : ""

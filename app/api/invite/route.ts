@@ -142,7 +142,7 @@ export async function POST(req: Request) {
 
   // Send invite email
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const inviteUrl = `${appUrl}/invite/accept?token=${token}`;
+  const inviteUrl = `${appUrl}/invite/accept?token=${token}&role=${role}&email=${encodeURIComponent(email.toLowerCase().trim())}`;
   const coachName = user.user_metadata?.coach_name as string | undefined;
   const roleLabel =
     role === "assistant_coach"

@@ -1000,7 +1000,7 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
 
 | Batch | Focus | Status |
 |---|---|---|
-| AS | Player invite flow fix — add role+email to invite URL; URL param fallback on accept page | Planned |
+| AS | Player invite flow fix — add role+email to invite URL; URL param fallback on accept page | ✅ Done |
 | AT | Player login UX — Coach/Player toggle on login page; direct post-login redirect to /player | Planned |
 | AU | AI chat memory — save last 30 messages to squad_profiles.ai_chat_history; load on dashboard mount | Planned |
 | AV | Video error display — surface specific R2 error in video components instead of silent failure | Planned |
