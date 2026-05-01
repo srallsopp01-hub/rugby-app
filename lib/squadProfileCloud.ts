@@ -19,6 +19,11 @@ type SquadProfileRow = {
   action_samples: SquadProfile["actionSamples"];
   correction_memory: SquadProfile["correctionMemory"];
   kpi_targets: SquadProfile["kpiTargets"] | null;
+  fixtures: SquadProfile["fixtures"] | null;
+  training_sessions: SquadProfile["trainingSessions"] | null;
+  availability_responses: SquadProfile["availabilityResponses"] | null;
+  session_logs: SquadProfile["sessionLogs"] | null;
+  league_position: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -35,6 +40,11 @@ function rowToProfile(row: SquadProfileRow): SquadProfile {
     actionSamples: row.action_samples ?? [],
     correctionMemory: row.correction_memory ?? [],
     kpiTargets: row.kpi_targets ?? undefined,
+    fixtures: row.fixtures ?? [],
+    trainingSessions: row.training_sessions ?? [],
+    availabilityResponses: row.availability_responses ?? [],
+    sessionLogs: row.session_logs ?? [],
+    leaguePosition: row.league_position ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -56,6 +66,11 @@ function profileToUpsertPayload(
     action_samples: profile.actionSamples,
     correction_memory: profile.correctionMemory,
     kpi_targets: profile.kpiTargets ?? null,
+    fixtures: profile.fixtures ?? null,
+    training_sessions: profile.trainingSessions ?? null,
+    availability_responses: profile.availabilityResponses ?? null,
+    session_logs: profile.sessionLogs ?? null,
+    league_position: profile.leaguePosition ?? null,
     created_at: profile.createdAt,
     updated_at: profile.updatedAt,
   };

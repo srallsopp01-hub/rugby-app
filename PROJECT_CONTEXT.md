@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** April 2026 — Batch AO: Cloudflare R2 match video storage
+**Last updated:** May 2026 — Batch AR: Dashboard rebuild + cloud sync fix for fixtures/training/availability
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -334,7 +334,7 @@ All previous CSV downloads have been removed. One polished report.
 
 **RosterRow**: `number`, `name`, `position`, `minutes`
 
-**SquadProfile** (lib/squadProfile.ts — cross-match, persistent): `id`, `teamName`, `coachName`, `primaryColour`, `secondaryColour`, `logoUrl`, `players[]`, `actionSamples[]`, `correctionMemory[]`
+**SquadProfile** (lib/squadProfile.ts — cross-match, persistent): `id`, `teamName`, `coachName`, `primaryColour`, `secondaryColour`, `logoUrl`, `players[]`, `actionSamples[]`, `correctionMemory[]`, `fixtures?[]`, `trainingSessions?[]`, `availabilityResponses?[]`, `sessionLogs?[]`, `leaguePosition?`
 
 **SavedMatchRecord** (lib/savedMatches.ts — local-first, cloud synced): `id`, `createdAt`, `updatedAt`, `matchTitle`, `opponent`, `matchDate`, `activeMode`, `rosterRows[]`, `selectedPlayer`, `events[]`, `reviewQueue[]`, `coachNotes[]`, `clips?`, `showRawTranscript`, `videoStoragePath?`
 
@@ -969,6 +969,20 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
 - ✅ Coach Team Access now shows joined/invited/request counts and per-member admin actions: change pending invite email, resend invite, send password reset to joined members, and revoke access.
 - ✅ Revoking a player member now also unlinks that user from the squad player record.
 - ✅ Verification: `npm run typecheck` passed; `npm run build` passed.
+
+### Batch AR (May 2026) — Dashboard rebuild (fixtures, training, availability, AI chat)
+
+- ✅ Coach dashboard rebuilt with: next fixture card, this week's training sessions, availability response summary, post-session check-in card, and embedded AI coaching chat
+- ✅ `Fixture`, `TrainingSession`, `AvailabilityResponse`, `SessionLog` types added to `app/rugby-tagging/types.ts`
+- ✅ `SquadProfile` extended with `fixtures?`, `trainingSessions?`, `availabilityResponses?`, `sessionLogs?`, `leaguePosition?`
+- ✅ `/coach/team-setup` extended with fixture management (add/edit/delete) and recurring training session management (add by day-of-week, time, location)
+- ✅ `/player/availability` added — player availability picker for upcoming fixtures and training sessions
+- ✅ `DashboardChat.tsx` — embedded AI assistant chat in coach dashboard using streaming GPT-4o-mini responses with squad context injected
+- ✅ `app/api/help-chat/route.ts` — context-aware streaming chat endpoint with full FYNL Whistle system prompt
+- ✅ **Cloud sync fix** — `lib/squadProfileCloud.ts` updated to map all new fields (`fixtures`, `training_sessions`, `availability_responses`, `session_logs`, `league_position`) to/from Supabase; these fields were missing from the original sync code so data was only stored in localStorage
+- ✅ Migration `supabase/migrations/20260501000000_squad_profile_new_fields.sql` — adds the 5 new columns to `squad_profiles`
+
+**Manual SQL step required:** Run `supabase/migrations/20260501000000_squad_profile_new_fields.sql` in the Supabase SQL editor to add the new columns before the sync will work.
 
 ### Batch AQ (May 2026) — Personal player invite copy + role guards
 
