@@ -3,10 +3,40 @@
 import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { replaceSavedMatches } from "@/app/rugby-tagging/lib/savedMatches";
-import { saveSquadProfile } from "@/app/rugby-tagging/lib/squadProfile";
+import {
+  getSquadProfile,
+  saveSquadProfile,
+  type SquadProfile,
+} from "@/app/rugby-tagging/lib/squadProfile";
 import { PLAYER_IDENTITY_KEY } from "@/app/rugby-tagging/constants";
 import { fetchCloudSavedMatches } from "@/lib/savedMatchesCloud";
 import { fetchCloudSquadProfile } from "@/lib/squadProfileCloud";
+import type { AvailabilityResponse } from "@/app/rugby-tagging/types";
+
+function responseKey(r: AvailabilityResponse): string {
+  return `${r.playerId}:${r.fixtureId ?? ""}:${r.trainingSessionId ?? ""}`;
+}
+
+function mergeLocalAvailability(
+  local: SquadProfile | null,
+  cloud: SquadProfile
+): SquadProfile {
+  const localResponses = local?.availabilityResponses ?? [];
+  if (localResponses.length === 0) return cloud;
+
+  const cloudResponses = cloud.availabilityResponses ?? [];
+  const cloudMap = new Map(cloudResponses.map((r) => [responseKey(r), r]));
+
+  for (const local of localResponses) {
+    const key = responseKey(local);
+    const existing = cloudMap.get(key);
+    if (!existing || local.updatedAt > existing.updatedAt) {
+      cloudMap.set(key, local);
+    }
+  }
+
+  return { ...cloud, availabilityResponses: Array.from(cloudMap.values()) };
+}
 
 export function SyncPlayerData() {
   useEffect(() => {
@@ -54,7 +84,7 @@ export function SyncPlayerData() {
         console.log("[SyncPlayerData] matches fetched:", cloudMatches.length);
       }
 
-      if (profile) saveSquadProfile(profile);
+      if (profile) saveSquadProfile(mergeLocalAvailability(getSquadProfile(), profile));
       if (cloudMatches.length > 0) replaceSavedMatches(cloudMatches);
 
       if (membership.player_squad_id) {

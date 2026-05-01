@@ -182,6 +182,12 @@ export default function PlayerAvailabilityPage() {
       availabilityResponses: updated,
       updatedAt: new Date().toISOString(),
     });
+
+    import("@/lib/squadProfileCloud")
+      .then(({ upsertPlayerAvailabilityResponse }) =>
+        void upsertPlayerAvailabilityResponse(next)
+      )
+      .catch(() => {});
   }
 
   if (!ready) return null;

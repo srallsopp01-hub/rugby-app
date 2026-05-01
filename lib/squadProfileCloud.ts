@@ -4,6 +4,7 @@ import {
   getSquadProfile,
   saveSquadProfile,
 } from "@/app/rugby-tagging/lib/squadProfile";
+import type { AvailabilityResponse } from "@/app/rugby-tagging/types";
 import { getMyTeamContext } from "@/lib/teamContext";
 
 type SquadProfileRow = {
@@ -125,6 +126,26 @@ export async function upsertCloudSquadProfile(
     }
 
     if (error) return { ok: false, error: `Squad profile upsert failed: ${error.message}` };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+export async function upsertPlayerAvailabilityResponse(
+  response: AvailabilityResponse
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const ctx = await getMyTeamContext();
+    if (!ctx) return { ok: false, error: "Not signed in" };
+
+    const supabase = createClient();
+    const { error } = await supabase.rpc("upsert_player_availability", {
+      p_owner_user_id: ctx.ownerUserId,
+      p_response: response,
+    });
+
+    if (error) return { ok: false, error: error.message };
     return { ok: true };
   } catch (e) {
     return { ok: false, error: String(e) };
