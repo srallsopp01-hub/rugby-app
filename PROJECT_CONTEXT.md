@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** May 2026 — Batch BB: Player game detail involvement playlist + full roster fuzzy-match fix for event resolution
+**Last updated:** May 2026 — Batch BB complete: full-screen two-column game detail layout (video + stats left, involvement playlist right)
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -81,7 +81,7 @@ The app is split into four clearly separated layers with independent layouts and
 | `/player/team-analytics` | Live | Read-only team analytics for players — shared stats only, no other-player grades/coaching comments |
 | `/player/compare` | Live | Read-only match and player comparison inside the player app — shared stats only except own-player coaching plan |
 | `/player/games` | Live | Match history |
-| `/player/games/[gameId]` | Live | Game detail: involvement playlist (always visible, Previous/Next clip navigation, current-clip card, scrollable list), own-player stats/grades, constructive coaching plan, video player, set piece |
+| `/player/games/[gameId]` | Live | Game detail: full-screen two-column layout — video player + stats + coaching plan (left, scrollable), involvement playlist sidebar (right, scrollable); Previous/Next clip navigation, current-clip card, active-clip highlight, set piece section |
 | `/player/review` | Live | Shared coach clips from film review; unscoped text notes are hidden until notes can be assigned to a player |
 | `/player/settings` | Live | Profile, identity switch, theme, local data snapshot, quick nav links |
 
@@ -149,7 +149,7 @@ app/
     team-analytics/page.tsx           ← Read-only team analytics shared into the player app
     compare/page.tsx                  ← Read-only match/player comparison for players
     games/page.tsx                    ← All matches player appeared in, sorted newest first
-    games/[gameId]/page.tsx           ← Game detail: stats, event timeline, coach notes
+    games/[gameId]/page.tsx           ← Game detail: full-screen two-column layout (video+stats left, playlist right)
     review/page.tsx                   ← Playlist of all tagged moments grouped by match
     settings/page.tsx                 ← Profile card, identity switch, theme, local data snapshot, quick nav links
 
@@ -1071,79 +1071,51 @@ Sections:
 
 ---
 
-### Planned batches (not yet started)
+### Batch BB (May 2026) — Player game detail: involvement playlist fix + full-screen layout
 
-| Batch | Focus | Status |
-|---|---|---|
-| AS | Player invite flow fix — add role+email to invite URL; URL param fallback on accept page | ✅ Done |
-| AT | Player login UX — Coach/Player toggle on login page; direct post-login redirect to /player | ✅ Done |
-| AU | AI chat memory — save last 30 messages to squad_profiles.ai_chat_history; load on dashboard mount | ✅ Done |
-| AV | Video error display — surface specific R2 error in video components instead of silent failure | ✅ Done |
-| AW | Smarter training management — inline session editing (time/venue), one-off sessions, skip occurrences, availability request button | ✅ Done |
-| AX | Coach Review improvements — per-clip notes, visual scrubber timeline, fullscreen video, cleaner notes/clips split, clip export PDF | Planned |
+**Bug fix — involvement playlist showing 0 events:**
+Root cause: event resolution used a different lookup path than `buildBasicStats`. Player events were filtered using exact name matching, but roster entries used `playerName` from voice tags (which may not match `fullName`). Fixed by mirroring the same fuzzy-match and playerId resolution logic used in `buildBasicStats` throughout the event filter.
 
-**Batch AU dependency:** Requires SQL migration — add `ai_chat_history jsonb DEFAULT '[]'` column to `squad_profiles` before implementing.
+- ✅ `playerEvents()` function in `games/[gameId]/page.tsx` — resolves event's `playerName` against full roster via `findMatchingPlayer()` and applies ID-first + name-fallback matching to correctly attribute events to the current player
+- ✅ Event text fallback — `event.text` used as secondary resolution source when `playerName` is absent or doesn't match
+
+**Layout redesign — full-screen two-column:**
+- ✅ Removed `max-w-3xl` single-column constraint from `app/player/games/[gameId]/page.tsx`
+- ✅ Page is now `flex flex-col h-full overflow-hidden` — fills the full viewport within the sidebar layout
+- ✅ Header (back link + match title + grade) pinned at the top, full width
+- ✅ Left column (`flex-1 overflow-y-auto`): video player, stats grid, set piece, coaching plan, footer note — scrolls independently
+- ✅ Right column (`w-[360px] border-l overflow-y-auto`): involvement playlist — event list with no max-height cap, scrolls independently; Previous/Next buttons and current-clip card retained
+- ✅ The `max-h-[460px]` scroll cap on the event list removed — right column itself is the scroll container
 
 ---
 
-## Next — recommended priority order
+## Next — what's left to do
 
-### Tier 1 — Active now
+### Completed but not yet written up
+Batches AS, AT, AU, AV, AW were shipped but their narrative was not added to this file. Check git log for details.
 
-1. **Batch AS — Player invite flow fix** ← do this next
-   - Root cause: `app/api/invite/route.ts` builds invite URL without `role` or `email` params; the accept page has no fallback when DB member query fails, causing players to see coach signup
-   - Fix A: add `&role=${role}&email=${encodeURIComponent(email)}` to invite URL in the API route
-   - Fix B: read `role` + `email` from URL searchParams as fallback in `app/invite/accept/page.tsx`
+### Near-term
 
-2. **Batch AT — Player login UX**
-   - Add Coach/Player toggle to `app/(auth)/login/page.tsx`
-   - Player mode: subtitle "Sign in with the email your coach invited you with", post-login redirect → `/player`
-   - Coach mode: existing behaviour unchanged
+1. **Batch AX — Coach Review improvements**
+   - Per-clip notes/comments field
+   - Quick-jump visual scrubber timeline with event markers
+   - Fullscreen video mode
+   - Export clip list as PDF for team presentations
 
-3. **Batch AU — AI chat memory** (SQL migration required first — see above)
-   - Add `aiChatHistory?` field to `SquadProfile` type
-   - Map it in `squadProfileCloud.ts`
-   - Load last 30 messages in `DashboardChat.tsx` on mount; save after each AI response
-
-4. **Batch AV — Video error display**
-   - Update `getMatchVideoSignedUrl` in `lib/matchVideoCloud.ts` to return `{ url, error? }` instead of bare `string | null`
-   - Show inline error message in `app/player/games/[gameId]/page.tsx`, `app/coach/capture/page.tsx`, `app/coach/players/page.tsx` when video fails to load
-
-5. **Batch AW — Smarter training management**
-   - Add `skipDates?`, `oneOffDate?`, `availabilityRequested?` to `TrainingSession` type
-   - Inline editing of time/venue in `app/coach/team-setup/page.tsx`
-   - One-off session option (date picker instead of day-of-week)
-   - "Request availability" button on coach dashboard per upcoming session
-
-### Tier 2 — Complete email delivery
-
-6. **Complete email delivery dashboard verification** — manual Resend/Vercel/Supabase task
+2. **Complete email delivery** — manual Resend/Vercel/Supabase task
    - Resend: verify `fynlwhistle.com` domain status is `verified`
    - Vercel DNS: add missing `_dmarc` TXT record `v=DMARC1; p=none;`
-   - Supabase Auth SMTP: route signup confirmation/reset emails through Resend SMTP with sender `FYNL Whistle <noreply@fynlwhistle.com>`
-   - Production smoke test: direct invite, signup confirmation, password reset
+   - Supabase Auth SMTP: route signup/reset emails through Resend SMTP with sender `FYNL Whistle <noreply@fynlwhistle.com>`
 
-7. ~~**Batch AN — Production email reliability**~~ ✅ Invite API now fails visibly if Resend rejects send.
+3. **Live Stripe prices** — create live-mode prices, swap IDs in `pricingConfig.ts`, switch `STRIPE_SECRET_KEY` to `sk_live_...`
 
-8. ~~**Batch AM — Stripe payments**~~ ✅ Test checkout verified end-to-end. Remaining: create live-mode Stripe prices, swap IDs, switch to `sk_live_...`.
+4. **Clip sharing** — export or share individual video clips externally
 
-### Tier 3 — Medium-term
+5. **Wire up the contact form** — connect `app/(marketing)/contact/page.tsx` to Resend or CRM
 
-9. ~~**Fix video file size limit**~~ ✅ Batch AO moved to Cloudflare R2. Remaining manual tasks: R2 bucket creation, Vercel env vars, CORS config.
+6. **Add OG images and brand assets to `public/`** — needed for social sharing previews
 
-10. **Batch AX — Coach Review improvements**
-    - Per-clip notes/comments field
-    - Quick-jump visual scrubber timeline with event markers
-    - Fullscreen video mode
-    - Export clip list as PDF for team presentations
-
-11. **Clip sharing** — export or share individual video clips externally
-
-12. **Wire up the contact form** — connect `app/(marketing)/contact/page.tsx` to Resend or CRM
-
-13. **Add OG images and brand assets to `public/`** — needed for social sharing previews
-
-### Longer-term (don't prioritise yet)
+### Longer-term
 
 - Cloudflare Stream / HLS transcoding (revisit at >50 hrs stored video or mobile adaptive streaming needed)
 - Mobile support
