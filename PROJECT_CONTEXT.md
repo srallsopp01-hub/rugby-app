@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** May 2026 — Batch AY: Player RLS fix + playerId on RosterRow
+**Last updated:** May 2026 — Batch AZ: Video loading 403 fix + R2 path organisation
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -1011,6 +1011,34 @@ Two-part fix for player pages (Home, Games, Performance) silently showing empty 
 - ✅ `app/player/page.tsx`, `games/page.tsx`, `performance/page.tsx`, `compare/page.tsx`, `games/[gameId]/page.tsx` — ID-first matching with name fallback throughout; game detail page uses roster name for event filtering
 
 **Manual step required:** Run `supabase/migrations/20260501000003_player_read_access.sql` in the Supabase SQL editor.
+
+---
+
+### Batch AZ (May 2026) — Video loading 403 fix + R2 path organisation
+
+**Fix — Video access 403 ("You do not have access to this match video"):**
+
+Root cause: `getServerTeamContext()` resolved `ownerUserId` from the `team_members` table. If the coach also has an accepted membership in another team, `ownerUserId` returned that other team's coach ID — not their own — causing the ownership check to fail for their own videos.
+
+Added `userId: string` to `MyTeamContext` (the authenticated user's own stable auth ID, always `user.id`). Video ownership checks now use this correctly:
+- **Upload path** keyed on `ctx.userId` so coach videos always live under the uploader's own ID
+- **Signed URL**: grants access if video owner matches `ctx.userId` (direct owner) **or** `ctx.ownerUserId` (team member accessing their coach's video)
+- **Delete**: restricted to `ctx.userId` only — team members cannot delete the coach's videos
+
+No DB migration required. Existing video paths (stored as `{coachId}/{matchId}/...`) remain valid — `isValidR2ObjectKey` requires ≥3 segments and the owner is still the first segment.
+
+**Improvement — R2 path organisation:**
+
+New uploads use a human-readable folder derived from the match title, opponent, and date instead of a raw `matchId` UUID. Example: `{userId}/round_2_vs_hunter_wildfires_18_04_2026/{timestamp-uuid}-recording.mp4`. Old paths are fully backward-compatible.
+
+- ✅ `lib/teamContext.ts` — `userId` added to `MyTeamContext` type; both return paths in `getMyTeamContext()` include it
+- ✅ `lib/serverTeamContext.ts` — both return paths include `userId: user.id`
+- ✅ `app/api/match-video/upload-url/route.ts` — uses `ctx.userId` for path; accepts optional `matchTitle` in body
+- ✅ `app/api/match-video/signed-url/route.ts` — checks `videoOwner !== ctx.userId && videoOwner !== ctx.ownerUserId`
+- ✅ `app/api/match-video/delete/route.ts` — checks `videoOwner !== ctx.userId`
+- ✅ `lib/r2.ts` — `createMatchVideoObjectKey` accepts optional `matchTitle`; falls back to sanitised `matchId`
+- ✅ `lib/matchVideoCloud.ts` — `uploadMatchVideoWithResult` / `uploadMatchVideo` forward `matchTitle`
+- ✅ `app/coach/capture/page.tsx` — composes `pathTitle` from matchTitle + opponent + matchDate and passes to upload
 
 ---
 
