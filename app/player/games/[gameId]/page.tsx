@@ -7,7 +7,7 @@ import { usePlayer } from "../../PlayerContext";
 import { PlayerPicker } from "../../PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
 import { SAVED_MATCHES_KEY, subscribeSavedMatchesChanged } from "@/app/rugby-tagging/lib/savedMatches";
-import { buildReportRowsFromMatch, formatTime } from "@/app/rugby-tagging/helpers";
+import { buildReportRowsFromMatch, formatTime, findMatchingPlayer } from "@/app/rugby-tagging/helpers";
 import { buildPlayerCoachingPlan } from "../../playerCoachingPlan";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { EventItem } from "@/app/rugby-tagging/types";
@@ -25,13 +25,21 @@ function playerNameSet(player: SquadPlayer): Set<string> {
 function playerEvents(match: SavedMatchRecord, player: SquadPlayer, rosterName: string): EventItem[] {
   const names = playerNameSet(player);
   const rosterLower = rosterName.toLowerCase().trim();
+  const knownNames = [rosterName, player.fullName, player.preferredName, ...player.nicknames].filter(Boolean);
   return match.events
     .filter(
       (e) =>
         e.category === "player" &&
-        (e.playerName === rosterName ||
-          (e.playerName != null && e.playerName.toLowerCase().trim() === rosterLower) ||
-          (e.playerName != null && names.has(e.playerName.toLowerCase().trim())))
+        !e.isPending &&
+        (
+          (e.playerName != null && (
+            e.playerName === rosterName ||
+            e.playerName.toLowerCase().trim() === rosterLower ||
+            names.has(e.playerName.toLowerCase().trim())
+          )) ||
+          // same fallback as buildBasicStats: parse player name from event text
+          (e.playerName == null && findMatchingPlayer(knownNames, e.text) !== null)
+        )
     )
     .sort((a, b) => a.timestamp - b.timestamp);
 }
