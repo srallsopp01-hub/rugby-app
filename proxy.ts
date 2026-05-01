@@ -42,11 +42,12 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Protect /api/transcribe, /api/help-chat, and /api/invite/redeem — return 401 if not authenticated
+  // Protect /api/transcribe, /api/help-chat, and /api/invite/* — return 401 if not authenticated
+  // Exception: /api/invite/signup is the account-creation endpoint for new users; must be public
   if (
     (pathname.startsWith("/api/transcribe") ||
       pathname.startsWith("/api/help-chat") ||
-      pathname.startsWith("/api/invite")) &&
+      (pathname.startsWith("/api/invite") && !pathname.startsWith("/api/invite/signup"))) &&
     !user
   ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
