@@ -245,20 +245,23 @@ export async function POST(req: Request) {
     memberRowId = existingByEmail.id;
   } else {
     // No existing row — insert fresh
+    const insertPayload = {
+      owner_user_id: link.owner_user_id,
+      member_user_id: user.id,
+      email: normalizedEmail,
+      role: link.role,
+      status: "accepted",
+      accepted_at: new Date().toISOString(),
+      invite_link_id: link.id,
+      player_squad_id: isPlayerRole ? (squadPlayerId ?? null) : null,
+      invited_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    console.log("Inserting team member:", JSON.stringify(insertPayload));
+
     const { data: inserted, error: insertError } = await admin
       .from("team_members")
-      .insert({
-        owner_user_id: link.owner_user_id,
-        member_user_id: user.id,
-        email: normalizedEmail,
-        role: link.role,
-        status: "accepted",
-        accepted_at: new Date().toISOString(),
-        invite_link_id: link.id,
-        player_squad_id: isPlayerRole ? (squadPlayerId ?? null) : null,
-        invited_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
+      .insert(insertPayload)
       .select("id")
       .single();
 
