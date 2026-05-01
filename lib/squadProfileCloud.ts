@@ -136,11 +136,7 @@ export async function upsertPlayerAvailabilityResponse(
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const ctx = await getMyTeamContext();
-    console.log("[availability] teamContext:", JSON.stringify(ctx));
-    if (!ctx) {
-      console.error("[availability] upsertPlayerAvailabilityResponse: not signed in");
-      return { ok: false, error: "Not signed in" };
-    }
+    if (!ctx) return { ok: false, error: "Not signed in" };
 
     const supabase = createClient();
     const { error } = await supabase.rpc("upsert_player_availability", {
@@ -148,14 +144,9 @@ export async function upsertPlayerAvailabilityResponse(
       p_response: response,
     });
 
-    if (error) {
-      console.error("[availability] RPC error:", error.message, error);
-      return { ok: false, error: error.message };
-    }
-    console.log("[availability] RPC success — response saved to cloud");
+    if (error) return { ok: false, error: error.message };
     return { ok: true };
   } catch (e) {
-    console.error("[availability] upsertPlayerAvailabilityResponse threw:", e);
     return { ok: false, error: String(e) };
   }
 }
