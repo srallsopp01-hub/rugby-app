@@ -31,6 +31,7 @@ function LoginContent() {
       ? `/signup?join_token=${joinToken}`
       : "/signup";
 
+  const [mode, setMode] = useState<"coach" | "player">(isPlayerInvite ? "player" : "coach");
   const [email, setEmail] = useState(prefillEmail);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -63,7 +64,7 @@ function LoginContent() {
       return;
     }
 
-    router.push(safeNext || "/coach");
+    router.push(safeNext || (mode === "player" ? "/player" : "/coach"));
     router.refresh();
   }
 
@@ -78,8 +79,33 @@ function LoginContent() {
             ? "Sign in with the email your coach invited."
             : inviteToken || joinToken
             ? "Sign in to join your team."
+            : mode === "player"
+            ? "Sign in with the email your coach uses for you."
             : "Welcome back, coach."}
         </p>
+
+        {!inviteToken && !joinToken && (
+          <div className="mt-4 flex rounded-lg border border-border bg-panel-2 p-1">
+            <button
+              type="button"
+              onClick={() => setMode("coach")}
+              className={`flex-1 rounded-md py-1.5 text-xs font-bold uppercase transition ${
+                mode === "coach" ? "bg-foreground-strong text-background" : "text-muted hover:text-foreground"
+              }`}
+            >
+              Coach
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("player")}
+              className={`flex-1 rounded-md py-1.5 text-xs font-bold uppercase transition ${
+                mode === "player" ? "bg-foreground-strong text-background" : "text-muted hover:text-foreground"
+              }`}
+            >
+              Player
+            </button>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
