@@ -14,27 +14,6 @@ import type { EventItem } from "@/app/rugby-tagging/types";
 import type { SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
 import { getMatchVideoSignedUrlWithResult, refreshVideoSignedUrl, SIGNED_URL_EXPIRY_SECONDS } from "@/lib/matchVideoCloud";
 
-const ACTION_LABELS: Record<string, string> = {
-  tackle: "Tackle",
-  "missed tackle": "Missed",
-  carry: "Carry",
-  turnover: "Turnover",
-};
-
-const ACTION_COLOURS: Record<string, string> = {
-  tackle: "bg-[#7ea37e]/15 text-[#7ea37e] border-[#7ea37e]/25",
-  "missed tackle": "bg-[#b16e6e]/15 text-[#b16e6e] border-[#b16e6e]/25",
-  carry: "bg-[#b79a63]/15 text-[#b79a63] border-[#b79a63]/25",
-  turnover: "bg-[#b79a63]/15 text-[#b79a63] border-[#b79a63]/25",
-};
-
-const ACTION_BADGE_ACTIVE: Record<string, string> = {
-  tackle: "bg-[#7ea37e]/30 text-[#7ea37e] border-[#7ea37e]/50",
-  "missed tackle": "bg-[#b16e6e]/30 text-[#b16e6e] border-[#b16e6e]/50",
-  carry: "bg-[#b79a63]/30 text-[#b79a63] border-[#b79a63]/50",
-  turnover: "bg-[#b79a63]/30 text-[#b79a63] border-[#b79a63]/50",
-};
-
 function playerNameSet(player: SquadPlayer): Set<string> {
   return new Set([
     player.fullName.toLowerCase().trim(),
@@ -102,7 +81,6 @@ export default function GameDetailPage() {
     return () => { if (videoUrl.startsWith("blob:")) URL.revokeObjectURL(videoUrl); };
   }, [videoUrl]);
 
-  // Auto-load from cloud if match has a stored video path and no local URL yet
   useEffect(() => {
     if (videoUrl || !match?.videoStoragePath) return;
     let cancelled = false;
@@ -115,9 +93,7 @@ export default function GameDetailPage() {
       if (error) setVideoError(error);
       setVideoLoading(false);
     });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [match?.videoStoragePath, videoUrl]);
 
   function handleVideoFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -131,11 +107,12 @@ export default function GameDetailPage() {
 
   function seekToEvent(idx: number) {
     const ev = events[idx];
-    if (!videoRef.current || !ev) return;
-    videoRef.current.currentTime = Math.max(0, ev.timestamp - 3);
-    videoRef.current.play();
+    if (!ev) return;
     setActiveEventIdx(idx);
-    // Scroll the playlist item into view
+    if (videoRef.current) {
+      videoRef.current.currentTime = Math.max(0, ev.timestamp - 3);
+      videoRef.current.play();
+    }
     setTimeout(() => {
       const item = playlistRef.current?.querySelector(`[data-idx="${idx}"]`);
       item?.scrollIntoView({ block: "nearest", behavior: "smooth" });
@@ -164,6 +141,8 @@ export default function GameDetailPage() {
   const scrums = spEvents.filter((e) => e.setPieceType === "scrum");
   const scrumsWon = scrums.filter((e) => e.scrumResult === "Won").length;
   const coachingPlan = buildPlayerCoachingPlan(row);
+  const safeActiveIdx = activeEventIdx ?? 0;
+  const selectedEvent = activeEventIdx !== null ? (events[activeEventIdx] ?? null) : null;
 
   return (
     <div className="p-6 max-w-3xl space-y-5">
@@ -185,7 +164,82 @@ export default function GameDetailPage() {
         </div>
       </div>
 
-      {/* Video player + playlist */}
+      {/* Involvement playlist — always visible */}
+      <div className="rounded-xl border border-border bg-panel p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-foreground-strong">Involvement playlist</h2>
+          <span className="text-xs text-muted">
+            {events.length} logged event{events.length === 1 ? "" : "s"}
+          </span>
+        </div>
+
+        {events.length === 0 ? (
+          <div className="rounded-xl border border-border bg-panel-2 px-4 py-4 text-sm text-muted">
+            No tagged involvements in this match.
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => seekToEvent(Math.max(safeActiveIdx - 1, 0))}
+                disabled={activeEventIdx === null || safeActiveIdx === 0}
+                className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground disabled:opacity-50"
+              >
+                Previous clip
+              </button>
+              <button
+                type="button"
+                onClick={() => seekToEvent(activeEventIdx === null ? 0 : Math.min(safeActiveIdx + 1, events.length - 1))}
+                disabled={activeEventIdx !== null && safeActiveIdx >= events.length - 1}
+                className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground disabled:opacity-50"
+              >
+                Next clip
+              </button>
+            </div>
+
+            {selectedEvent && (
+              <div className="rounded-xl border border-border bg-panel-2 px-4 py-3 text-sm text-muted">
+                <span className="font-medium text-foreground">Current clip:</span>{" "}
+                {selectedEvent.text} • {formatTime(selectedEvent.timestamp)}
+              </div>
+            )}
+
+            <div ref={playlistRef} className="max-h-[460px] space-y-2 overflow-y-auto pr-1">
+              {events.map((event, index) => {
+                const isActive = activeEventIdx === index;
+                return (
+                  <button
+                    type="button"
+                    key={event.id}
+                    data-idx={index}
+                    onClick={() => seekToEvent(index)}
+                    className={`flex w-full items-start justify-between gap-3 rounded-xl border px-4 py-3 text-left transition ${
+                      isActive
+                        ? "border-border-light bg-panel text-foreground"
+                        : "border-border bg-panel-2 hover:border-border-light hover:bg-panel"
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-foreground">{event.text}</div>
+                      {event.playerAction && (
+                        <div className="mt-1 text-xs uppercase tracking-[0.12em] text-muted">
+                          {event.playerAction}
+                        </div>
+                      )}
+                    </div>
+                    <div className="shrink-0 rounded-lg border border-border bg-panel px-2 py-1 text-xs font-medium text-foreground">
+                      {formatTime(event.timestamp)}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Video player */}
       {videoLoading ? (
         <div className="flex items-center gap-2 rounded-xl border border-border bg-panel px-5 py-4 text-sm text-muted">
           <svg className="animate-spin h-4 w-4 shrink-0 text-muted-2" viewBox="0 0 24 24" fill="none">
@@ -212,81 +266,6 @@ export default function GameDetailPage() {
               });
             }}
           />
-
-          {events.length > 0 && (
-            <div className="border-t border-border">
-              {/* Playlist header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                <div>
-                  <p className="text-xs font-semibold text-foreground-strong uppercase tracking-wider">
-                    Your moments
-                  </p>
-                  <p className="text-[11px] text-muted-2 mt-0.5">
-                    {activeEventIdx !== null ? `${activeEventIdx + 1} of ${events.length}` : `${events.length} tagged actions`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => seekToEvent(activeEventIdx !== null && activeEventIdx > 0 ? activeEventIdx - 1 : 0)}
-                    disabled={activeEventIdx === null || activeEventIdx === 0}
-                    className="flex items-center gap-1.5 rounded-lg border border-border bg-panel-2 px-3 py-1.5 text-xs text-muted transition-all duration-150 hover:border-border-light hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    ← Prev
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (activeEventIdx === null) seekToEvent(0);
-                      else if (activeEventIdx < events.length - 1) seekToEvent(activeEventIdx + 1);
-                    }}
-                    disabled={activeEventIdx !== null && activeEventIdx >= events.length - 1}
-                    className="flex items-center gap-1.5 rounded-lg border border-border bg-panel-2 px-3 py-1.5 text-xs text-muted transition-all duration-150 hover:border-border-light hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    Next →
-                  </button>
-                </div>
-              </div>
-
-              {/* Playlist items */}
-              <div ref={playlistRef} className="max-h-56 overflow-y-auto">
-                {events.map((e, idx) => {
-                  const isActive = activeEventIdx === idx;
-                  const badgeClass = e.playerAction
-                    ? (isActive ? ACTION_BADGE_ACTIVE[e.playerAction] : ACTION_COLOURS[e.playerAction]) ?? "border-border text-muted"
-                    : "border-border text-muted";
-                  return (
-                    <button
-                      key={e.id}
-                      type="button"
-                      data-idx={idx}
-                      onClick={() => seekToEvent(idx)}
-                      className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors border-b border-border last:border-0 ${
-                        isActive ? "bg-panel-3" : "hover:bg-panel-2"
-                      }`}
-                    >
-                      <span className="shrink-0 text-[11px] text-muted-2 font-mono w-10 text-right tabular-nums">
-                        {formatTime(e.timestamp)}
-                      </span>
-                      {e.playerAction && (
-                        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${badgeClass}`}>
-                          {ACTION_LABELS[e.playerAction] ?? e.playerAction}
-                        </span>
-                      )}
-                      <span className={`text-sm leading-snug truncate ${isActive ? "text-foreground" : "text-muted"}`}>
-                        {e.text}
-                      </span>
-                      {isActive && (
-                        <span className="ml-auto shrink-0 h-1.5 w-1.5 rounded-full bg-[#7ea37e]" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Change video link */}
           <div className="px-4 py-2.5 border-t border-border">
             <label className="cursor-pointer text-xs text-muted-2 hover:text-muted transition-colors">
               Load different video
@@ -295,7 +274,6 @@ export default function GameDetailPage() {
           </div>
         </div>
       ) : (
-        /* No video — invite to load */
         <div className="flex flex-col gap-3">
           {videoError && (
             <p className="rounded-lg border border-danger/30 bg-danger/10 px-4 py-2 text-xs text-danger">
@@ -303,17 +281,17 @@ export default function GameDetailPage() {
             </p>
           )}
           <label className="block cursor-pointer">
-          <input type="file" accept="video/*" onChange={handleVideoFile} className="hidden" />
-          <div className="rounded-xl border border-dashed border-border bg-panel-2/50 px-6 py-8 text-center transition-colors hover:border-border-light hover:bg-panel-2">
-            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-panel-3">
-              <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
-                <polygon points="5,2 13,8 5,14" fill="currentColor" className="text-muted-2" />
-              </svg>
+            <input type="file" accept="video/*" onChange={handleVideoFile} className="hidden" />
+            <div className="rounded-xl border border-dashed border-border bg-panel-2/50 px-6 py-8 text-center transition-colors hover:border-border-light hover:bg-panel-2">
+              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-panel-3">
+                <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+                  <polygon points="5,2 13,8 5,14" fill="currentColor" className="text-muted-2" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium text-foreground">Load match video</p>
+              <p className="mt-1 text-xs text-muted-2">Select the video file to watch and step through your tagged moments</p>
             </div>
-            <p className="text-sm font-medium text-foreground">Load match video</p>
-            <p className="mt-1 text-xs text-muted-2">Select the video file to watch and step through your tagged moments</p>
-          </div>
-        </label>
+          </label>
         </div>
       )}
 
@@ -399,28 +377,6 @@ export default function GameDetailPage() {
           </div>
         </div>
       </div>
-
-      {/* Event timeline — shown when no video loaded */}
-      {!videoUrl && events.length > 0 && (
-        <div className="rounded-xl border border-border bg-panel p-5 space-y-4">
-          <p className="text-xs text-muted-2 uppercase tracking-wider font-medium">Your moments · {events.length}</p>
-          <div className="flex flex-col gap-2">
-            {events.map((e) => (
-              <div key={e.id} className="flex items-start gap-3">
-                <span className="shrink-0 text-xs text-muted-2 font-mono mt-0.5 w-10 text-right">
-                  {formatTime(e.timestamp)}
-                </span>
-                {e.playerAction && (
-                  <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${ACTION_COLOURS[e.playerAction] ?? "border-border text-muted"}`}>
-                    {ACTION_LABELS[e.playerAction] ?? e.playerAction}
-                  </span>
-                )}
-                <span className="text-sm text-muted leading-snug">{e.text}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       <div className="rounded-xl border border-dashed border-border bg-panel p-4 text-xs leading-5 text-muted">
         Match-level coach notes are hidden in the player app until notes can be
