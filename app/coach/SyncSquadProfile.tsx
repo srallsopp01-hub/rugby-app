@@ -24,10 +24,16 @@ export function SyncSquadProfile() {
       const merged = mergeSquadProfiles(cloud, local);
       if (!merged) return;
 
-      saveSquadProfile(merged);
+      // Availability responses are player-owned — always use the cloud version
+      // so coach saves never overwrite what players have submitted.
+      const finalProfile = cloud
+        ? { ...merged, availabilityResponses: cloud.availabilityResponses ?? [] }
+        : merged;
 
-      if (!cloud || merged.updatedAt !== cloud.updatedAt) {
-        void upsertCloudSquadProfile(merged);
+      saveSquadProfile(finalProfile);
+
+      if (!cloud || finalProfile.updatedAt !== cloud.updatedAt) {
+        void upsertCloudSquadProfile(finalProfile);
       }
     }
 

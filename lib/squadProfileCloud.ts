@@ -56,7 +56,7 @@ function rowToProfile(row: SquadProfileRow): SquadProfile {
 function profileToUpsertPayload(
   profile: SquadProfile,
   userId: string
-): Omit<SquadProfileRow, "id"> {
+): Omit<SquadProfileRow, "id" | "availability_responses"> {
   return {
     user_id: userId,
     profile_id: profile.id,
@@ -71,7 +71,6 @@ function profileToUpsertPayload(
     kpi_targets: profile.kpiTargets ?? null,
     fixtures: profile.fixtures ?? null,
     training_sessions: profile.trainingSessions ?? null,
-    availability_responses: profile.availabilityResponses ?? null,
     session_logs: profile.sessionLogs ?? null,
     ai_chat_history: profile.aiChatHistory ?? null,
     league_position: profile.leaguePosition ?? null,
