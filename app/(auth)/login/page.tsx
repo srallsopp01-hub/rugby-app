@@ -59,7 +59,7 @@ function LoginContent() {
     }
 
     if (inviteToken) {
-      router.push(`/invite/accept?token=${inviteToken}`);
+      router.push(inviteRole === "player" ? "/player" : "/coach");
       router.refresh();
       return;
     }

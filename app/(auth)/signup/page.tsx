@@ -68,7 +68,7 @@ function SignupContent() {
         return;
       }
 
-      router.push(`/invite/accept?token=${inviteToken}&email=${encodeURIComponent(email)}`);
+      router.push(inviteRole === "player" ? "/player" : "/coach");
       router.refresh();
       return;
     }

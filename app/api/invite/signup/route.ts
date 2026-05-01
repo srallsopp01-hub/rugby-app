@@ -97,17 +97,36 @@ export async function POST(req: Request) {
       ? { account_role: "player" }
       : { coach_name: name ?? "" };
 
-  const { error: createError } = await admin.auth.admin.createUser({
-    email: normalizedEmail,
-    password,
-    email_confirm: true,
-    user_metadata: userMeta,
-  });
+  // Check for an existing (including soft-deleted) user before attempting creation.
+  // Soft-deleted users in Supabase cause createUser to fail with a transport-level error
+  // rather than a clean JSON error, which would surface as "Load failed" in the UI.
+  const { data: listData } = await admin.auth.admin.listUsers({ perPage: 1000 });
+  const existingUser = listData?.users?.find(
+    (u) => u.email?.toLowerCase() === normalizedEmail
+  );
+  if (existingUser) {
+    return NextResponse.json({ ok: true, userExists: true });
+  }
+
+  let createError: Error | null = null;
+  try {
+    const { error } = await admin.auth.admin.createUser({
+      email: normalizedEmail,
+      password,
+      email_confirm: true,
+      user_metadata: userMeta,
+    });
+    createError = error ?? null;
+  } catch (err) {
+    createError = err instanceof Error ? err : new Error(String(err));
+  }
 
   if (createError) {
+    const msg = createError.message?.toLowerCase() ?? "";
     const alreadyExists =
-      createError.message?.toLowerCase().includes("already registered") ||
-      createError.message?.toLowerCase().includes("already been registered") ||
+      msg.includes("already registered") ||
+      msg.includes("already been registered") ||
+      msg.includes("user already exists") ||
       (createError as { code?: string }).code === "email_exists";
     if (alreadyExists) {
       return NextResponse.json({ ok: true, userExists: true });
