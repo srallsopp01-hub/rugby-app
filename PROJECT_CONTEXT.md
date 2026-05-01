@@ -81,7 +81,7 @@ The app is split into four clearly separated layers with independent layouts and
 | `/player/team-analytics` | Live | Read-only team analytics for players — shared stats only, no other-player grades/coaching comments |
 | `/player/compare` | Live | Read-only match and player comparison inside the player app — shared stats only except own-player coaching plan |
 | `/player/games` | Live | Match history |
-| `/player/games/[gameId]` | Live | Game detail: own-player stats/grades, constructive coaching plan, video playlist, set piece |
+| `/player/games/[gameId]` | Live | Game detail: involvement playlist (always visible, Previous/Next clip navigation, current-clip card, scrollable list), own-player stats/grades, constructive coaching plan, video player, set piece |
 | `/player/review` | Live | Shared coach clips from film review; unscoped text notes are hidden until notes can be assigned to a player |
 | `/player/settings` | Live | Profile, identity switch, theme, local data snapshot, quick nav links |
 
