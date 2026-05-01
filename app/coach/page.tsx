@@ -346,6 +346,27 @@ export default function CoachDashboardPage() {
     void fetchNotifyRequests().then((reqs) => setNotifyRequestCount(reqs.length));
   }, []);
 
+  const [showAvailDetails, setShowAvailDetails] = useState(false);
+  type RemindStatus = "idle" | "sending" | "sent" | "error";
+  const [remindStatus, setRemindStatus] = useState<RemindStatus>("idle");
+
+  async function sendAvailabilityReminder(fixtureId: string) {
+    setRemindStatus("sending");
+    try {
+      const res = await fetch("/api/availability/remind", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fixtureId }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setRemindStatus("sent");
+      setTimeout(() => setRemindStatus("idle"), 4000);
+    } catch {
+      setRemindStatus("error");
+      setTimeout(() => setRemindStatus("idle"), 4000);
+    }
+  }
+
   const today = todayIso();
   const fixtures = useMemo(() => profile?.fixtures ?? [], [profile]);
   const trainingSessions = useMemo(() => profile?.trainingSessions ?? [], [profile]);
@@ -658,6 +679,11 @@ export default function CoachDashboardPage() {
                     const available = responses.filter((r) => r.response === "available").length;
                     const unavailable = responses.filter((r) => r.response === "unavailable").length;
                     const pending = Math.max(0, activePlayers.length - available - unavailable);
+                    const yesPlayers = activePlayers.filter((p) => responses.find((r) => r.playerId === p.id)?.response === "available");
+                    const noPlayers = activePlayers.filter((p) => responses.find((r) => r.playerId === p.id)?.response === "unavailable");
+                    const maybePlayers = activePlayers.filter((p) => responses.find((r) => r.playerId === p.id)?.response === "maybe");
+                    const pendingPlayers = activePlayers.filter((p) => !responses.find((r) => r.playerId === p.id));
+                    const playerName = (p: { preferredName: string; fullName: string }) => p.preferredName || p.fullName;
                     return (
                       <div className="mt-3 border-t border-border pt-3">
                         <div className="flex flex-wrap gap-1 mb-2">
@@ -673,7 +699,7 @@ export default function CoachDashboardPage() {
                             return (
                               <span
                                 key={player.id}
-                                title={`${player.preferredName || player.fullName}: ${r ? r.response : "pending"}`}
+                                title={`${playerName(player)}: ${r ? r.response : "pending"}`}
                                 className={`inline-block h-2 w-2 rounded-full ${color}`}
                               />
                             );
@@ -685,7 +711,52 @@ export default function CoachDashboardPage() {
                           <span className="font-semibold text-danger">{unavailable} no</span>
                           <span className="text-muted-2">·</span>
                           <span className="text-muted">{pending} pending</span>
+                          <button
+                            type="button"
+                            onClick={() => setShowAvailDetails((v) => !v)}
+                            className="ml-auto text-[11px] text-accent underline-offset-2 hover:underline"
+                          >
+                            {showAvailDetails ? "Hide" : "Details"}
+                          </button>
                         </div>
+                        {showAvailDetails && (
+                          <div className="mt-3 space-y-2 border-t border-border pt-3 text-xs">
+                            {yesPlayers.length > 0 && (
+                              <div>
+                                <span className="font-semibold text-success">Available · </span>
+                                <span className="text-foreground">{yesPlayers.map(playerName).join(", ")}</span>
+                              </div>
+                            )}
+                            {noPlayers.length > 0 && (
+                              <div>
+                                <span className="font-semibold text-danger">Can&apos;t make it · </span>
+                                <span className="text-foreground">{noPlayers.map(playerName).join(", ")}</span>
+                              </div>
+                            )}
+                            {maybePlayers.length > 0 && (
+                              <div>
+                                <span className="font-semibold text-warning">Maybe · </span>
+                                <span className="text-foreground">{maybePlayers.map(playerName).join(", ")}</span>
+                              </div>
+                            )}
+                            {pendingPlayers.length > 0 && (
+                              <div>
+                                <span className="font-semibold text-muted">No reply · </span>
+                                <span className="text-muted">{pendingPlayers.map(playerName).join(", ")}</span>
+                                <div className="mt-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => sendAvailabilityReminder(nextFixture.id)}
+                                    disabled={remindStatus === "sending" || remindStatus === "sent"}
+                                    className="rounded-lg border border-border bg-panel-2 px-3 py-1.5 text-[11px] font-medium text-foreground hover:bg-panel-3 disabled:opacity-60"
+                                  >
+                                    {remindStatus === "sending" ? "Sending…" : remindStatus === "sent" ? "Reminder sent ✓" : remindStatus === "error" ? "Failed — try again" : "Send reminder email"}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
