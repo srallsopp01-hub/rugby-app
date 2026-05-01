@@ -35,14 +35,24 @@ const ACTION_BADGE_ACTIVE: Record<string, string> = {
   turnover: "bg-[#b79a63]/30 text-[#b79a63] border-[#b79a63]/50",
 };
 
+function playerNameSet(player: SquadPlayer): Set<string> {
+  return new Set([
+    player.fullName.toLowerCase().trim(),
+    player.preferredName.toLowerCase().trim(),
+    ...player.nicknames.map((n) => n.toLowerCase().trim()),
+  ]);
+}
+
 function playerEvents(match: SavedMatchRecord, player: SquadPlayer, rosterName: string): EventItem[] {
+  const names = playerNameSet(player);
+  const rosterLower = rosterName.toLowerCase().trim();
   return match.events
     .filter(
       (e) =>
         e.category === "player" &&
         (e.playerName === rosterName ||
-          e.playerName === player.fullName ||
-          e.playerName === player.preferredName)
+          (e.playerName != null && e.playerName.toLowerCase().trim() === rosterLower) ||
+          (e.playerName != null && names.has(e.playerName.toLowerCase().trim())))
     )
     .sort((a, b) => a.timestamp - b.timestamp);
 }
@@ -72,9 +82,10 @@ export default function GameDetailPage() {
     const m = all.find((s) => s.id === gameId) ?? null;
     if (!m) return { match: null, row: null, events: [], notFound: true };
     const rows = buildReportRowsFromMatch(m.rosterRows, m.events);
+    const names = playerNameSet(currentPlayer);
     const playerRow =
       rows.find((r) => r.playerId && r.playerId === currentPlayer.id) ??
-      rows.find((r) => r.name === currentPlayer.fullName || r.name === currentPlayer.preferredName) ??
+      rows.find((r) => names.has(r.name.toLowerCase().trim())) ??
       null;
     if (!playerRow) return { match: null, row: null, events: [], notFound: true };
     return { match: m, row: playerRow, events: playerEvents(m, currentPlayer, playerRow.name), notFound: false };

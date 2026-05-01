@@ -18,8 +18,8 @@ export function SyncPlayerData() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user || cancelled) return;
+      console.log("[SyncPlayerData] signed in as", user.id);
 
-      // Check if this authenticated user is an accepted player member
       const { data: membership, error: membershipError } = await supabase
         .from("team_members")
         .select("player_squad_id, owner_user_id")
@@ -32,12 +32,12 @@ export function SyncPlayerData() {
         console.error("[SyncPlayerData] membership lookup failed:", membershipError.message);
         return;
       }
+      if (!membership || cancelled) {
+        console.warn("[SyncPlayerData] no accepted player membership found for", user.id);
+        return;
+      }
+      console.log("[SyncPlayerData] membership found:", membership);
 
-      if (!membership || cancelled) return;
-
-      // Fetch coach's squad profile and match data first so the profile is in localStorage
-      // before we set the player identity. PlayerContext memoizes currentPlayer on currentPlayerId,
-      // so the profile must already be present when the identity key changes or the memo won't re-run.
       const [{ profile, error: profileError }, { records: cloudMatches, error: matchesError }] =
         await Promise.all([fetchCloudSquadProfile(), fetchCloudSavedMatches()]);
 
@@ -45,16 +45,18 @@ export function SyncPlayerData() {
 
       if (profileError) {
         console.error("[SyncPlayerData] squad profile fetch failed:", profileError);
+      } else {
+        console.log("[SyncPlayerData] profile fetched:", profile ? profile.teamName : "null");
       }
       if (matchesError) {
-        console.error("[SyncPlayerData] saved matches fetch failed:", matchesError);
+        console.error("[SyncPlayerData] matches fetch failed:", matchesError);
+      } else {
+        console.log("[SyncPlayerData] matches fetched:", cloudMatches.length);
       }
 
       if (profile) saveSquadProfile(profile);
       if (cloudMatches.length > 0) replaceSavedMatches(cloudMatches);
 
-      // Now set player identity (skips the PlayerPicker) and fire one event.
-      // Profile is already in localStorage, so PlayerContext can resolve currentPlayer immediately.
       if (membership.player_squad_id) {
         const currentId = localStorage.getItem(PLAYER_IDENTITY_KEY);
         if (!currentId) {

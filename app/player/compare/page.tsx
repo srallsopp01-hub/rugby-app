@@ -216,9 +216,17 @@ function MatchCard({ snapshot, title }: { snapshot: Snapshot; title: string }) {
   );
 }
 
+function playerNameSet(player: SquadPlayer): Set<string> {
+  return new Set([
+    player.fullName.toLowerCase().trim(),
+    player.preferredName.toLowerCase().trim(),
+    ...player.nicknames.map((n) => n.toLowerCase().trim()),
+  ]);
+}
+
 function isCurrentPlayerRow(row: ReportRow, player: SquadPlayer) {
   if (row.playerId && row.playerId === player.id) return true;
-  return row.name === player.fullName || row.name === player.preferredName;
+  return playerNameSet(player).has(row.name.toLowerCase().trim());
 }
 
 function PlayerCard({

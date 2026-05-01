@@ -24,13 +24,21 @@ import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { Grade, ReportRow } from "@/app/rugby-tagging/types";
 import type { SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
 
+function playerNameSet(player: SquadPlayer): Set<string> {
+  return new Set([
+    player.fullName.toLowerCase().trim(),
+    player.preferredName.toLowerCase().trim(),
+    ...player.nicknames.map((n) => n.toLowerCase().trim()),
+  ]);
+}
+
 function getPlayerMatches(matches: SavedMatchRecord[], player: SquadPlayer) {
+  const names = playerNameSet(player);
   return matches.filter((m) =>
     m.rosterRows.some(
       (r) =>
         (r.playerId && r.playerId === player.id) ||
-        r.name === player.fullName ||
-        r.name === player.preferredName
+        names.has(r.name.toLowerCase().trim())
     )
   );
 }
@@ -138,12 +146,13 @@ export default function PerformancePage() {
     let all: SavedMatchRecord[];
     try { all = JSON.parse(matchesRaw); } catch { return []; }
     const filtered = getPlayerMatches(all, currentPlayer);
+    const names = playerNameSet(currentPlayer);
     const pairs: TrendEntry[] = [];
     for (const m of filtered) {
       const allRows = buildReportRowsFromMatch(m.rosterRows, m.events);
       const row =
         allRows.find((r) => r.playerId && r.playerId === currentPlayer.id) ??
-        allRows.find((r) => r.name === currentPlayer.fullName || r.name === currentPlayer.preferredName) ??
+        allRows.find((r) => names.has(r.name.toLowerCase().trim())) ??
         null;
       if (!row) continue;
       pairs.push({
