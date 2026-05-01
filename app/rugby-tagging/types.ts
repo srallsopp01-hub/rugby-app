@@ -77,6 +77,7 @@ export type RosterRow = {
   name: string;
   position: string;
   minutes: number | "";
+  playerId?: string;
 };
 
 export type Grade = "Dominant" | "Competitive" | "Below" | "Poor";
@@ -102,6 +103,7 @@ export type ReportRow = {
   workRateGrade: Grade;
   overallGrade: Grade;
   coachComment: string;
+  playerId?: string;
 };
 
 export type UnitSummaryRow = {

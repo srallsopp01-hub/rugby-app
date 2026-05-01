@@ -217,6 +217,7 @@ function MatchCard({ snapshot, title }: { snapshot: Snapshot; title: string }) {
 }
 
 function isCurrentPlayerRow(row: ReportRow, player: SquadPlayer) {
+  if (row.playerId && row.playerId === player.id) return true;
   return row.name === player.fullName || row.name === player.preferredName;
 }
 
@@ -313,7 +314,7 @@ export default function PlayerComparePage() {
 
   const leftPlayerName =
     leftPlayerChoice ||
-    leftSnapshot?.rows.find((row) => row.name === currentPlayer.fullName || row.name === currentPlayer.preferredName)?.name ||
+    leftSnapshot?.rows.find((row) => isCurrentPlayerRow(row, currentPlayer))?.name ||
     leftSnapshot?.rows[0]?.name ||
     "";
   const rightPlayerName =

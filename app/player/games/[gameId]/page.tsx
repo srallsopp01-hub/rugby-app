@@ -35,12 +35,14 @@ const ACTION_BADGE_ACTIVE: Record<string, string> = {
   turnover: "bg-[#b79a63]/30 text-[#b79a63] border-[#b79a63]/50",
 };
 
-function playerEvents(match: SavedMatchRecord, player: SquadPlayer): EventItem[] {
+function playerEvents(match: SavedMatchRecord, player: SquadPlayer, rosterName: string): EventItem[] {
   return match.events
     .filter(
       (e) =>
         e.category === "player" &&
-        (e.playerName === player.fullName || e.playerName === player.preferredName)
+        (e.playerName === rosterName ||
+          e.playerName === player.fullName ||
+          e.playerName === player.preferredName)
     )
     .sort((a, b) => a.timestamp - b.timestamp);
 }
@@ -70,11 +72,12 @@ export default function GameDetailPage() {
     const m = all.find((s) => s.id === gameId) ?? null;
     if (!m) return { match: null, row: null, events: [], notFound: true };
     const rows = buildReportRowsFromMatch(m.rosterRows, m.events);
-    const playerRow = rows.find(
-      (r) => r.name === currentPlayer.fullName || r.name === currentPlayer.preferredName
-    ) ?? null;
+    const playerRow =
+      rows.find((r) => r.playerId && r.playerId === currentPlayer.id) ??
+      rows.find((r) => r.name === currentPlayer.fullName || r.name === currentPlayer.preferredName) ??
+      null;
     if (!playerRow) return { match: null, row: null, events: [], notFound: true };
-    return { match: m, row: playerRow, events: playerEvents(m, currentPlayer), notFound: false };
+    return { match: m, row: playerRow, events: playerEvents(m, currentPlayer, playerRow.name), notFound: false };
   }, [matchesRaw, currentPlayer, gameId]);
 
   const videoRef = useRef<HTMLVideoElement>(null);

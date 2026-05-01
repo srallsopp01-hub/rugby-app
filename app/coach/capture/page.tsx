@@ -888,31 +888,40 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     value: string
   ) => {
     setRosterRows((prev) =>
-      prev.map((row) =>
-        row.number === number
-          ? {
-              ...row,
-              [field]:
-                field === "minutes"
-                  ? value === ""
-                    ? ""
-                    : Math.max(0, Math.min(120, Number(value) || 0))
-                  : value,
-            }
-          : row
-      )
+      prev.map((row) => {
+        if (row.number !== number) return row;
+        if (field === "name") {
+          const needle = value.toLowerCase().trim();
+          const matched = squadProfile?.players.find(
+            (p) =>
+              p.fullName.toLowerCase() === needle ||
+              p.preferredName.toLowerCase() === needle ||
+              p.nicknames.some((n) => n.toLowerCase() === needle)
+          ) ?? null;
+          return { ...row, name: value, playerId: matched?.id };
+        }
+        return {
+          ...row,
+          [field]:
+            field === "minutes"
+              ? value === ""
+                ? ""
+                : Math.max(0, Math.min(120, Number(value) || 0))
+              : value,
+        };
+      })
     );
   };
 
   const applyPastedTeamSheet = () => {
     if (!teamSheetPaste.trim()) return;
-    setRosterRows((prev) => parseTeamSheetText(teamSheetPaste, prev));
+    setRosterRows((prev) => parseTeamSheetText(teamSheetPaste, prev, squadProfile?.players));
     setStatusMessage("Team sheet paste applied");
   };
 
   const submitTeamSheet = () => {
     const nextRows = teamSheetPaste.trim()
-      ? parseTeamSheetText(teamSheetPaste, rosterRows)
+      ? parseTeamSheetText(teamSheetPaste, rosterRows, squadProfile?.players)
       : rosterRows;
 
     const namedPlayers = nextRows.filter((row) => row.name.trim()).length;

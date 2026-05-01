@@ -26,7 +26,12 @@ import type { SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
 
 function getPlayerMatches(matches: SavedMatchRecord[], player: SquadPlayer) {
   return matches.filter((m) =>
-    m.rosterRows.some((r) => r.name === player.fullName || r.name === player.preferredName)
+    m.rosterRows.some(
+      (r) =>
+        (r.playerId && r.playerId === player.id) ||
+        r.name === player.fullName ||
+        r.name === player.preferredName
+    )
   );
 }
 
@@ -136,7 +141,10 @@ export default function PerformancePage() {
     const pairs: TrendEntry[] = [];
     for (const m of filtered) {
       const allRows = buildReportRowsFromMatch(m.rosterRows, m.events);
-      const row = allRows.find((r) => r.name === currentPlayer.fullName || r.name === currentPlayer.preferredName) ?? null;
+      const row =
+        allRows.find((r) => r.playerId && r.playerId === currentPlayer.id) ??
+        allRows.find((r) => r.name === currentPlayer.fullName || r.name === currentPlayer.preferredName) ??
+        null;
       if (!row) continue;
       pairs.push({
         match: m,

@@ -16,13 +16,22 @@ import type { SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
 
 function getPlayerMatches(matches: SavedMatchRecord[], player: SquadPlayer) {
   return matches.filter((m) =>
-    m.rosterRows.some((r) => r.name === player.fullName || r.name === player.preferredName)
+    m.rosterRows.some(
+      (r) =>
+        (r.playerId && r.playerId === player.id) ||
+        r.name === player.fullName ||
+        r.name === player.preferredName
+    )
   );
 }
 
 function getPlayerRow(match: SavedMatchRecord, player: SquadPlayer): ReportRow | null {
   const rows = buildReportRowsFromMatch(match.rosterRows, match.events);
-  return rows.find((r) => r.name === player.fullName || r.name === player.preferredName) ?? null;
+  return (
+    rows.find((r) => r.playerId && r.playerId === player.id) ??
+    rows.find((r) => r.name === player.fullName || r.name === player.preferredName) ??
+    null
+  );
 }
 
 function avg(nums: number[]): number {

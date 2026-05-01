@@ -1,4 +1,5 @@
 import { DEFAULT_POSITION_BY_NUMBER, DEFAULT_ROSTER_ROWS, POSITION_OPTIONS } from "./constants";
+import type { SquadPlayer } from "./lib/squadProfile";
 import type {
   EventItem,
   Grade,
@@ -196,13 +197,14 @@ export function hydrateRosterRows(input: unknown): RosterRow[] {
         typeof row.minutes === "number"
           ? Math.max(0, Math.min(120, row.minutes))
           : "",
+      playerId: typeof row.playerId === "string" ? row.playerId : undefined,
     };
   });
 
   return base;
 }
 
-export function parseTeamSheetText(input: string, existingRows: RosterRow[]) {
+export function parseTeamSheetText(input: string, existingRows: RosterRow[], squadPlayers?: SquadPlayer[]) {
   const lines = input
     .split("\n")
     .map((line) => line.trim())
@@ -262,11 +264,19 @@ export function parseTeamSheetText(input: string, existingRows: RosterRow[]) {
     }
 
     const safeRowIndex = Math.max(0, Math.min(22, number - 1));
+    const needle = name.toLowerCase().trim();
+    const playerId = squadPlayers?.find(
+      (p) =>
+        p.fullName.toLowerCase() === needle ||
+        p.preferredName.toLowerCase() === needle ||
+        p.nicknames.some((n) => n.toLowerCase() === needle)
+    )?.id;
     nextRows[safeRowIndex] = {
       ...nextRows[safeRowIndex],
       number: safeRowIndex + 1,
       name,
       position: position || DEFAULT_POSITION_BY_NUMBER[safeRowIndex + 1] || "",
+      playerId,
     };
   });
 
@@ -648,6 +658,7 @@ export function buildReportRowsFromMatch(
         workRateGrade,
         overallGrade,
         coachComment: "",
+        playerId: row.playerId,
       };
 
       reportRow.coachComment = buildCoachComment(reportRow);
