@@ -1000,43 +1000,73 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
 
 | Batch | Focus | Status |
 |---|---|---|
-| AO | Coach Review improvements — per-clip notes, visual scrubber timeline, fullscreen video, cleaner notes/clips split, clip export PDF | Planned |
+| AS | Player invite flow fix — add role+email to invite URL; URL param fallback on accept page | Planned |
+| AT | Player login UX — Coach/Player toggle on login page; direct post-login redirect to /player | Planned |
+| AU | AI chat memory — save last 30 messages to squad_profiles.ai_chat_history; load on dashboard mount | Planned |
+| AV | Video error display — surface specific R2 error in video components instead of silent failure | Planned |
+| AW | Smarter training management — inline session editing (time/venue), one-off sessions, skip occurrences, availability request button | Planned |
+| AX | Coach Review improvements — per-clip notes, visual scrubber timeline, fullscreen video, cleaner notes/clips split, clip export PDF | Planned |
+
+**Batch AU dependency:** Requires SQL migration — add `ai_chat_history jsonb DEFAULT '[]'` column to `squad_profiles` before implementing.
 
 ---
 
 ## Next — recommended priority order
 
-### Tier 1 — Must-have to sell (do these first)
+### Tier 1 — Active now
 
-1. **Complete email delivery dashboard verification** — manual Resend/Vercel/Supabase task
+1. **Batch AS — Player invite flow fix** ← do this next
+   - Root cause: `app/api/invite/route.ts` builds invite URL without `role` or `email` params; the accept page has no fallback when DB member query fails, causing players to see coach signup
+   - Fix A: add `&role=${role}&email=${encodeURIComponent(email)}` to invite URL in the API route
+   - Fix B: read `role` + `email` from URL searchParams as fallback in `app/invite/accept/page.tsx`
+
+2. **Batch AT — Player login UX**
+   - Add Coach/Player toggle to `app/(auth)/login/page.tsx`
+   - Player mode: subtitle "Sign in with the email your coach invited you with", post-login redirect → `/player`
+   - Coach mode: existing behaviour unchanged
+
+3. **Batch AU — AI chat memory** (SQL migration required first — see above)
+   - Add `aiChatHistory?` field to `SquadProfile` type
+   - Map it in `squadProfileCloud.ts`
+   - Load last 30 messages in `DashboardChat.tsx` on mount; save after each AI response
+
+4. **Batch AV — Video error display**
+   - Update `getMatchVideoSignedUrl` in `lib/matchVideoCloud.ts` to return `{ url, error? }` instead of bare `string | null`
+   - Show inline error message in `app/player/games/[gameId]/page.tsx`, `app/coach/capture/page.tsx`, `app/coach/players/page.tsx` when video fails to load
+
+5. **Batch AW — Smarter training management**
+   - Add `skipDates?`, `oneOffDate?`, `availabilityRequested?` to `TrainingSession` type
+   - Inline editing of time/venue in `app/coach/team-setup/page.tsx`
+   - One-off session option (date picker instead of day-of-week)
+   - "Request availability" button on coach dashboard per upcoming session
+
+### Tier 2 — Complete email delivery
+
+6. **Complete email delivery dashboard verification** — manual Resend/Vercel/Supabase task
    - Resend: verify `fynlwhistle.com` domain status is `verified`
    - Vercel DNS: add missing `_dmarc` TXT record `v=DMARC1; p=none;`
    - Supabase Auth SMTP: route signup confirmation/reset emails through Resend SMTP with sender `FYNL Whistle <noreply@fynlwhistle.com>`
    - Production smoke test: direct invite, signup confirmation, password reset
 
-2. ~~**Batch AN — Production email reliability**~~ ✅ Invite API now fails visibly if Resend rejects send. Remaining manual tasks: Resend domain dashboard verification, missing DMARC DNS, Supabase Auth SMTP, and production smoke tests.
+7. ~~**Batch AN — Production email reliability**~~ ✅ Invite API now fails visibly if Resend rejects send.
 
-3. ~~**Batch AM — Stripe payments**~~ ✅ Test checkout verified end-to-end for Team Launch and Club 5 with Stripe manual currency options across USD/AUD/EUR/GBP. Remaining manual/payment tasks: create live-mode Stripe prices, swap in live `price_...` IDs, switch Vercel to `sk_live_...`, and add webhooks/subscription tracking when paid access needs enforcement.
+8. ~~**Batch AM — Stripe payments**~~ ✅ Test checkout verified end-to-end. Remaining: create live-mode Stripe prices, swap IDs, switch to `sk_live_...`.
 
-### Tier 2 — Medium-term
+### Tier 3 — Medium-term
 
-4. ~~**Fix video file size limit**~~ ✅ Batch AO moved new match video storage to Cloudflare R2 signed URLs. Remaining manual tasks: create/configure the R2 bucket, set Vercel env vars, configure bucket CORS, redeploy, and optionally migrate old Supabase Storage objects into R2.
+9. ~~**Fix video file size limit**~~ ✅ Batch AO moved to Cloudflare R2. Remaining manual tasks: R2 bucket creation, Vercel env vars, CORS config.
 
-5. **Batch AN — Coach Review improvements**
-   - Per-clip notes/comments field
-   - Quick-jump visual scrubber timeline with event markers
-   - Fullscreen video mode
-   - Cleaner visual split between coaching notes panel and clip playlist
-   - Export clip list as PDF for team presentations
-   - Smoother clip creation with visible keyboard shortcut labels
+10. **Batch AX — Coach Review improvements**
+    - Per-clip notes/comments field
+    - Quick-jump visual scrubber timeline with event markers
+    - Fullscreen video mode
+    - Export clip list as PDF for team presentations
 
-6. **Clip sharing** — export or share individual video clips externally; significant gap vs Hudl; plan once video infrastructure is solid
+11. **Clip sharing** — export or share individual video clips externally
 
-7. **Wire up the contact form** — connect `app/(marketing)/contact/page.tsx` to Resend or a CRM/scheduling tool
+12. **Wire up the contact form** — connect `app/(marketing)/contact/page.tsx` to Resend or CRM
 
-8. **Add OG images and brand assets to `public/`** — needed for social sharing previews
-
-9. **Smoke-test full invite → player sync flow end-to-end** — fresh device, real invite, confirm player data loads
+13. **Add OG images and brand assets to `public/`** — needed for social sharing previews
 
 ### Longer-term (don't prioritise yet)
 
