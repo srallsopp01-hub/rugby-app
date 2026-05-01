@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** May 2026 — Batch AR: Dashboard rebuild + cloud sync fix for fixtures/training/availability
+**Last updated:** May 2026 — Batch AY: Player RLS fix + playerId on RosterRow
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -332,7 +332,7 @@ All previous CSV downloads have been removed. One polished report.
 
 **MilestoneType** (types.ts): `"kick off"` | `"half time"` | `"second half kick off"` | `"full time"`
 
-**RosterRow**: `number`, `name`, `position`, `minutes`
+**RosterRow**: `number`, `name`, `position`, `minutes`, `playerId?` (SquadPlayer.id, resolved at roster entry time)
 
 **SquadProfile** (lib/squadProfile.ts — cross-match, persistent): `id`, `teamName`, `coachName`, `primaryColour`, `secondaryColour`, `logoUrl`, `players[]`, `actionSamples[]`, `correctionMemory[]`, `fixtures?[]`, `trainingSessions?[]`, `availabilityResponses?[]`, `sessionLogs?[]`, `leaguePosition?`
 
@@ -993,6 +993,24 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
 - ✅ Auth callback returns unresolved invite confirmations to `/invite/accept` instead of falling back to `/coach`.
 - ✅ Server-side role guards redirect accepted players away from `/coach` to `/player`, and accepted assistant coaches away from `/player` to `/coach`.
 - ✅ Verification: `npm run typecheck` passed; `npm run build` passed.
+
+---
+
+### Batch AY (May 2026) — Player page data fix: RLS + playerId on RosterRow
+
+Two-part fix for player pages (Home, Games, Performance) silently showing empty data.
+
+**Fix 1 — Supabase RLS:** `squad_profiles` and `saved_matches` SELECT policies only allowed the coach (owner) to read their own rows. Players querying via `SyncPlayerData` got empty results with no error. Added migration `20260501000003_player_read_access.sql` with a `can_read_team_data()` helper function and new SELECT policies allowing any accepted team member to read their coach's data.
+
+**Fix 2 — playerId on RosterRow:** All player-page match filtering used exact string equality (`r.name === player.fullName`). Any name mismatch (nickname, capitalisation, abbreviation) caused silent zero matches. Added `playerId?: string` to `RosterRow` and `ReportRow`; resolved at roster entry time (team sheet paste and inline name edits in Capture); all player-page filtering now checks ID first with name fallback.
+
+- ✅ `supabase/migrations/20260501000003_player_read_access.sql` — `can_read_team_data()` function + SELECT policies for squad_profiles and saved_matches
+- ✅ `app/rugby-tagging/types.ts` — `playerId?` added to `RosterRow` and `ReportRow`
+- ✅ `app/rugby-tagging/helpers.ts` — `hydrateRosterRows` preserves playerId; `parseTeamSheetText` accepts `squadPlayers?` and resolves IDs; `buildReportRowsFromMatch` propagates playerId to ReportRow
+- ✅ `app/coach/capture/page.tsx` — `updateRosterRow` resolves playerId on name change; `parseTeamSheetText` calls pass squad players
+- ✅ `app/player/page.tsx`, `games/page.tsx`, `performance/page.tsx`, `compare/page.tsx`, `games/[gameId]/page.tsx` — ID-first matching with name fallback throughout; game detail page uses roster name for event filtering
+
+**Manual step required:** Run `supabase/migrations/20260501000003_player_read_access.sql` in the Supabase SQL editor.
 
 ---
 
