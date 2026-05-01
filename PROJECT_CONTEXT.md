@@ -970,6 +970,16 @@ Full audit of all 50 routes, code quality sweep, and safe cleanup pass. Build an
 - ✅ Revoking a player member now also unlinks that user from the squad player record.
 - ✅ Verification: `npm run typecheck` passed; `npm run build` passed.
 
+### Batch AQ (May 2026) — Personal player invite copy + role guards
+
+- ✅ Player email invite landing is now personalized with invited player, coach, and team context where available.
+- ✅ Wrong-account invite opens now show a clear “this invite is for…” state with a sign-out/continue action instead of letting the coach session muddle the flow.
+- ✅ Player invite signup hides the coach name field, locks the invited email, and stores player-safe metadata instead of `coach_name`.
+- ✅ Player invite login locks the invited email and points wrong-email users back to the invite flow.
+- ✅ Auth callback returns unresolved invite confirmations to `/invite/accept` instead of falling back to `/coach`.
+- ✅ Server-side role guards redirect accepted players away from `/coach` to `/player`, and accepted assistant coaches away from `/player` to `/coach`.
+- ✅ Verification: `npm run typecheck` passed; `npm run build` passed.
+
 ---
 
 ### Planned batches (not yet started)

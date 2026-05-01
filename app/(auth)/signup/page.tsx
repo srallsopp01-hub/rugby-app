@@ -18,9 +18,13 @@ function SignupContent() {
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("token");
   const joinToken = searchParams.get("join_token");
+  const inviteRole = searchParams.get("role");
+  const isPlayerInvite = Boolean(inviteToken && inviteRole === "player");
   const prefillEmail = searchParams.get("email") ?? "";
   const inviteLoginHref = inviteToken
-    ? `/login?token=${inviteToken}${prefillEmail ? `&email=${encodeURIComponent(prefillEmail)}` : ""}`
+    ? `/login?token=${inviteToken}${prefillEmail ? `&email=${encodeURIComponent(prefillEmail)}` : ""}${
+        isPlayerInvite ? "&role=player" : ""
+      }`
     : joinToken
       ? `/login?join_token=${joinToken}`
       : "/login";
@@ -53,7 +57,7 @@ function SignupContent() {
       email,
       password,
       options: {
-        data: { coach_name: name },
+        data: isPlayerInvite ? { account_role: "player" } : { coach_name: name },
         emailRedirectTo: redirectTo,
       },
     });
@@ -125,46 +129,56 @@ function SignupContent() {
           Create account
         </h1>
         <p className="mt-1 text-sm text-muted">
-          {inviteToken || joinToken
+          {isPlayerInvite
+            ? "Confirm your email and choose a password. Your player profile is waiting."
+            : inviteToken || joinToken
             ? "Create your account to join the team."
             : "Start your 14-day free trial."}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="name"
-              className="font-mono text-[11px] font-bold uppercase text-muted-2"
-            >
-              Your name
-            </label>
-            <input
-              id="name"
-              type="text"
-              autoComplete="name"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="rounded-lg border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground-strong outline-none transition focus:border-border-light"
-            />
-          </div>
+          {!isPlayerInvite && (
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="name"
+                className="font-mono text-[11px] font-bold uppercase text-muted-2"
+              >
+                Your name
+              </label>
+              <input
+                id="name"
+                type="text"
+                autoComplete="name"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="rounded-lg border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground-strong outline-none transition focus:border-border-light"
+              />
+            </div>
+          )}
 
           <div className="flex flex-col gap-1.5">
             <label
               htmlFor="email"
               className="font-mono text-[11px] font-bold uppercase text-muted-2"
             >
-              Email
+              {isPlayerInvite ? "Confirm email" : "Email"}
             </label>
             <input
               id="email"
               type="email"
               autoComplete="email"
               required
+              readOnly={isPlayerInvite}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="rounded-lg border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground-strong outline-none transition focus:border-border-light"
+              className="rounded-lg border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground-strong outline-none transition focus:border-border-light read-only:cursor-not-allowed read-only:opacity-80"
             />
+            {isPlayerInvite && (
+              <p className="text-[11px] text-muted-2">
+                This email is locked to the invite your coach sent.
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">

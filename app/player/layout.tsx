@@ -19,6 +19,17 @@ export default async function PlayerLayout({
     redirect("/login");
   }
 
+  const { data: membership } = await supabase
+    .from("team_members")
+    .select("role")
+    .eq("member_user_id", user.id)
+    .eq("status", "accepted")
+    .maybeSingle();
+
+  if (membership?.role === "assistant_coach") {
+    redirect("/coach");
+  }
+
   return (
     <PlayerProvider>
       <SyncPlayerData />

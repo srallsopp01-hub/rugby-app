@@ -19,6 +19,17 @@ export default async function CoachLayout({
     redirect("/login");
   }
 
+  const { data: membership } = await supabase
+    .from("team_members")
+    .select("role")
+    .eq("member_user_id", user.id)
+    .eq("status", "accepted")
+    .maybeSingle();
+
+  if (membership?.role === "player") {
+    redirect("/player");
+  }
+
   return (
     <div className="flex h-screen overflow-hidden">
       <SyncSquadProfile />

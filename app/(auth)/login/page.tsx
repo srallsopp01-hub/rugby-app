@@ -18,11 +18,15 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("token");
   const joinToken = searchParams.get("join_token");
+  const inviteRole = searchParams.get("role");
+  const isPlayerInvite = Boolean(inviteToken && inviteRole === "player");
   const next = searchParams.get("next");
   const safeNext = next?.startsWith("/") && !next.startsWith("//") ? next : null;
   const prefillEmail = searchParams.get("email") ?? "";
   const inviteSignupHref = inviteToken
-    ? `/signup?token=${inviteToken}${prefillEmail ? `&email=${encodeURIComponent(prefillEmail)}` : ""}`
+    ? `/signup?token=${inviteToken}${prefillEmail ? `&email=${encodeURIComponent(prefillEmail)}` : ""}${
+        isPlayerInvite ? "&role=player" : ""
+      }`
     : joinToken
       ? `/signup?join_token=${joinToken}`
       : "/signup";
@@ -70,7 +74,11 @@ function LoginContent() {
           Sign in
         </h1>
         <p className="mt-1 text-sm text-muted">
-          {inviteToken || joinToken ? "Sign in to join your team." : "Welcome back, coach."}
+          {isPlayerInvite
+            ? "Sign in with the email your coach invited."
+            : inviteToken || joinToken
+            ? "Sign in to join your team."
+            : "Welcome back, coach."}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
@@ -79,17 +87,23 @@ function LoginContent() {
               htmlFor="email"
               className="font-mono text-[11px] font-bold uppercase text-muted-2"
             >
-              Email
+              {isPlayerInvite ? "Invited email" : "Email"}
             </label>
             <input
               id="email"
               type="email"
               autoComplete="email"
               required
+              readOnly={isPlayerInvite}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="rounded-lg border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground-strong outline-none transition focus:border-border-light"
+              className="rounded-lg border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground-strong outline-none transition focus:border-border-light read-only:cursor-not-allowed read-only:opacity-80"
             />
+            {isPlayerInvite && (
+              <p className="text-[11px] text-muted-2">
+                Not this email? Go back to the invite and choose the not-me option.
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">

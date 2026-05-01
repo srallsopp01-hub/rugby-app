@@ -48,7 +48,7 @@ export async function GET(request: Request) {
           }
         }
       }
-      return NextResponse.redirect(`${origin}/coach`);
+      return NextResponse.redirect(`${origin}/invite/accept?token=${inviteToken}`);
     }
 
     if (!error) {
