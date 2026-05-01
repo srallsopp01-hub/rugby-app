@@ -191,42 +191,82 @@ export async function POST(req: Request) {
     }
   }
 
-  // Check user not already a member of this team
-  const { data: existing } = await admin
+  // Check user not already an accepted member of this team (by user ID)
+  const { data: existingByUserId } = await admin
     .from("team_members")
     .select("id, status")
     .eq("owner_user_id", link.owner_user_id)
     .eq("member_user_id", user.id)
     .maybeSingle();
 
-  if (existing) {
+  if (existingByUserId?.status === "accepted") {
     return NextResponse.json(
-      { error: "You are already a member of this team", memberStatus: existing.status },
+      { error: "You are already a member of this team", memberStatus: existingByUserId.status },
       { status: 409 }
     );
   }
 
-  // Insert accepted team_members row (admin bypasses RLS insert policy which only allows pending_approval)
-  const { error: insertError } = await admin.from("team_members").insert({
-    owner_user_id: link.owner_user_id,
-    member_user_id: user.id,
-    email: user.email ?? "",
-    role: link.role,
-    status: "accepted",
-    accepted_at: new Date().toISOString(),
-    invite_link_id: link.id,
-    player_squad_id: isPlayerRole ? (squadPlayerId ?? null) : null,
-    invited_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  });
+  // Check for an existing row by email — old email invite rows have member_user_id=null
+  // and would cause a unique(owner_user_id, email) violation on insert
+  const normalizedEmail = (user.email ?? "").toLowerCase().trim();
+  const { data: existingByEmail } = await admin
+    .from("team_members")
+    .select("id, status")
+    .eq("owner_user_id", link.owner_user_id)
+    .eq("email", normalizedEmail)
+    .maybeSingle();
 
-  if (insertError) {
-    console.error("Failed to insert team member", JSON.stringify(insertError));
-    return NextResponse.json({
-      error: "Failed to join team",
-      detail: insertError.message,
-      code: (insertError as { code?: string }).code,
-    }, { status: 500 });
+  let memberRowId: string | null = null;
+
+  if (existingByEmail) {
+    if (existingByEmail.status === "accepted") {
+      return NextResponse.json(
+        { error: "You are already a member of this team" },
+        { status: 409 }
+      );
+    }
+    // Update the existing row (old pending/revoked email invite) to accepted
+    const { error: updateError } = await admin
+      .from("team_members")
+      .update({
+        member_user_id: user.id,
+        status: "accepted",
+        accepted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        invite_link_id: link.id,
+        player_squad_id: isPlayerRole ? (squadPlayerId ?? null) : null,
+      })
+      .eq("id", existingByEmail.id);
+
+    if (updateError) {
+      console.error("Failed to update team member", JSON.stringify(updateError));
+      return NextResponse.json({ error: "Failed to join team" }, { status: 500 });
+    }
+    memberRowId = existingByEmail.id;
+  } else {
+    // No existing row — insert fresh
+    const { data: inserted, error: insertError } = await admin
+      .from("team_members")
+      .insert({
+        owner_user_id: link.owner_user_id,
+        member_user_id: user.id,
+        email: normalizedEmail,
+        role: link.role,
+        status: "accepted",
+        accepted_at: new Date().toISOString(),
+        invite_link_id: link.id,
+        player_squad_id: isPlayerRole ? (squadPlayerId ?? null) : null,
+        invited_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
+
+    if (insertError) {
+      console.error("Failed to insert team member", JSON.stringify(insertError));
+      return NextResponse.json({ error: "Failed to join team" }, { status: 500 });
+    }
+    memberRowId = inserted?.id ?? null;
   }
 
   // Link squad player's linkedUserId in the squad profile (player only)
