@@ -36,7 +36,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid video storage path" }, { status: 400 });
   }
 
-  if (getR2ObjectOwner(storagePath) !== ctx.ownerUserId) {
+  const videoOwner = getR2ObjectOwner(storagePath);
+  if (videoOwner !== ctx.userId && videoOwner !== ctx.ownerUserId) {
     return NextResponse.json({ error: "You do not have access to this match video" }, { status: 403 });
   }
 

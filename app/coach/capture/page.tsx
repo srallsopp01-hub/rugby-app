@@ -1386,7 +1386,8 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     setVideoUploadStatus("uploading");
     setVideoUploadPercent(0);
     setVideoUploadError("");
-    const uploadPromise = uploadMatchVideoWithResult(matchId, file, (p) => setVideoUploadPercent(p.percent))
+    const pathTitle = [matchTitle, opponent && `vs_${opponent}`, matchDate].filter(Boolean).join("_") || undefined;
+    const uploadPromise = uploadMatchVideoWithResult(matchId, file, (p) => setVideoUploadPercent(p.percent), pathTitle)
       .then((result) => {
         if (result.storagePath) {
           setVideoStoragePath(result.storagePath);

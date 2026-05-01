@@ -52,11 +52,18 @@ export function getR2ObjectOwner(key: string): string | null {
   return key.split("/")[0] || null;
 }
 
-export function createMatchVideoObjectKey(ownerUserId: string, matchId: string, filename: string) {
-  const safeMatchId = matchId.replace(/[^a-zA-Z0-9_-]/g, "_");
+export function createMatchVideoObjectKey(
+  ownerUserId: string,
+  matchId: string,
+  filename: string,
+  matchTitle?: string
+) {
+  const folder = matchTitle
+    ? matchTitle.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase().slice(0, 80)
+    : matchId.replace(/[^a-zA-Z0-9_-]/g, "_");
   const safeFilename = sanitizeR2Filename(filename);
   const uniquePrefix = `${Date.now()}-${randomUUID()}`;
-  return `${ownerUserId}/${safeMatchId}/${uniquePrefix}-${safeFilename}`;
+  return `${ownerUserId}/${folder}/${uniquePrefix}-${safeFilename}`;
 }
 
 export function createR2PresignedUrl(

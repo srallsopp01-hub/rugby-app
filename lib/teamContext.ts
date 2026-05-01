@@ -4,6 +4,7 @@ export type TeamRole = "coach" | "assistant_coach" | "player";
 
 export type MyTeamContext = {
   role: TeamRole;
+  userId: string;
   ownerUserId: string;
   canManageTeam: boolean;
 };
@@ -42,10 +43,11 @@ export async function getMyTeamContext(): Promise<MyTeamContext | null> {
 
     if (!resolvedMembership) {
       // No membership row means this user is a head coach (owns their own data)
-      cachedContext = { role: "coach", ownerUserId: user.id, canManageTeam: true };
+      cachedContext = { role: "coach", userId: user.id, ownerUserId: user.id, canManageTeam: true };
     } else {
       cachedContext = {
         role: resolvedMembership.role as "assistant_coach" | "player",
+        userId: user.id,
         ownerUserId: resolvedMembership.owner_user_id as string,
         canManageTeam: Boolean(resolvedMembership.can_manage_team),
       };

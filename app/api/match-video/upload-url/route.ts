@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     );
   }
 
-  let body: { matchId?: string; filename?: string };
+  let body: { matchId?: string; filename?: string; matchTitle?: string };
   try {
     body = await req.json();
   } catch {
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "matchId and filename are required" }, { status: 400 });
   }
 
-  const storagePath = createMatchVideoObjectKey(ctx.ownerUserId, body.matchId, body.filename);
+  const storagePath = createMatchVideoObjectKey(ctx.userId, body.matchId, body.filename, body.matchTitle);
   const uploadUrl = createR2PresignedUrl(config, "PUT", storagePath, UPLOAD_URL_EXPIRY_SECONDS);
 
   return NextResponse.json({ storagePath, uploadUrl, expiresInSeconds: UPLOAD_URL_EXPIRY_SECONDS });

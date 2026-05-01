@@ -30,11 +30,12 @@ export async function getServerTeamContext(): Promise<MyTeamContext | null> {
   }
 
   if (!resolvedMembership) {
-    return { role: "coach", ownerUserId: user.id, canManageTeam: true };
+    return { role: "coach", userId: user.id, ownerUserId: user.id, canManageTeam: true };
   }
 
   return {
     role: resolvedMembership.role as MyTeamContext["role"],
+    userId: user.id,
     ownerUserId: resolvedMembership.owner_user_id as string,
     canManageTeam: Boolean(resolvedMembership.can_manage_team),
   };

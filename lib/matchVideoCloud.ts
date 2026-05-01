@@ -78,7 +78,8 @@ async function readApiJson<T extends { error?: string }>(response: Response): Pr
 export async function uploadMatchVideoWithResult(
   matchId: string,
   file: File,
-  onProgress?: (p: VideoUploadProgress) => void
+  onProgress?: (p: VideoUploadProgress) => void,
+  matchTitle?: string
 ): Promise<VideoUploadResult> {
   try {
     const response = await fetch("/api/match-video/upload-url", {
@@ -89,6 +90,7 @@ export async function uploadMatchVideoWithResult(
         filename: file.name,
         contentType: file.type || "application/octet-stream",
         size: file.size,
+        matchTitle,
       }),
     });
     const data = await readApiJson<UploadUrlResponse>(response);
@@ -115,9 +117,10 @@ export async function uploadMatchVideoWithResult(
 export async function uploadMatchVideo(
   matchId: string,
   file: File,
-  onProgress?: (p: VideoUploadProgress) => void
+  onProgress?: (p: VideoUploadProgress) => void,
+  matchTitle?: string
 ): Promise<string | null> {
-  const result = await uploadMatchVideoWithResult(matchId, file, onProgress);
+  const result = await uploadMatchVideoWithResult(matchId, file, onProgress, matchTitle);
   return result.storagePath;
 }
 
