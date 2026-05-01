@@ -24,23 +24,28 @@ function playerNameSet(player: SquadPlayer): Set<string> {
 
 function playerEvents(match: SavedMatchRecord, player: SquadPlayer, rosterName: string): EventItem[] {
   const names = playerNameSet(player);
-  const rosterLower = rosterName.toLowerCase().trim();
-  const knownNames = [rosterName, player.fullName, player.preferredName, ...player.nicknames].filter(Boolean);
+  const rosterPlayers = match.rosterRows.map((r) => r.name);
+
+  function resolveToRosterName(event: EventItem): string | null {
+    let resolved: string | null = event.playerName || findMatchingPlayer(rosterPlayers, event.text);
+    if (resolved && !rosterPlayers.includes(resolved)) {
+      // playerName set but not a roster key — mirror buildBasicStats fuzzy fallback
+      resolved = findMatchingPlayer(rosterPlayers, resolved) ?? findMatchingPlayer(rosterPlayers, event.text);
+    }
+    return resolved;
+  }
+
+  function isOurPlayer(resolvedName: string): boolean {
+    const n = resolvedName.toLowerCase().trim();
+    return n === rosterName.toLowerCase().trim() || names.has(n);
+  }
+
   return match.events
-    .filter(
-      (e) =>
-        e.category === "player" &&
-        !e.isPending &&
-        (
-          (e.playerName != null && (
-            e.playerName === rosterName ||
-            e.playerName.toLowerCase().trim() === rosterLower ||
-            names.has(e.playerName.toLowerCase().trim())
-          )) ||
-          // same fallback as buildBasicStats: parse player name from event text
-          (e.playerName == null && findMatchingPlayer(knownNames, e.text) !== null)
-        )
-    )
+    .filter((e) => {
+      if (e.category !== "player" || e.isPending) return false;
+      const resolved = resolveToRosterName(e);
+      return resolved !== null && isOurPlayer(resolved);
+    })
     .sort((a, b) => a.timestamp - b.timestamp);
 }
 
