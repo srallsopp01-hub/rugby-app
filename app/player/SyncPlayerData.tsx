@@ -35,16 +35,9 @@ export function SyncPlayerData() {
 
       if (!membership || cancelled) return;
 
-      // Auto-set player identity in localStorage (skips the PlayerPicker)
-      if (membership.player_squad_id) {
-        const currentId = localStorage.getItem(PLAYER_IDENTITY_KEY);
-        if (!currentId) {
-          localStorage.setItem(PLAYER_IDENTITY_KEY, membership.player_squad_id);
-          window.dispatchEvent(new Event("player-identity-changed"));
-        }
-      }
-
-      // Fetch coach's squad profile and match data (RLS allows this for accepted members)
+      // Fetch coach's squad profile and match data first so the profile is in localStorage
+      // before we set the player identity. PlayerContext memoizes currentPlayer on currentPlayerId,
+      // so the profile must already be present when the identity key changes or the memo won't re-run.
       const [{ profile, error: profileError }, { records: cloudMatches, error: matchesError }] =
         await Promise.all([fetchCloudSquadProfile(), fetchCloudSavedMatches()]);
 
@@ -57,11 +50,18 @@ export function SyncPlayerData() {
         console.error("[SyncPlayerData] saved matches fetch failed:", matchesError);
       }
 
-      if (profile) {
-        saveSquadProfile(profile);
-        window.dispatchEvent(new Event("player-identity-changed"));
-      }
+      if (profile) saveSquadProfile(profile);
       if (cloudMatches.length > 0) replaceSavedMatches(cloudMatches);
+
+      // Now set player identity (skips the PlayerPicker) and fire one event.
+      // Profile is already in localStorage, so PlayerContext can resolve currentPlayer immediately.
+      if (membership.player_squad_id) {
+        const currentId = localStorage.getItem(PLAYER_IDENTITY_KEY);
+        if (!currentId) {
+          localStorage.setItem(PLAYER_IDENTITY_KEY, membership.player_squad_id);
+        }
+      }
+      window.dispatchEvent(new Event("player-identity-changed"));
     }
 
     void sync();
