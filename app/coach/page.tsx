@@ -27,6 +27,7 @@ import { GradeBadge } from "@/app/components/GradeBadge";
 import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "./help-content";
 import { DashboardChat } from "./DashboardChat";
+import { upsertCloudSquadProfile } from "@/lib/squadProfileCloud";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -881,7 +882,17 @@ export default function CoachDashboardPage() {
         )}
 
         {/* AI assistant chat */}
-        <DashboardChat contextString={contextString} initialMessage={aiText} />
+        <DashboardChat
+          contextString={contextString}
+          initialMessage={aiText}
+          initialHistory={profile?.aiChatHistory}
+          onHistoryUpdate={(history) => {
+            if (!profile) return;
+            const updated = { ...profile, aiChatHistory: history, updatedAt: new Date().toISOString() };
+            saveSquadProfile(updated);
+            upsertCloudSquadProfile(updated);
+          }}
+        />
 
       </div>
     </main>

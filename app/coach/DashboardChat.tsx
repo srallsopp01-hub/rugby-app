@@ -23,16 +23,22 @@ function timeLabel(ts?: string): string {
 export function DashboardChat({
   contextString,
   initialMessage,
+  initialHistory,
+  onHistoryUpdate,
 }: {
   contextString: string;
   initialMessage?: string;
+  initialHistory?: ChatMessage[];
+  onHistoryUpdate?: (messages: ChatMessage[]) => void;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     const init: ChatMessage[] = [];
     if (contextString) {
       init.push({ role: "user", content: contextString, hidden: true });
     }
-    if (initialMessage) {
+    if (initialHistory && initialHistory.length > 0) {
+      init.push(...initialHistory);
+    } else if (initialMessage) {
       init.push({ role: "assistant", content: initialMessage, ts: new Date().toISOString() });
     }
     return init;
@@ -116,6 +122,11 @@ export function DashboardChat({
       });
     } finally {
       setIsStreaming(false);
+      setMessages((prev) => {
+        const visible = prev.filter((m) => !m.hidden);
+        onHistoryUpdate?.(visible.slice(-30));
+        return prev;
+      });
     }
   }
 

@@ -23,6 +23,7 @@ type SquadProfileRow = {
   training_sessions: SquadProfile["trainingSessions"] | null;
   availability_responses: SquadProfile["availabilityResponses"] | null;
   session_logs: SquadProfile["sessionLogs"] | null;
+  ai_chat_history: SquadProfile["aiChatHistory"] | null;
   league_position: number | null;
   created_at: string;
   updated_at: string;
@@ -44,6 +45,7 @@ function rowToProfile(row: SquadProfileRow): SquadProfile {
     trainingSessions: row.training_sessions ?? [],
     availabilityResponses: row.availability_responses ?? [],
     sessionLogs: row.session_logs ?? [],
+    aiChatHistory: row.ai_chat_history ?? [],
     leaguePosition: row.league_position ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -70,6 +72,7 @@ function profileToUpsertPayload(
     training_sessions: profile.trainingSessions ?? null,
     availability_responses: profile.availabilityResponses ?? null,
     session_logs: profile.sessionLogs ?? null,
+    ai_chat_history: profile.aiChatHistory ?? null,
     league_position: profile.leaguePosition ?? null,
     created_at: profile.createdAt,
     updated_at: profile.updatedAt,

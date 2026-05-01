@@ -84,6 +84,7 @@ export type SquadProfile = {
   trainingSessions?: TrainingSession[];
   availabilityResponses?: AvailabilityResponse[];
   sessionLogs?: SessionLog[];
+  aiChatHistory?: { role: "user" | "assistant"; content: string; ts?: string }[];
   createdAt: string;
   updatedAt: string;
 };
