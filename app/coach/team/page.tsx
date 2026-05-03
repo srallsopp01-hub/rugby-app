@@ -14,6 +14,7 @@ import {
   sendTeamMemberPasswordReset,
   createInviteLink,
   deactivateInviteLink,
+  updateMemberPermissions,
   type TeamMember,
   type InviteLink,
 } from "@/lib/teamMembersCloud";
@@ -222,6 +223,19 @@ export default function TeamPage() {
     setStatusMessage("Request dismissed");
   }
 
+  async function handleTogglePermissions(memberId: string, current: boolean) {
+    const next = !current;
+    const result = await updateMemberPermissions(memberId, next);
+    if (!result.ok) {
+      setStatusMessage(result.error ?? "Failed to update permissions");
+      return;
+    }
+    setAcceptedMembers((prev) =>
+      prev.map((m) => (m.id === memberId ? { ...m, canManageTeam: next } : m))
+    );
+    setStatusMessage(next ? "Head permissions granted" : "Head permissions removed");
+  }
+
   const joinLinkUrl = reusableLink ? `${appUrl}/invite/join?token=${reusableLink.token}` : null;
 
   return (
@@ -343,9 +357,9 @@ export default function TeamPage() {
         {/* ── Section: Invite a coach ──────────────────────────────────────── */}
         <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
           <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">Coaching staff</div>
-          <h2 className="mt-2 text-lg font-semibold text-foreground-strong">Invite an assistant coach</h2>
+          <h2 className="mt-2 text-lg font-semibold text-foreground-strong">Invite a coach</h2>
           <p className="mt-1 text-sm leading-6 text-muted">
-            Generate a single-use link for an assistant coach. Add their name so they appear correctly in the members list.
+            Generate a single-use link for a coach. Add their name and coaching role so they appear correctly in the members list.
           </p>
 
           <form onSubmit={(e) => void handleCreateCoachInvite(e)} className="mt-5 space-y-3">
@@ -388,6 +402,19 @@ export default function TeamPage() {
                 className="w-full rounded-lg border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground-strong outline-none transition focus:border-border-light"
               />
             </div>
+
+            <label className="flex cursor-pointer items-center gap-2.5">
+              <input
+                type="checkbox"
+                checked={grantCoachAdmin}
+                onChange={(e) => setGrantCoachAdmin(e.target.checked)}
+                className="h-4 w-4 rounded border-border accent-foreground-strong"
+              />
+              <span className="text-sm text-foreground-strong">
+                Grant head permissions{" "}
+                <span className="font-normal text-muted">(can invite members, edit games)</span>
+              </span>
+            </label>
 
             {coachLinkUrl && (
               <div className="flex items-center gap-2 rounded-xl border border-border bg-panel-2 px-4 py-3">
@@ -534,6 +561,7 @@ export default function TeamPage() {
                 squadPlayers={squadPlayers}
                 onRevoke={() => void handleRevoke(member.id)}
                 onPasswordReset={() => void handlePasswordReset(member.id)}
+                onTogglePermissions={() => void handleTogglePermissions(member.id, member.canManageTeam)}
               />
             ))}
           </div>
@@ -625,17 +653,20 @@ function MemberRow({
   squadPlayers,
   onRevoke,
   onPasswordReset,
+  onTogglePermissions,
 }: {
   member: TeamMember;
   squadPlayers: SquadPlayer[];
   onRevoke: () => void;
   onPasswordReset: () => void;
+  onTogglePermissions: () => void;
 }) {
   const linkedPlayer = member.playerSquadId
     ? squadPlayers.find((p) => p.id === member.playerSquadId)
     : null;
 
   const displayName = linkedPlayer?.fullName ?? member.displayName ?? member.email;
+  const isCoach = member.role !== "player";
 
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-border bg-panel-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -663,7 +694,20 @@ function MemberRow({
           </p>
         )}
       </div>
-      <div className="flex shrink-0 gap-2">
+      <div className="flex shrink-0 flex-wrap gap-2">
+        {isCoach && (
+          <button
+            type="button"
+            onClick={onTogglePermissions}
+            className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
+              member.canManageTeam
+                ? "border-success/30 bg-success/10 text-success hover:border-success/60"
+                : "border-border bg-panel text-foreground-strong hover:border-border-light"
+            }`}
+          >
+            {member.canManageTeam ? "Remove admin" : "Grant admin"}
+          </button>
+        )}
         <button
           type="button"
           onClick={onPasswordReset}
