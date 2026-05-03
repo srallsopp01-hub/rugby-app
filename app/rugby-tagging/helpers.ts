@@ -730,8 +730,10 @@ export function buildSetPieceSummary(events: EventItem[]): SetPieceSummary {
       event.setPieceType === "scrum"
   );
 
-  const ownLineouts = lineouts.filter((event) => event.setPieceSide !== undefined);
-  const ownScrums = scrums.filter((event) => event.setPieceSide !== undefined);
+  const isOwnBall = (event: EventItem) =>
+    event.setPieceSide === "Own" || (event.setPieceSide as string) === "Easts";
+  const ownLineouts = lineouts.filter(isOwnBall);
+  const ownScrums = scrums.filter(isOwnBall);
 
   const ownLineoutWon = ownLineouts.filter(
     (event) => event.lineoutResult === "Won"

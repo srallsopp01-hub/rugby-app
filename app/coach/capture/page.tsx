@@ -176,11 +176,11 @@ export default function RugbyVoiceTaggingMVP() {
   const [learnedCorrections, setLearnedCorrections] =
     useState<Record<string, { playerName: string; action: PlayerAction | "" }>>({});
 
-  const [lineoutSide, setLineoutSide] = useState<SetPieceSide>("Easts");
+  const [lineoutSide, setLineoutSide] = useState<SetPieceSide>("Own");
   const [lineoutResult, setLineoutResult] = useState<LineoutResult>("Won");
   const [lineoutNotes, setLineoutNotes] = useState("");
 
-  const [scrumSide, setScrumSide] = useState<SetPieceSide>("Easts");
+  const [scrumSide, setScrumSide] = useState<SetPieceSide>("Own");
   const [scrumResult, setScrumResult] = useState<ScrumResult>("Won");
 
   const [coachNotes, setCoachNotes] = useState<CoachReviewNote[]>([]);
@@ -383,10 +383,10 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
         event.setPieceType === "scrum"
     );
 
-    const eastsLineouts = lineouts.filter(
-      (event) => event.setPieceSide === "Easts"
-    );
-    const eastsScrums = scrums.filter((event) => event.setPieceSide === "Easts");
+    const isOwnBall = (e: EventItem) =>
+      e.setPieceSide === "Own" || (e.setPieceSide as string) === "Easts";
+    const eastsLineouts = lineouts.filter(isOwnBall);
+    const eastsScrums = scrums.filter(isOwnBall);
 
     const eastsLineoutWon = eastsLineouts.filter(
       (event) => event.lineoutResult === "Won"
@@ -1013,10 +1013,10 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     setCoachNoteDraft("");
     setCoachRawDraft("");
     setShowCoachRawInput(false);
-    setLineoutSide("Easts");
+    setLineoutSide("Own");
     setLineoutResult("Won");
     setLineoutNotes("");
-    setScrumSide("Easts");
+    setScrumSide("Own");
     setScrumResult("Won");
     spacebarHeldRef.current = false;
     blurActiveElement();
@@ -2171,7 +2171,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
         normalized.includes("penalty to"))
     ) {
       const setPieceSide: SetPieceSide =
-        normalized.includes("opposition") ? "Opposition" : "Easts";
+        normalized.includes("opposition") ? "Opposition" : "Own";
 
       let scrumDetectedResult: ScrumResult = "Won";
       if (normalized.includes("penalty for")) {
@@ -2215,7 +2215,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
         normalized.includes("not straight"))
     ) {
       const setPieceSide: SetPieceSide =
-        normalized.includes("opposition") ? "Opposition" : "Easts";
+        normalized.includes("opposition") ? "Opposition" : "Own";
 
       let detectedLineoutResult: LineoutResult = "Won";
       if (normalized.includes("not straight")) {
@@ -3419,6 +3419,7 @@ Ellie missed tackle"
                     scrumResult={scrumResult}
                     lineoutPct={setPieceSummary.eastsLineouts.length > 0 ? setPieceSummary.eastsLineoutSuccessPct : null}
                     scrumPct={setPieceSummary.eastsScrums.length > 0 ? setPieceSummary.eastsScrumSuccessPct : null}
+                    teamName={squadProfile?.teamName ?? "Our Team"}
                     onLineoutSideChange={setLineoutSide}
                     onLineoutResultChange={setLineoutResult}
                     onLineoutNotesChange={setLineoutNotes}

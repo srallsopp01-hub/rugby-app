@@ -78,19 +78,19 @@ function teamToUpsertPayload(
   };
 }
 
-export async function fetchCloudTeam(): Promise<{
+export async function fetchCloudTeam(teamId?: string): Promise<{
   team: Team | null;
   error?: string;
 }> {
   try {
-    const ctx = await getMyTeamContext();
-    if (!ctx) return { team: null };
+    const resolvedTeamId = teamId ?? (await getMyTeamContext())?.teamId;
+    if (!resolvedTeamId) return { team: null };
 
     const supabase = createClient();
     const { data, error } = await supabase
       .from("teams")
       .select("*")
-      .eq("id", ctx.teamId)
+      .eq("id", resolvedTeamId)
       .maybeSingle();
 
     if (error) return { team: null, error: error.message };
@@ -102,19 +102,21 @@ export async function fetchCloudTeam(): Promise<{
 }
 
 export async function upsertCloudTeam(
-  team: Team
+  team: Team,
+  teamId?: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const ctx = await getMyTeamContext();
     if (!ctx?.canManageTeam) return { ok: false, error: "No write permission" };
 
+    const resolvedTeamId = teamId ?? ctx.teamId;
     const supabase = createClient();
-    const payload = teamToUpsertPayload(team, ctx.teamId);
+    const payload = teamToUpsertPayload(team, resolvedTeamId);
 
     const { error } = await supabase
       .from("teams")
       .update(payload)
-      .eq("id", ctx.teamId);
+      .eq("id", resolvedTeamId);
 
     if (error) return { ok: false, error: `Team upsert failed: ${error.message}` };
     return { ok: true };
@@ -143,12 +145,12 @@ export async function upsertPlayerAvailabilityResponse(
   }
 }
 
-export async function syncLocalTeamToCloud(): Promise<{
+export async function syncLocalTeamToCloud(teamId?: string): Promise<{
   ok: boolean;
   error?: string;
 }> {
   const local = getTeam();
-  const { team: cloud, error: fetchError } = await fetchCloudTeam();
+  const { team: cloud, error: fetchError } = await fetchCloudTeam(teamId);
 
   if (fetchError) return { ok: false, error: `Fetch team: ${fetchError}` };
 
@@ -158,7 +160,7 @@ export async function syncLocalTeamToCloud(): Promise<{
   saveTeam(merged);
 
   if (!cloud || merged.updatedAt !== cloud.updatedAt) {
-    return upsertCloudTeam(merged);
+    return upsertCloudTeam(merged, teamId);
   }
 
   return { ok: true };

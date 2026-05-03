@@ -12,6 +12,7 @@ type SetPieceLoggingPanelProps = {
   scrumResult: ScrumResult;
   lineoutPct?: number | null;
   scrumPct?: number | null;
+  teamName: string;
   onLineoutSideChange: (value: SetPieceSide) => void;
   onLineoutResultChange: (value: LineoutResult) => void;
   onLineoutNotesChange: (value: string) => void;
@@ -37,6 +38,7 @@ export default function SetPieceLoggingPanel({
   scrumResult,
   lineoutPct,
   scrumPct,
+  teamName,
   onLineoutSideChange,
   onLineoutResultChange,
   onLineoutNotesChange,
@@ -62,7 +64,7 @@ export default function SetPieceLoggingPanel({
             onChange={(e) => onLineoutSideChange(e.target.value as SetPieceSide)}
             className="rounded-xl border border-border bg-panel px-3 py-2.5 text-sm text-foreground"
           >
-            <option value="Easts">Easts</option>
+            <option value="Own">{teamName}</option>
             <option value="Opposition">Opposition</option>
           </select>
 
@@ -110,7 +112,7 @@ export default function SetPieceLoggingPanel({
             onChange={(e) => onScrumSideChange(e.target.value as SetPieceSide)}
             className="rounded-xl border border-border bg-panel px-3 py-2.5 text-sm text-foreground"
           >
-            <option value="Easts">Easts</option>
+            <option value="Own">{teamName}</option>
             <option value="Opposition">Opposition</option>
           </select>
 

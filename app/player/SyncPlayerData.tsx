@@ -7,6 +7,11 @@ import { getTeam, saveTeam, type Team } from "@/app/rugby-tagging/lib/team";
 import { PLAYER_IDENTITY_KEY } from "@/app/rugby-tagging/constants";
 import { fetchCloudSavedMatches } from "@/lib/savedMatchesCloud";
 import { fetchCloudTeam } from "@/lib/teamCloud";
+import {
+  getMyTeamContext,
+  ACTIVE_TEAM_CHANGED_EVENT,
+  ACTIVE_TEAM_ID_KEY,
+} from "@/lib/teamContext";
 import type { AvailabilityResponse } from "@/app/rugby-tagging/types";
 
 function responseKey(r: AvailabilityResponse): string {
@@ -34,38 +39,34 @@ function mergeLocalAvailability(
   return { ...cloud, availabilityResponses: Array.from(cloudMap.values()) };
 }
 
+/** Returns the localStorage key for the player's identity, scoped to a team. */
+export function namespacedPlayerKey(teamId: string): string {
+  return `${PLAYER_IDENTITY_KEY}-${teamId}`;
+}
+
 export function SyncPlayerData() {
   useEffect(() => {
     let cancelled = false;
 
     async function sync() {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user || cancelled) return;
-      console.log("[SyncPlayerData] signed in as", user.id);
+      // Use getMyTeamContext() so team resolution goes through the RPC — consistent
+      // with the coach side and correct for multi-team users.
+      const ctx = await getMyTeamContext();
+      if (!ctx || cancelled) return;
 
-      const { data: membership, error: membershipError } = await supabase
-        .from("team_members")
-        .select("player_squad_id")
-        .eq("user_id", user.id)
-        .eq("status", "active")
-        .eq("role", "player")
-        .maybeSingle();
-
-      if (membershipError) {
-        console.error("[SyncPlayerData] membership lookup failed:", membershipError.message);
+      if (ctx.role !== "player") {
+        console.warn("[SyncPlayerData] user is not a player, skipping sync");
         return;
       }
-      if (!membership || cancelled) {
-        console.warn("[SyncPlayerData] no active player membership found for", user.id);
-        return;
-      }
-      console.log("[SyncPlayerData] membership found:", membership);
+
+      const teamId = ctx.teamId;
+      console.log("[SyncPlayerData] signed in as", ctx.userId, "team", teamId);
 
       const [{ team, error: teamError }, { records: cloudMatches, error: matchesError }] =
-        await Promise.all([fetchCloudTeam(), fetchCloudSavedMatches()]);
+        await Promise.all([
+          fetchCloudTeam(teamId),
+          fetchCloudSavedMatches(teamId),
+        ]);
 
       if (cancelled) return;
 
@@ -83,12 +84,39 @@ export function SyncPlayerData() {
       if (team) saveTeam(mergeLocalAvailability(getTeam(), team));
       if (cloudMatches.length > 0) replaceSavedMatches(cloudMatches);
 
-      if (membership.player_squad_id) {
-        const currentId = localStorage.getItem(PLAYER_IDENTITY_KEY);
-        if (!currentId) {
-          localStorage.setItem(PLAYER_IDENTITY_KEY, membership.player_squad_id);
+      // Fetch player_squad_id — not in MyTeamContext because it's player-role-only.
+      const supabase = createClient();
+      const { data: membership, error: membershipError } = await supabase
+        .from("team_members")
+        .select("player_squad_id")
+        .eq("user_id", ctx.userId)
+        .eq("team_id", teamId)
+        .eq("status", "active")
+        .eq("role", "player")
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      if (membershipError) {
+        console.error("[SyncPlayerData] membership lookup failed:", membershipError.message);
+      }
+
+      if (membership?.player_squad_id) {
+        const namespacedKey = namespacedPlayerKey(teamId);
+        const currentNamespaced = localStorage.getItem(namespacedKey);
+
+        if (!currentNamespaced) {
+          // Migrate from the legacy un-namespaced key on first encounter after 3A.
+          const legacy = localStorage.getItem(PLAYER_IDENTITY_KEY);
+          const idToSet = legacy ?? membership.player_squad_id;
+          localStorage.setItem(namespacedKey, idToSet);
+          if (legacy) localStorage.removeItem(PLAYER_IDENTITY_KEY);
         }
       }
+
+      // Write resolved teamId so PlayerContext can read it synchronously.
+      localStorage.setItem(ACTIVE_TEAM_ID_KEY, teamId);
+
       window.dispatchEvent(new Event("player-identity-changed"));
     }
 
@@ -97,11 +125,17 @@ export function SyncPlayerData() {
     const handleVisibility = () => {
       if (!document.hidden) void sync();
     };
+    const handleTeamChanged = () => {
+      void sync();
+    };
+
     document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener(ACTIVE_TEAM_CHANGED_EVENT, handleTeamChanged);
 
     return () => {
       cancelled = true;
       document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener(ACTIVE_TEAM_CHANGED_EVENT, handleTeamChanged);
     };
   }, []);
 

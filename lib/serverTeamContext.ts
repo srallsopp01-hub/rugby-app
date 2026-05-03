@@ -9,25 +9,39 @@ export async function getServerTeamContext(): Promise<MyTeamContext | null> {
 
   if (!user) return null;
 
-  const { data: membership, error } = await supabase
+  // Resolve the active team via the RPC (deterministic even for multi-team users).
+  const { data: resolvedTeamId, error: rpcError } = await supabase.rpc(
+    "resolve_active_team_id",
+    { p_user_id: user.id }
+  );
+
+  if (rpcError || !resolvedTeamId) return null;
+
+  const teamId = resolvedTeamId as string;
+
+  // Fetch role + canManageTeam from the specific membership row.
+  const { data: membership, error: membershipError } = await supabase
     .from("team_members")
-    .select("role, team_id, can_manage_team")
+    .select("role, can_manage_team")
     .eq("user_id", user.id)
+    .eq("team_id", teamId)
     .eq("status", "active")
     .maybeSingle();
 
-  if (error || !membership) return null;
+  if (membershipError || !membership) return null;
 
+  // Fetch ownerUserId from the team (needed for R2 video paths).
   const { data: team } = await supabase
     .from("teams")
     .select("created_by_user_id")
-    .eq("id", membership.team_id)
+    .eq("id", teamId)
     .single();
 
   return {
     role: membership.role as TeamRole,
     userId: user.id,
-    teamId: membership.team_id as string,
+    teamId,
+    currentTeamId: teamId,
     ownerUserId: (team?.created_by_user_id as string) ?? user.id,
     canManageTeam: Boolean(membership.can_manage_team),
   };

@@ -52,19 +52,19 @@ function rowToRecord(row: SavedMatchRow): SavedMatchRecord {
   };
 }
 
-export async function fetchCloudSavedMatches(): Promise<{
+export async function fetchCloudSavedMatches(teamId?: string): Promise<{
   records: SavedMatchRecord[];
   error?: string;
 }> {
   try {
-    const ctx = await getMyTeamContext();
-    if (!ctx) return { records: [] };
+    const resolvedTeamId = teamId ?? (await getMyTeamContext())?.teamId;
+    if (!resolvedTeamId) return { records: [] };
 
     const supabase = createClient();
     const { data, error } = await supabase
       .from("saved_matches")
       .select("*")
-      .eq("team_id", ctx.teamId)
+      .eq("team_id", resolvedTeamId)
       .order("updated_at", { ascending: false });
 
     if (error) return { records: [], error: error.message };
@@ -77,18 +77,31 @@ export async function fetchCloudSavedMatches(): Promise<{
 }
 
 export async function upsertCloudSavedMatch(
-  record: SavedMatchRecord
+  record: SavedMatchRecord,
+  teamId?: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const ctx = await getMyTeamContext();
     if (!ctx?.canManageTeam) return { ok: false, error: "No write permission" };
 
+    const resolvedTeamId = teamId ?? ctx.teamId;
     const supabase = createClient();
-    const payload = recordToUpsertPayload(record, ctx.teamId, ctx.userId);
+    const payload = recordToUpsertPayload(record, resolvedTeamId, ctx.userId);
 
     const { error } = await supabase
       .from("saved_matches")
       .upsert(payload, { onConflict: "team_id,match_id" });
+
+    // Retry without video_storage_path if migration 001 column is absent.
+    if (error?.code === "42703" && "video_storage_path" in payload) {
+      const { video_storage_path: _, ...payloadWithoutVideo } = payload;
+      const { error: retryError } = await supabase
+        .from("saved_matches")
+        .upsert(payloadWithoutVideo, { onConflict: "team_id,match_id" });
+      if (retryError)
+        return { ok: false, error: `Saved match upsert failed: ${retryError.message}` };
+      return { ok: true };
+    }
 
     if (error) return { ok: false, error: `Saved match upsert failed: ${error.message}` };
     return { ok: true };
@@ -98,17 +111,19 @@ export async function upsertCloudSavedMatch(
 }
 
 export async function deleteCloudSavedMatch(
-  matchId: string
+  matchId: string,
+  teamId?: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const ctx = await getMyTeamContext();
     if (!ctx?.canManageTeam) return { ok: false, error: "No write permission" };
 
+    const resolvedTeamId = teamId ?? ctx.teamId;
     const supabase = createClient();
     const { error } = await supabase
       .from("saved_matches")
       .delete()
-      .eq("team_id", ctx.teamId)
+      .eq("team_id", resolvedTeamId)
       .eq("match_id", matchId);
 
     if (error) return { ok: false, error: `Delete failed: ${error.message}` };
@@ -118,12 +133,12 @@ export async function deleteCloudSavedMatch(
   }
 }
 
-export async function syncAllLocalMatchesToCloud(): Promise<{
+export async function syncAllLocalMatchesToCloud(teamId?: string): Promise<{
   count: number;
   errors: string[];
 }> {
   const local = getSavedMatches();
-  const { records: cloud, error: fetchError } = await fetchCloudSavedMatches();
+  const { records: cloud, error: fetchError } = await fetchCloudSavedMatches(teamId);
 
   const errors: string[] = [];
   if (fetchError) errors.push(`Fetch cloud matches: ${fetchError}`);
@@ -138,7 +153,7 @@ export async function syncAllLocalMatchesToCloud(): Promise<{
     (m) => !cloudIds.has(m.id) || cloudUpdated.get(m.id) !== m.updatedAt
   );
 
-  const results = await Promise.all(toSync.map((m) => upsertCloudSavedMatch(m)));
+  const results = await Promise.all(toSync.map((m) => upsertCloudSavedMatch(m, teamId)));
   for (const r of results) {
     if (!r.ok && r.error) errors.push(r.error);
   }

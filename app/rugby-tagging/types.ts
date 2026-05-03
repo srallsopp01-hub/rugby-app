@@ -1,6 +1,6 @@
 export type PlayerAction = "tackle" | "missed tackle" | "carry" | "turnover";
 export type SetPieceType = "lineout" | "scrum";
-export type SetPieceSide = "Easts" | "Opposition";
+export type SetPieceSide = "Own" | "Opposition";
 export type LineoutResult = "Won" | "Lost" | "Penalty" | "Not Straight" | "Steal";
 export type ScrumResult = "Won" | "Lost" | "Penalty For" | "Penalty Against" | "Free Kick";
 export type TeamEventType = "penalty for" | "penalty conceded" | "try scored" | "try conceded";

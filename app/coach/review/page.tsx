@@ -331,14 +331,14 @@ export default function ReviewPage() {
         !event.isPending &&
         event.category === "set-piece" &&
         event.setPieceType === "lineout" &&
-        event.setPieceSide === "Easts"
+        event.setPieceSide === "Own"
     );
     const scrums = events.filter(
       (event) =>
         !event.isPending &&
         event.category === "set-piece" &&
         event.setPieceType === "scrum" &&
-        event.setPieceSide === "Easts"
+        event.setPieceSide === "Own"
     );
     return {
       eastsLineoutSuccessPct:

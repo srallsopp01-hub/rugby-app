@@ -1,8 +1,10 @@
 "use client";
 
 import { createContext, useContext, useMemo, useSyncExternalStore } from "react";
-import { getSquadProfile, SQUAD_PROFILE_CHANGED_EVENT } from "@/app/rugby-tagging/lib/team";
+import { getTeam, TEAM_CHANGED_EVENT } from "@/app/rugby-tagging/lib/team";
 import { PLAYER_IDENTITY_KEY } from "@/app/rugby-tagging/constants";
+import { ACTIVE_TEAM_ID_KEY } from "@/lib/teamContext";
+import { namespacedPlayerKey } from "@/app/player/SyncPlayerData";
 import type { SquadPlayer } from "@/app/rugby-tagging/lib/team";
 
 type PlayerContextValue = {
@@ -16,6 +18,23 @@ const PlayerContext = createContext<PlayerContextValue | null>(null);
 
 const PLAYER_IDENTITY_EVENT = "player-identity-changed";
 
+// ─── Active team ID (written by getMyTeamContext + SyncPlayerData) ───────────
+
+function subscribeActiveTeamId(cb: () => void) {
+  window.addEventListener(PLAYER_IDENTITY_EVENT, cb);
+  window.addEventListener("storage", cb);
+  return () => {
+    window.removeEventListener(PLAYER_IDENTITY_EVENT, cb);
+    window.removeEventListener("storage", cb);
+  };
+}
+
+function getActiveTeamIdSnapshot(): string {
+  return localStorage.getItem(ACTIVE_TEAM_ID_KEY) || "";
+}
+
+// ─── Player identity (scoped by active team) ─────────────────────────────────
+
 function subscribePlayerIdentity(cb: () => void) {
   window.addEventListener(PLAYER_IDENTITY_EVENT, cb);
   window.addEventListener("storage", cb);
@@ -25,55 +44,71 @@ function subscribePlayerIdentity(cb: () => void) {
   };
 }
 
-function getPlayerIdSnapshot(): string {
-  return localStorage.getItem(PLAYER_IDENTITY_KEY) || "";
+function getPlayerIdSnapshot(activeTeamId: string): string {
+  if (!activeTeamId) {
+    // Team not yet resolved — fall back to legacy key for existing sessions.
+    return localStorage.getItem(PLAYER_IDENTITY_KEY) || "";
+  }
+  return localStorage.getItem(namespacedPlayerKey(activeTeamId)) || "";
 }
 
-function getPlayerFromStorage(storedId: string): SquadPlayer | null {
-  if (!storedId) return null;
-  const profile = getSquadProfile();
-  return profile?.players.find((p) => p.id === storedId) ?? null;
-}
+// ─── Profile changes (squad data) ────────────────────────────────────────────
 
 function subscribeProfileChanges(cb: () => void) {
-  window.addEventListener(SQUAD_PROFILE_CHANGED_EVENT, cb);
+  window.addEventListener(TEAM_CHANGED_EVENT, cb);
   window.addEventListener("storage", cb);
   return () => {
-    window.removeEventListener(SQUAD_PROFILE_CHANGED_EVENT, cb);
+    window.removeEventListener(TEAM_CHANGED_EVENT, cb);
     window.removeEventListener("storage", cb);
   };
 }
 
 function getProfileVersionSnapshot(): string {
-  return getSquadProfile()?.updatedAt ?? "";
+  return getTeam()?.updatedAt ?? "";
 }
 
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
-  const currentPlayerId = useSyncExternalStore(
-    subscribePlayerIdentity,
-    getPlayerIdSnapshot,
+  const activeTeamId = useSyncExternalStore(
+    subscribeActiveTeamId,
+    getActiveTeamIdSnapshot,
     () => ""
   );
+
+  const currentPlayerId = useSyncExternalStore(
+    subscribePlayerIdentity,
+    () => getPlayerIdSnapshot(activeTeamId),
+    () => ""
+  );
+
   const profileVersion = useSyncExternalStore(
     subscribeProfileChanges,
     getProfileVersionSnapshot,
     () => ""
   );
-  const currentPlayer = useMemo(
-    () => getPlayerFromStorage(currentPlayerId),
-    // profileVersion causes re-derive when SyncPlayerData saves a freshly fetched profile
+
+  const currentPlayer = useMemo(() => {
+    if (!currentPlayerId) return null;
+    const team = getTeam();
+    return team?.players.find((p) => p.id === currentPlayerId) ?? null;
+    // profileVersion re-triggers when SyncPlayerData saves a freshly fetched profile
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [currentPlayerId, profileVersion]
-  );
+  }, [currentPlayerId, profileVersion]);
+
   const ready = useSyncExternalStore(() => () => {}, () => true, () => false);
 
   function setCurrentPlayer(player: SquadPlayer) {
-    localStorage.setItem(PLAYER_IDENTITY_KEY, player.id);
+    const key = activeTeamId
+      ? namespacedPlayerKey(activeTeamId)
+      : PLAYER_IDENTITY_KEY;
+    localStorage.setItem(key, player.id);
     window.dispatchEvent(new Event(PLAYER_IDENTITY_EVENT));
   }
 
   function clearCurrentPlayer() {
-    localStorage.removeItem(PLAYER_IDENTITY_KEY);
+    const key = activeTeamId
+      ? namespacedPlayerKey(activeTeamId)
+      : PLAYER_IDENTITY_KEY;
+    localStorage.removeItem(key);
     window.dispatchEvent(new Event(PLAYER_IDENTITY_EVENT));
   }
 

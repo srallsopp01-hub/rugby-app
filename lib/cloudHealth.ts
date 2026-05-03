@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { getMyTeamContext } from "@/lib/teamContext";
 
 export type CloudSchemaHealth = {
   ok: boolean;
@@ -6,6 +7,9 @@ export type CloudSchemaHealth = {
   missingColumns: string[];
   videoStorageConfigured: boolean;
   missingVideoStorageEnv: string[];
+  activeTeamId: string | null;
+  activeTeamName: string | null;
+  activeTeamRole: string | null;
 };
 
 export async function checkCloudSchema(): Promise<CloudSchemaHealth> {
@@ -44,6 +48,35 @@ export async function checkCloudSchema(): Promise<CloudSchemaHealth> {
     missingVideoStorageEnv = ["R2 config check failed"];
   }
 
+  // Active team diagnostics via the same RPC used by getMyTeamContext.
+  let activeTeamId: string | null = null;
+  let activeTeamName: string | null = null;
+  let activeTeamRole: string | null = null;
+  try {
+    const ctx = await getMyTeamContext();
+    if (ctx) {
+      activeTeamId = ctx.teamId;
+      activeTeamRole = ctx.role;
+      const { data: team } = await supabase
+        .from("teams")
+        .select("name")
+        .eq("id", ctx.teamId)
+        .maybeSingle();
+      activeTeamName = (team as { name?: string } | null)?.name ?? null;
+    }
+  } catch {
+    // non-fatal — diagnostic only
+  }
+
   const ok = missingTables.length === 0 && missingColumns.length === 0 && videoStorageConfigured;
-  return { ok, missingTables, missingColumns, videoStorageConfigured, missingVideoStorageEnv };
+  return {
+    ok,
+    missingTables,
+    missingColumns,
+    videoStorageConfigured,
+    missingVideoStorageEnv,
+    activeTeamId,
+    activeTeamName,
+    activeTeamRole,
+  };
 }
