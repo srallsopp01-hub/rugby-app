@@ -464,10 +464,6 @@ export default function CoachSettingsPage() {
                 <h2 className="text-sm font-semibold text-warning">
                   Cloud database not fully set up
                 </h2>
-                <p className="mt-1 text-xs leading-5 text-muted">
-                  Some Supabase migrations have not been applied. Data cannot sync until the
-                  schema is complete. Apply migrations 000–004 in the Supabase SQL editor.
-                </p>
                 {schemaHealth.missingTables.length > 0 && (
                   <p className="mt-2 text-xs text-muted">
                     Missing tables:{" "}
