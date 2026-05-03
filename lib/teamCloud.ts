@@ -113,7 +113,8 @@ export async function upsertCloudTeam(
 
     const { error } = await supabase
       .from("teams")
-      .upsert(payload, { onConflict: "id" });
+      .update(payload)
+      .eq("id", ctx.teamId);
 
     if (error) return { ok: false, error: `Team upsert failed: ${error.message}` };
     return { ok: true };
