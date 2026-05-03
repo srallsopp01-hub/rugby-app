@@ -274,19 +274,35 @@ function buildContextString(profile: SquadProfile | null, savedMatches: SavedMat
   }
 
   if (savedMatches.length) {
-    const lastMatch = [...savedMatches].sort((a, b) =>
-      new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
-    )[0];
-    const events = (lastMatch.events || []).filter((e: EventItem) => !e.isPending);
-    const rows = buildReportRowsFromMatch(lastMatch.rosterRows, events);
-    const totals = buildTeamTotals(rows);
-    const setPiece = buildSetPieceSummary(events);
-    const teamEvents = buildTeamEventSummary(events);
-    const tacklePct = teamTacklePctFromTotals(totals);
+    const sorted = [...savedMatches].sort((a, b) =>
+      new Date(a.matchDate || a.createdAt).getTime() - new Date(b.matchDate || b.createdAt).getTime()
+    );
+    const matchLines: string[] = [];
+    let sumTackle = 0, sumLineout = 0, sumScrum = 0, sumTried = 0, sumConceded = 0;
+    for (const match of sorted) {
+      const events = (match.events || []).filter((e: EventItem) => !e.isPending);
+      const rows = buildReportRowsFromMatch(match.rosterRows, events);
+      const totals = buildTeamTotals(rows);
+      const setPiece = buildSetPieceSummary(events);
+      const teamEvents = buildTeamEventSummary(events);
+      const tacklePct = teamTacklePctFromTotals(totals);
+      sumTackle += tacklePct;
+      sumLineout += setPiece.ownLineoutSuccessPct;
+      sumScrum += setPiece.ownScrumSuccessPct;
+      sumTried += teamEvents.triesScored;
+      sumConceded += teamEvents.triesConceded;
+      matchLines.push(
+        `  - ${match.opponent || "unknown opponent"} (${match.matchDate || "unknown date"}): ` +
+        `tackle ${Math.round(tacklePct)}%, lineout ${Math.round(setPiece.ownLineoutSuccessPct)}%, ` +
+        `scrum ${Math.round(setPiece.ownScrumSuccessPct)}%, tries scored ${teamEvents.triesScored}, tries conceded ${teamEvents.triesConceded}`
+      );
+    }
+    const n = sorted.length;
     parts.push(
-      `Last match (${lastMatch.opponent || "unknown opponent"}, ${lastMatch.matchDate || "unknown date"}): ` +
-      `tackle completion ${Math.round(tacklePct)}%, lineout ${Math.round(setPiece.ownLineoutSuccessPct)}%, ` +
-      `scrum ${Math.round(setPiece.ownScrumSuccessPct)}%, tries scored ${teamEvents.triesScored}, tries conceded ${teamEvents.triesConceded}.`
+      `Saved match data (${n} game${n !== 1 ? "s" : ""}):\n` +
+      matchLines.join("\n") + "\n" +
+      `  Season averages: tackle ${Math.round(sumTackle / n)}%, lineout ${Math.round(sumLineout / n)}%, ` +
+      `scrum ${Math.round(sumScrum / n)}%, tries scored avg ${(sumTried / n).toFixed(1)}, tries conceded avg ${(sumConceded / n).toFixed(1)}.`
     );
   }
 

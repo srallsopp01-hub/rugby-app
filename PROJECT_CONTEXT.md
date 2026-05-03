@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** May 2026 — Move 2 (Batch BD) shipped: multi-tenant data model migration (Organisation → Team → User). Org/Team/User spec added as new section. Pending Move 2.5 cleanup, Move 3 (`/coach/organisation` + team switcher), and Stripe webhook batch.
+**Last updated:** May 2026 — Move 2 (Batch BD) shipped: multi-tenant data model migration (Organisation → Team → User). Org/Team/User spec added as new section. AI assistant coach context now covers all saved matches (per-game stats + season averages). Pending Move 2.5 cleanup, Move 3 (`/coach/organisation` + team switcher), and Stripe webhook batch.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
