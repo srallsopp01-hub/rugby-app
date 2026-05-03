@@ -44,6 +44,13 @@ export default function TeamPage() {
   const [sendingSlotInvite, setSendingSlotInvite] = useState(false);
   const [copiedSlotId, setCopiedSlotId] = useState<string | null>(null);
 
+  const [coachName, setCoachName] = useState("");
+  const [coachTitle, setCoachTitle] = useState("");
+  const [coachEmail, setCoachEmail] = useState("");
+  const [generatingCoachLink, setGeneratingCoachLink] = useState(false);
+  const [coachLinkUrl, setCoachLinkUrl] = useState<string | null>(null);
+  const [copiedCoachLink, setCopiedCoachLink] = useState(false);
+
   const [acceptedMembers, setAcceptedMembers] = useState<TeamMember[]>([]);
   const [notifyRequests, setNotifyRequests] = useState<TeamMember[]>([]);
 
@@ -138,6 +145,34 @@ export default function TeamPage() {
     setActiveInviteSlot(null);
     setSendingSlotInvite(false);
     setStatusMessage(`Invite link for ${slotInviteEmail.trim()} copied to clipboard`);
+  }
+
+  async function handleCreateCoachInvite(e: React.FormEvent) {
+    e.preventDefault();
+    if (!coachName.trim()) return;
+    setGeneratingCoachLink(true);
+    const label = coachTitle.trim()
+      ? `${coachName.trim()}|${coachTitle.trim()}`
+      : coachName.trim();
+    const result = await createInviteLink("assistant_coach", {
+      label,
+      email: coachEmail.trim() || undefined,
+    });
+    if (!result) {
+      setStatusMessage("Failed to generate coach invite link");
+      setGeneratingCoachLink(false);
+      return;
+    }
+    setCoachLinkUrl(result.url);
+    setGeneratingCoachLink(false);
+  }
+
+  function handleCopyCoachLink() {
+    if (!coachLinkUrl) return;
+    void navigator.clipboard.writeText(coachLinkUrl).then(() => {
+      setCopiedCoachLink(true);
+      setTimeout(() => setCopiedCoachLink(false), 2000);
+    });
   }
 
   function handleSaveTeamName() {
@@ -302,6 +337,82 @@ export default function TeamPage() {
               </div>
             )}
           </div>
+        </section>
+
+        {/* ── Section: Invite a coach ──────────────────────────────────────── */}
+        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+          <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">Coaching staff</div>
+          <h2 className="mt-2 text-lg font-semibold text-foreground-strong">Invite an assistant coach</h2>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Generate a single-use link for an assistant coach. Add their name so they appear correctly in the members list.
+          </p>
+
+          <form onSubmit={(e) => void handleCreateCoachInvite(e)} className="mt-5 space-y-3">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="flex-1">
+                <label className="mb-1.5 block font-mono text-[11px] font-bold uppercase text-muted-2">
+                  Name <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={coachName}
+                  onChange={(e) => setCoachName(e.target.value)}
+                  placeholder="e.g. Jane Smith"
+                  className="w-full rounded-lg border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground-strong outline-none transition focus:border-border-light"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="mb-1.5 block font-mono text-[11px] font-bold uppercase text-muted-2">
+                  Coaching role <span className="font-normal normal-case text-muted-2">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={coachTitle}
+                  onChange={(e) => setCoachTitle(e.target.value)}
+                  placeholder="e.g. Forwards Coach"
+                  className="w-full rounded-lg border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground-strong outline-none transition focus:border-border-light"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block font-mono text-[11px] font-bold uppercase text-muted-2">
+                Email <span className="font-normal normal-case text-muted-2">(optional — restricts link to this address)</span>
+              </label>
+              <input
+                type="email"
+                value={coachEmail}
+                onChange={(e) => setCoachEmail(e.target.value)}
+                placeholder="coach@example.com"
+                className="w-full rounded-lg border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground-strong outline-none transition focus:border-border-light"
+              />
+            </div>
+
+            {coachLinkUrl && (
+              <div className="flex items-center gap-2 rounded-xl border border-border bg-panel-2 px-4 py-3">
+                <input
+                  readOnly
+                  value={coachLinkUrl}
+                  className="min-w-0 flex-1 truncate rounded-lg border border-border bg-panel px-3 py-1.5 text-xs text-muted outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleCopyCoachLink}
+                  className="shrink-0 rounded-lg border border-border bg-panel px-3 py-1.5 text-xs font-semibold text-foreground-strong transition hover:border-border-light"
+                >
+                  {copiedCoachLink ? "Copied!" : "Copy"}
+                </button>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={generatingCoachLink || !coachName.trim()}
+              className="rounded-xl bg-foreground-strong px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-50"
+            >
+              {generatingCoachLink ? "Generating…" : coachLinkUrl ? "Generate new link" : "Generate invite link"}
+            </button>
+          </form>
         </section>
 
         {/* ── Section 2: Unclaimed squad slots ────────────────────────────── */}
@@ -531,7 +642,7 @@ function MemberRow({
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-foreground-strong">{displayName}</span>
           <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted">
-            {member.role === "assistant_coach" ? "Coach" : "Player"}
+            {member.role === "player" ? "Player" : "Coach"}
           </span>
           {member.canManageTeam && (
             <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success">
@@ -539,8 +650,11 @@ function MemberRow({
             </span>
           )}
         </div>
-        {linkedPlayer && displayName !== member.email && (
-          <p className="mt-0.5 text-xs text-muted">{member.email}</p>
+        {member.coachLabel && (
+          <p className="mt-0.5 text-xs text-muted">{member.coachLabel}</p>
+        )}
+        {displayName !== member.email && member.email && (
+          <p className="mt-0.5 text-xs text-muted-2">{member.email}</p>
         )}
         {member.acceptedAt && (
           <p className="mt-0.5 text-xs text-muted-2">

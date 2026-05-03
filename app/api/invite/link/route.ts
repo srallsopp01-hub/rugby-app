@@ -23,8 +23,8 @@ export async function POST(req: Request) {
   const token =
     crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
 
-  // Pre-filled single-use links expire in 30 days; reusable links never expire
-  const isPrefilled = Boolean(preFillEmail || preFillSquadPlayerId);
+  // Single-use links expire in 30 days; reusable player links never expire
+  const isPrefilled = Boolean(preFillEmail || preFillSquadPlayerId || (role === "assistant_coach" && label));
   const expiresAt = isPrefilled
     ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
     : null;

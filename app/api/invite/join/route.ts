@@ -24,6 +24,12 @@ type SquadPlayerRaw = {
   linkedUserId?: string;
 };
 
+function parseCoachLabel(label: string | null): { displayName: string | null; coachLabel: string | null } {
+  if (!label) return { displayName: null, coachLabel: null };
+  const [name, title] = label.split("|");
+  return { displayName: name?.trim() || null, coachLabel: title?.trim() || null };
+}
+
 // GET /api/invite/join?token=xxx — public validation, no auth required
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -125,7 +131,7 @@ export async function POST(req: Request) {
   const { data: link, error: linkError } = await admin
     .from("team_invite_links")
     .select(
-      "id, team_id, owner_user_id, role, is_active, expires_at, pre_filled_email, pre_filled_squad_player_id, consumed_at"
+      "id, team_id, owner_user_id, role, label, is_active, expires_at, pre_filled_email, pre_filled_squad_player_id, consumed_at"
     )
     .eq("token", token)
     .single<InviteLinkRow>();
@@ -226,6 +232,8 @@ export async function POST(req: Request) {
         .maybeSingle()
     : { data: null };
 
+  const coachData = !isPlayerRole ? parseCoachLabel(link.label) : { displayName: null, coachLabel: null };
+
   let memberRowId: string | null = null;
 
   if (existingByEmail) {
@@ -245,6 +253,8 @@ export async function POST(req: Request) {
         updated_at: new Date().toISOString(),
         invite_link_id: link.id,
         player_squad_id: isPlayerRole ? (squadPlayerId ?? null) : null,
+        display_name: coachData.displayName,
+        coach_label: coachData.coachLabel,
       })
       .eq("id", existingByEmail.id);
 
@@ -265,6 +275,8 @@ export async function POST(req: Request) {
       accepted_at: new Date().toISOString(),
       invite_link_id: link.id,
       player_squad_id: isPlayerRole ? (squadPlayerId ?? null) : null,
+      display_name: coachData.displayName,
+      coach_label: coachData.coachLabel,
       invited_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -292,8 +304,12 @@ export async function POST(req: Request) {
     });
   }
 
-  // Mark pre-filled single-use link as consumed so it can't be reused
-  const isPrefilled = Boolean(link.pre_filled_email || link.pre_filled_squad_player_id);
+  // Mark single-use link as consumed so it can't be reused
+  const isPrefilled = Boolean(
+    link.pre_filled_email ||
+    link.pre_filled_squad_player_id ||
+    (!isPlayerRole && link.label)
+  );
   if (isPrefilled) {
     await admin
       .from("team_invite_links")
