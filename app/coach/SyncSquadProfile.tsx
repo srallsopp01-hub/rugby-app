@@ -38,8 +38,15 @@ export function SyncSquadProfile() {
     }
 
     void sync();
+
+    function handleVisibility() {
+      if (document.visibilityState === "visible") void sync();
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
+
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, []);
 

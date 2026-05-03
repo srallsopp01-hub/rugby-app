@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePlayer } from "@/app/player/PlayerContext";
 import {
@@ -124,6 +124,8 @@ function AvailabilityButtons({
 
 export default function PlayerAvailabilityPage() {
   const { currentPlayer, ready } = usePlayer();
+  const [syncState, setSyncState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const profileSnapshot = useSyncExternalStore(
     subscribeSquadProfile,
@@ -184,11 +186,19 @@ export default function PlayerAvailabilityPage() {
       updatedAt: new Date().toISOString(),
     });
 
+    setSyncState("saving");
+    if (syncTimer.current) clearTimeout(syncTimer.current);
+
     import("@/lib/squadProfileCloud")
-      .then(({ upsertPlayerAvailabilityResponse }) =>
-        void upsertPlayerAvailabilityResponse(next)
-      )
-      .catch(() => {});
+      .then(({ upsertPlayerAvailabilityResponse }) => upsertPlayerAvailabilityResponse(next))
+      .then(({ ok }) => {
+        setSyncState(ok ? "saved" : "error");
+        syncTimer.current = setTimeout(() => setSyncState("idle"), ok ? 2000 : 4000);
+      })
+      .catch(() => {
+        setSyncState("error");
+        syncTimer.current = setTimeout(() => setSyncState("idle"), 4000);
+      });
   }
 
   if (!ready) return null;
@@ -220,10 +230,22 @@ export default function PlayerAvailabilityPage() {
 
         {/* Header */}
         <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">Availability</h1>
-          <p className="mt-2 text-sm text-muted">
-            Let your coach know if you&apos;re available for upcoming fixtures and training sessions.
-          </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">Availability</h1>
+              <p className="mt-2 text-sm text-muted">
+                Let your coach know if you&apos;re available for upcoming fixtures and training sessions.
+              </p>
+            </div>
+            {syncState !== "idle" && (
+              <span className={`mt-1 shrink-0 text-xs font-medium transition-opacity ${
+                syncState === "saving" ? "text-muted" :
+                syncState === "saved" ? "text-success" : "text-danger"
+              }`}>
+                {syncState === "saving" ? "Saving…" : syncState === "saved" ? "Saved ✓" : "Couldn't save — check connection"}
+              </span>
+            )}
+          </div>
         </section>
 
         {/* Upcoming fixtures */}
