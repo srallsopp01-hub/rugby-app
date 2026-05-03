@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** May 2026 — Batch BB complete: full-screen two-column game detail layout (video + stats left, involvement playlist right)
+**Last updated:** May 2026 — Bug fix: coach dashboard and settings now read from TEAM_KEY (was still using deleted SQUAD_PROFILE_KEY after multi-tenant migration)
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -1112,6 +1112,13 @@ Full migration from `squad_profiles` table to new `organisations` + `teams` sche
 **Player availability bug fix:**
 - ✅ `app/player/availability/page.tsx` — fixed root cause of "No upcoming fixtures/training sessions": page was reading from deprecated `SQUAD_PROFILE_KEY` (deleted by migration) instead of `TEAM_KEY`; updated imports to use `TEAM_KEY`, `TEAM_CHANGED_EVENT`, `saveTeam`, and `Team` type directly
 - ✅ `app/player/SyncPlayerData.tsx` — added `visibilitychange` listener so players re-sync team data from cloud when they return to the tab (mirrors existing coach behaviour)
+
+---
+
+### Bug fix (May 2026) — Coach dashboard and settings reading from stale localStorage key
+
+- ✅ `app/coach/page.tsx` — dashboard was reading team profile from deprecated `SQUAD_PROFILE_KEY` (deleted by multi-tenant migration); switched to `TEAM_KEY`; updated `subscribeToStorage` to listen to `TEAM_CHANGED_EVENT` so dashboard re-renders once `SyncTeam` async cloud sync completes
+- ✅ `app/coach/settings/page.tsx` — same root cause; replaced `SQUAD_PROFILE_KEY` with `TEAM_KEY` in `KNOWN_LOCAL_STORAGE_KEYS` array and `squadProfile` useMemo; Team tile now shows correct team name and player count
 
 ---
 
