@@ -93,7 +93,16 @@ export function SyncPlayerData() {
     }
 
     void sync();
-    return () => { cancelled = true; };
+
+    const handleVisibility = () => {
+      if (!document.hidden) void sync();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
   return null;

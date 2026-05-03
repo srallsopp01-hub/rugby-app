@@ -4,33 +4,33 @@ import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePlayer } from "@/app/player/PlayerContext";
 import {
-  SQUAD_PROFILE_KEY,
+  TEAM_KEY,
 } from "@/app/rugby-tagging/constants";
 import {
-  saveSquadProfile,
-  SQUAD_PROFILE_CHANGED_EVENT,
-  type SquadProfile,
+  saveTeam,
+  TEAM_CHANGED_EVENT,
+  type Team,
 } from "@/app/rugby-tagging/lib/team";
 import type { AvailabilityResponse, Fixture, TrainingSession, TrainingSessionDayOfWeek } from "@/app/rugby-tagging/types";
 
 // ---------------------------------------------------------------------------
-// Storage subscription — reacts to saveSquadProfile() calls
+// Storage subscription — reacts to saveTeam() calls
 // ---------------------------------------------------------------------------
 
-function subscribeSquadProfile(cb: () => void) {
-  window.addEventListener(SQUAD_PROFILE_CHANGED_EVENT, cb);
-  return () => window.removeEventListener(SQUAD_PROFILE_CHANGED_EVENT, cb);
+function subscribeTeam(cb: () => void) {
+  window.addEventListener(TEAM_CHANGED_EVENT, cb);
+  return () => window.removeEventListener(TEAM_CHANGED_EVENT, cb);
 }
 
-function getSquadProfileSnapshot(): string {
+function getTeamSnapshot(): string {
   if (typeof window === "undefined") return "{}";
-  return localStorage.getItem(SQUAD_PROFILE_KEY) || "{}";
+  return localStorage.getItem(TEAM_KEY) || "{}";
 }
 
-function parseProfile(snapshot: string): SquadProfile | null {
+function parseProfile(snapshot: string): Team | null {
   try {
     const parsed = JSON.parse(snapshot);
-    return parsed && typeof parsed === "object" ? (parsed as SquadProfile) : null;
+    return parsed && typeof parsed === "object" ? (parsed as Team) : null;
   } catch {
     return null;
   }
@@ -128,8 +128,8 @@ export default function PlayerAvailabilityPage() {
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const profileSnapshot = useSyncExternalStore(
-    subscribeSquadProfile,
-    getSquadProfileSnapshot,
+    subscribeTeam,
+    getTeamSnapshot,
     () => "{}"
   );
 
@@ -180,7 +180,7 @@ export default function PlayerAvailabilityPage() {
       existing >= 0
         ? responses.map((r, i) => (i === existing ? next : r))
         : [...responses, next];
-    saveSquadProfile({
+    saveTeam({
       ...profile,
       availabilityResponses: updated,
       updatedAt: new Date().toISOString(),

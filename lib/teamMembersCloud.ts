@@ -250,6 +250,24 @@ export async function createInviteLink(
   }
 }
 
+export async function updateMemberPermissions(
+  memberId: string,
+  canManageTeam: boolean
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/team/member-permissions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memberId, canManageTeam }),
+    });
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) return { ok: false, error: data.error ?? "Failed to update permissions" };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Failed to update permissions" };
+  }
+}
+
 export async function deactivateInviteLink(linkId: string): Promise<void> {
   await fetch("/api/invite/link", {
     method: "DELETE",

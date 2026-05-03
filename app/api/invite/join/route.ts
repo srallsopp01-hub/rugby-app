@@ -24,10 +24,14 @@ type SquadPlayerRaw = {
   linkedUserId?: string;
 };
 
-function parseCoachLabel(label: string | null): { displayName: string | null; coachLabel: string | null } {
-  if (!label) return { displayName: null, coachLabel: null };
-  const [name, title] = label.split("|");
-  return { displayName: name?.trim() || null, coachLabel: title?.trim() || null };
+function parseCoachLabel(label: string | null): { displayName: string | null; coachLabel: string | null; canManageTeam: boolean } {
+  if (!label) return { displayName: null, coachLabel: null, canManageTeam: false };
+  const [name, title, adminMarker] = label.split("|");
+  return {
+    displayName: name?.trim() || null,
+    coachLabel: title?.trim() || null,
+    canManageTeam: adminMarker?.trim() === "admin",
+  };
 }
 
 // GET /api/invite/join?token=xxx — public validation, no auth required
@@ -232,9 +236,7 @@ export async function POST(req: Request) {
         .maybeSingle()
     : { data: null };
 
-  const coachData = !isPlayerRole ? parseCoachLabel(link.label) : { displayName: null, coachLabel: null };
-
-  let memberRowId: string | null = null;
+  const coachData = !isPlayerRole ? parseCoachLabel(link.label) : { displayName: null, coachLabel: null, canManageTeam: false };
 
   if (existingByEmail) {
     if (existingByEmail.status === "active") {
@@ -255,6 +257,7 @@ export async function POST(req: Request) {
         player_squad_id: isPlayerRole ? (squadPlayerId ?? null) : null,
         display_name: coachData.displayName,
         coach_label: coachData.coachLabel,
+        can_manage_team: coachData.canManageTeam || null,
       })
       .eq("id", existingByEmail.id);
 
@@ -262,7 +265,6 @@ export async function POST(req: Request) {
       console.error("Failed to update team member", JSON.stringify(updateError));
       return NextResponse.json({ error: "Failed to join team" }, { status: 500 });
     }
-    memberRowId = existingByEmail.id;
   } else {
     // No existing row — insert fresh
     const insertPayload = {
@@ -277,22 +279,19 @@ export async function POST(req: Request) {
       player_squad_id: isPlayerRole ? (squadPlayerId ?? null) : null,
       display_name: coachData.displayName,
       coach_label: coachData.coachLabel,
+      can_manage_team: coachData.canManageTeam || null,
       invited_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    console.log("Inserting team member:", JSON.stringify(insertPayload));
 
-    const { data: inserted, error: insertError } = await admin
+    const { error: insertError } = await admin
       .from("team_members")
-      .insert(insertPayload)
-      .select("id")
-      .single();
+      .insert(insertPayload);
 
     if (insertError) {
       console.error("Failed to insert team member", JSON.stringify(insertError));
       return NextResponse.json({ error: "Failed to join team" }, { status: 500 });
     }
-    memberRowId = inserted?.id ?? null;
   }
 
   // Link squad player's linkedUserId in the teams table (player only)

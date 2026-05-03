@@ -47,6 +47,7 @@ export default function TeamPage() {
   const [coachName, setCoachName] = useState("");
   const [coachTitle, setCoachTitle] = useState("");
   const [coachEmail, setCoachEmail] = useState("");
+  const [grantCoachAdmin, setGrantCoachAdmin] = useState(false);
   const [generatingCoachLink, setGeneratingCoachLink] = useState(false);
   const [coachLinkUrl, setCoachLinkUrl] = useState<string | null>(null);
   const [copiedCoachLink, setCopiedCoachLink] = useState(false);
@@ -151,9 +152,9 @@ export default function TeamPage() {
     e.preventDefault();
     if (!coachName.trim()) return;
     setGeneratingCoachLink(true);
-    const label = coachTitle.trim()
-      ? `${coachName.trim()}|${coachTitle.trim()}`
-      : coachName.trim();
+    const parts = [coachName.trim(), coachTitle.trim(), grantCoachAdmin ? "admin" : ""];
+    while (parts.length > 1 && !parts[parts.length - 1]) parts.pop();
+    const label = parts.join("|");
     const result = await createInviteLink("assistant_coach", {
       label,
       email: coachEmail.trim() || undefined,

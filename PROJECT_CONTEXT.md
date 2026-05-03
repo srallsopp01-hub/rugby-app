@@ -1089,6 +1089,32 @@ Root cause: event resolution used a different lookup path than `buildBasicStats`
 
 ---
 
+### Move 2 (May 2026) — Multi-tenant foundation: Organisation → Team model
+
+Full migration from `squad_profiles` table to new `organisations` + `teams` schema.
+
+- ✅ `supabase/migrations/20260503000000_multi_tenant_foundation.sql` — new `organisations` and `teams` tables replace `squad_profiles`; `teams` stores all JSONB arrays (players, fixtures, training_sessions, availability_responses, session_logs); RLS on all tables; `upsert_player_availability` RPC updated to use `p_team_id`
+- ✅ `lib/teamCloud.ts` — new `fetchCloudTeam`, `upsertCloudTeam`, `upsertPlayerAvailabilityResponse`, `syncLocalTeamToCloud`, `mergeTeams`; maps `teams` DB rows to `Team` camelCase type; backwards-compat aliases retained
+- ✅ `app/rugby-tagging/lib/team.ts` — `Team` type replaces `SquadProfile`; `getTeam`/`saveTeam`/`saveTeam` write to `TEAM_KEY` (`fynlwhistle-team`); one-time migration from old `SQUAD_PROFILE_KEY` on first read; deprecated aliases exported for gradual callsite migration
+- ✅ `lib/teamContext.ts` — `getMyTeamContext` queries `team_members` for `team_id`, `role`, `can_manage_team`, and `created_by_user_id`; in-memory cache (CACHE_VERSION-gated); `clearTeamContextCache()` exported
+- ✅ `app/player/SyncPlayerData.tsx` — replaces old squad-profile sync; fetches cloud team via `fetchCloudTeam`, merges local availability responses (newest wins), saves merged team to localStorage
+
+---
+
+### Batch BC (May 2026) — Coach admin permissions via invite link + player availability fix
+
+**Coach admin permissions:**
+- ✅ `app/coach/team/page.tsx` — "Grant admin" checkbox on coach invite form; encodes as `|admin` suffix in the invite link `label` field
+- ✅ `app/api/invite/join/route.ts` — `parseCoachLabel` now reads three-part label (`name|title|admin`); writes `can_manage_team: true` to `team_members` on join
+- ✅ `lib/teamMembersCloud.ts` — `updateMemberPermissions(memberId, canManageTeam)` added for runtime permission changes
+- ✅ `app/api/team/member-permissions/route.ts` — new `POST` route; head-coach-only guard; validates member belongs to same team; blocks coaches removing their own permissions
+
+**Player availability bug fix:**
+- ✅ `app/player/availability/page.tsx` — fixed root cause of "No upcoming fixtures/training sessions": page was reading from deprecated `SQUAD_PROFILE_KEY` (deleted by migration) instead of `TEAM_KEY`; updated imports to use `TEAM_KEY`, `TEAM_CHANGED_EVENT`, `saveTeam`, and `Team` type directly
+- ✅ `app/player/SyncPlayerData.tsx` — added `visibilitychange` listener so players re-sync team data from cloud when they return to the tab (mirrors existing coach behaviour)
+
+---
+
 ## Next — what's left to do
 
 ### Completed but not yet written up
