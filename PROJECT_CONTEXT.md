@@ -99,6 +99,149 @@ The app is split into four clearly separated layers with independent layouts and
 
 ---
 
+## Organisation / Team / User Spec
+
+This is the source of truth for the multi-tenant data model. As of Move 2 (Batch BD, May 2026), this is implemented in production.
+
+### Concepts
+
+**Organisation** — the billing entity. One Stripe subscription belongs to exactly one organisation. An organisation has a name, a plan, a billing relationship, and contains one or more teams. Solo coaches have a "ghost organisation" — it exists in the database for billing but the word "organisation" never appears in the Team Launch UI.
+
+**Team** — the actual rugby team. Owns a squad of players, fixtures, training sessions, colours, lineout calls, saved matches, and videos. Every team belongs to exactly one organisation. Replaces the old `squad_profiles` concept, with `organisation_id` added.
+
+**User** — a person with a Supabase auth account (email + password). A user is just an identity. They get capabilities by being a member of one or more teams (via `team_members`) and possibly one or more organisations (via `organisation_members`). Users own no data directly — teams own data, organisations own teams.
+
+### Roles
+
+Five roles total, split across two membership tables.
+
+**Organisation-level (`organisation_members`):**
+- **`club_admin`** — owns billing, creates/deletes teams, oversees the org. Read-only access across all teams in the org by default. Can also hold a team-level role concurrently.
+
+**Team-level (`team_members`):**
+- **`head_coach`** — full control of a team. Tags, grades, manages squad, invites members, uploads videos. Multiple head coaches per team allowed.
+- **`assistant_coach`** — coaching access without admin powers. Can tag, grade, write coach notes, upload videos. Cannot manage squad structure or invite members.
+- **`player`** — sees their own data and read-only team analytics. Submits availability. Linked to a `SquadPlayer` record via `linked_user_id`.
+- **`player_admin`** — *(deferred — not implemented)*
+
+`coach_label` (free text, e.g. "Forwards", "Backs", "Manager") stays as a cosmetic display label. `role` is the permission boundary.
+
+### Plans
+
+Four plan types in the `plan` enum. `solo` is reserved for future use, unreachable in UI. Existing users backfilled as `team_launch`.
+
+| Plan | Teams | Coach seats | Players (per team) |
+|---|---|---|---|
+| `solo` (reserved) | 1 | 1 | 30 |
+| `team_launch` | 1 | 4 | 50 |
+| `club_5` | 5 | 30 | 50 per team |
+| `org_custom` | unlimited | unlimited | unlimited |
+
+Plan defaults live in a `PLAN_LIMITS` constant in application code. Per-org overrides via nullable columns (`team_limit`, `seat_limit`, `player_limit`) on the `organisations` table. Move 2 shipped with limits set to NULL — schema in place, enforcement turned on later when ready. Active players only count toward the player limit. Coach seats include `head_coach`, `assistant_coach`, and `club_admin`. Players don't count toward seat limits.
+
+### Tables (current schema after Move 2)
+
+#### `organisations`id                      uuid primary key
+name                    text not null
+plan                    text check ('solo' | 'team_launch' | 'club_5' | 'org_custom')
+status                  text check ('trialing' | 'active' | 'past_due' | 'canceled' | 'archived')
+team_limit              integer null
+seat_limit              integer null
+player_limit            integer null
+trial_ends_at           timestamptz null
+stripe_customer_id      text null
+stripe_subscription_id  text null
+current_period_end      timestamptz null
+canceled_at             timestamptz null
+archived_at             timestamptz null
+owner_user_id           uuid → auth.users not null
+created_at, updated_at
+Indexes on: owner_user_id, status, stripe_customer_id (where not null), stripe_subscription_id (where not null).
+
+#### `organisation_members`id                  uuid primary key
+user_id             uuid → auth.users
+organisation_id     uuid → organisations
+role                text check ('club_admin')   (only value for now)
+created_at
+Unique constraint on (user_id, organisation_id). Application-level invariant: each org must have at least one club_admin.
+
+#### `teams` (replaces `squad_profiles`)id                      uuid primary key
+organisation_id         uuid → organisations not null
+name                    text not null
+status                  text check ('active' | 'archived')
+archived_at             timestamptz null
+current_season          text null
+created_by_user_id      uuid → auth.users null   (audit only, no longer access path)— All existing squad_profile fields preserved:
+primary_colour, secondary_colour, logo_url, players (jsonb),
+action_samples (jsonb), correction_memory (jsonb), kpi_targets (jsonb),
+fixtures (jsonb), training_sessions (jsonb), availability_responses (jsonb),
+session_logs (jsonb), league_position integer— Carried forward from squad_profiles (in active use):
+coach_name text not null default ''
+profile_id text not null default ''
+ai_chat_history jsonbcreated_at, updated_at
+Indexes on: organisation_id, status.
+
+#### `team_members` (reshaped)id                  uuid primary key
+user_id             uuid → auth.users
+team_id             uuid → teams
+role                text check ('head_coach' | 'assistant_coach' | 'player')
+status              text check ('active' | 'invited' | 'pending' | 'removed')
+coach_label         text null     (cosmetic only)
+player_squad_id     uuid null     (only when role = 'player')
+email               text null     (used for pending invitations)
+invited_by_user_id  uuid → auth.users null
+invited_at, accepted_at, removed_at, left_team_at
+created_at, updated_at-- Deprecated columns kept for Move 2.5 cleanup:
+owner_user_id       (was the coach's user ID — replaced by team_id)
+member_user_id      (replaced by user_id)
+can_manage_team     (still read in can_manage_team RLS for assistant_coach check)
+Partial unique index on (user_id, team_id) where user_id is not null.
+
+#### `saved_matches` (reshaped)team_id             uuid → teams not null
+season              text null   (copied from teams.current_season)
+visibility          text check ('org' | 'team') default 'org'
+created_by_user_id  uuid → auth.users null   (renamed from user_id)
+-- All existing columns preserved
+Unique constraint on (team_id, match_id). Old (user_id, match_id) constraint dropped.
+
+#### `user_profiles` (new)user_id                 uuid primary key → auth.users cascade
+has_used_trial          boolean not null default false
+last_active_team_id     uuid → teams null on delete set null
+
+#### `stripe_events_processed` (new — for future Stripe webhook)event_id            text primary key
+processed_at        timestamptz not null default now()
+
+### RLS principles
+
+Read access to a team's data requires either:
+(a) an active `team_members` row for that team (status = 'active'),
+(b) an active `club_admin` row in `organisation_members` for the team's organisation, or
+(c) being a `linked_user_id` on a SquadPlayer in the team's `players` JSONB array.
+
+Write access requires `team_members` with `role IN ('head_coach', 'assistant_coach')`. Players can only write their own availability responses.
+
+Squad management requires `role = 'head_coach'`. Org-level team management requires `role = 'club_admin'`.
+
+Helper functions: `can_read_team_data(p_team_id uuid)` and `can_manage_team(p_team_id uuid)` — extended from the original `20260501000003_player_read_access` migration to handle the new role enum and org-level access.
+
+### Player data export
+
+Players can export their performance history as a PDF at any time, including from teams they've left (because `linked_user_id` is preserved on inactive SquadPlayers after departure). Live cross-team "career view" deferred to a future batch — data model already supports it.
+
+### Open questions deliberately deferred
+
+These are decisions consciously not made, with the data model designed not to preclude them:
+- Live player career view — data model supports it, no UI built. Future batch.
+- Per-team merge into Club 5 — viral club adoption case. Manual via admin panel until volume justifies self-serve.
+- Per-team add-on pricing — Club 5 capped at 5 teams. Manual until volume justifies self-serve.
+- `solo` plan as a free tier — enum reserved, no UI. Decision deferred until conversion data is available.
+- Per-match `visibility = 'team'` private mode — column reserved, UI not built.
+- Disappeared club admin self-serve recovery — handled manually until volume justifies self-serve.
+- First-class `seasons` table — currently a text field. FK migration possible later.
+- `player_admin` role — reserved as a concept, not built.
+
+---
+
 ## Key files
 
 ```
@@ -1136,6 +1279,28 @@ Verified locally and on production; one user, one player, full data preserved.
 ---
 
 ## Next — what's left to do
+
+markdown### Move 2.5 — Drop deprecated columns (small follow-up)
+Once invite flows are verified clean on production for at least a week:
+- DROP `team_members.owner_user_id`
+- DROP `team_members.member_user_id`
+- DROP `team_members.can_manage_team` (after updating `can_manage_team()` RLS function to derive from role only)
+- Enforce NOT NULL on `team_invite_links.team_id` (currently nullable for safety)
+
+### Move 3 — Read-only `/coach/organisation` display + team switcher
+- Build `/coach/organisation` route (read-only org details: name, plan, team count, member count)
+- Build team switcher in coach/player sidebars (groups by org, shows current team name, dropdown of all memberships)
+- Server-side `last_active_team_id` sync via `user_profiles` for cross-device consistency
+- Visually distinct UI when club_admin views a team they don't coach (read-only banner)
+
+### Stripe webhook batch (must ship before first Club 5 customer)
+- New endpoint at `/api/stripe/webhook/route.ts`
+- Listens for: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_succeeded`, `invoice.payment_failed`, `customer.subscription.trial_will_end`
+- Idempotent via `stripe_events_processed` table
+- Signature verified via Stripe SDK
+- Updates `organisations.plan`, `status`, `current_period_end`, Stripe IDs
+- Trial-end cron and read-only mode logic
+- One-trial-per-user enforcement via `auth.users.has_used_trial`
 
 ### Completed but not yet written up
 Batches AS, AT, AU, AV, AW were shipped but their narrative was not added to this file. Check git log for details.
