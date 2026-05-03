@@ -257,7 +257,7 @@ export async function POST(req: Request) {
         player_squad_id: isPlayerRole ? (squadPlayerId ?? null) : null,
         display_name: coachData.displayName,
         coach_label: coachData.coachLabel,
-        can_manage_team: coachData.canManageTeam || null,
+        can_manage_team: coachData.canManageTeam,
       })
       .eq("id", existingByEmail.id);
 
@@ -279,7 +279,7 @@ export async function POST(req: Request) {
       player_squad_id: isPlayerRole ? (squadPlayerId ?? null) : null,
       display_name: coachData.displayName,
       coach_label: coachData.coachLabel,
-      can_manage_team: coachData.canManageTeam || null,
+      can_manage_team: coachData.canManageTeam,
       invited_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
