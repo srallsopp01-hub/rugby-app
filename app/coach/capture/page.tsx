@@ -504,7 +504,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
 
     if (setPieceSummary.eastsLineouts.length > 0) {
       lines.push(
-        `Lineout: Easts success was ${setPieceSummary.eastsLineoutSuccessPct.toFixed(
+        `Lineout: ${squadProfile?.teamName ?? "Own team"} success was ${setPieceSummary.eastsLineoutSuccessPct.toFixed(
           0
         )}% from ${setPieceSummary.eastsLineouts.length} logged lineouts.`
       );
@@ -625,9 +625,9 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
         teamTotals.turnovers
       }, Penalties Conceded: ${
         teamEventSummary.penaltiesConceded
-      }, Easts Scrum %: ${setPieceSummary.eastsScrumSuccessPct.toFixed(
+      }, Scrum %: ${setPieceSummary.eastsScrumSuccessPct.toFixed(
         0
-      )}%, Easts Lineout %: ${setPieceSummary.eastsLineoutSuccessPct.toFixed(
+      )}%, Lineout %: ${setPieceSummary.eastsLineoutSuccessPct.toFixed(
         0
       )}%, Tries Scored: ${teamEventSummary.triesScored}, Tries Conceded: ${
         teamEventSummary.triesConceded

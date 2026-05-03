@@ -1278,6 +1278,23 @@ Verified locally and on production; one user, one player, full data preserved.
 
 ---
 
+### Bug fix (May 2026) — Set piece stats wrong + "Easts" hardcoded for all clubs
+
+Two related bugs fixed:
+
+1. **Stats bug (critical):** `buildSetPieceSummary` in `helpers.ts` was filtering with `setPieceSide !== undefined`, which included both own-ball and opposition set pieces. When opposition tagged "Won", it inflated the coach's own scrum/lineout success %. Fixed to filter only own-ball events.
+
+2. **Multi-club naming:** `SetPieceSide` type was `"Easts" | "Opposition"` — all clubs saw "Easts" in the set piece dropdown regardless of their team name. Renamed internal value to `"Own" | "Opposition"`. Dropdown now shows the actual team name dynamically via a new `teamName` prop on `SetPieceLoggingPanel`.
+
+- ✅ `app/rugby-tagging/types.ts` — `SetPieceSide`: `"Easts"` → `"Own"`
+- ✅ `app/rugby-tagging/helpers.ts` — `buildSetPieceSummary`: fixed filter, backward-compat for old `"Easts"` records
+- ✅ `app/rugby-tagging/components/SetPieceLoggingPanel.tsx` — added `teamName` prop, dropdown shows team name for own-ball option
+- ✅ `app/coach/capture/page.tsx` — default states, resets, voice parsing, AI text strings, `teamName` prop passed
+- ✅ `app/coach/review/page.tsx` — filters already used `"Own"` (no change needed)
+- ✅ `supabase/migrations/20260503000002_fix_set_piece_side_own.sql` — converts stored `setPieceSide: "Easts"` → `"Own"` in `saved_matches.payload`
+
+---
+
 ## Next — what's left to do
 
 markdown### Move 2.5 — Drop deprecated columns (small follow-up)
