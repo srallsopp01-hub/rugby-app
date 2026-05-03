@@ -9,10 +9,11 @@ import {
   SAVED_MATCHES_KEY,
   type SavedMatchRecord,
 } from "@/app/rugby-tagging/lib/savedMatches";
-import { SQUAD_PROFILE_KEY } from "@/app/rugby-tagging/constants";
+import { TEAM_KEY } from "@/app/rugby-tagging/constants";
 import {
   saveSquadProfile,
   createSessionLogId,
+  TEAM_CHANGED_EVENT,
   type SquadProfile,
 } from "@/app/rugby-tagging/lib/team";
 import {
@@ -42,7 +43,12 @@ const FOCUS_AREAS = ["Lineout", "Scrum", "Defence", "Attack", "Fitness", "Skills
 
 const emptyArray = "[]";
 const emptyObj = "{}";
-const subscribeToStorage = () => () => {};
+
+function subscribeToStorage(cb: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(TEAM_CHANGED_EVENT, cb);
+  return () => window.removeEventListener(TEAM_CHANGED_EVENT, cb);
+}
 
 function getSavedMatchesSnapshot() {
   if (typeof window === "undefined") return emptyArray;
@@ -50,7 +56,7 @@ function getSavedMatchesSnapshot() {
 }
 function getSquadProfileSnapshot() {
   if (typeof window === "undefined") return emptyObj;
-  return localStorage.getItem(SQUAD_PROFILE_KEY) || emptyObj;
+  return localStorage.getItem(TEAM_KEY) || emptyObj;
 }
 
 function parseSavedMatches(snapshot: string): SavedMatchRecord[] {

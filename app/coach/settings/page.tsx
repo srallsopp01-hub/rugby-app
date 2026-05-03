@@ -11,7 +11,7 @@ import {
   CORRECTION_MEMORY_KEY,
   ONBOARDING_COMPLETE_KEY,
   PLAYER_IDENTITY_KEY,
-  SQUAD_PROFILE_KEY,
+  TEAM_KEY,
   STORAGE_KEY,
 } from "@/app/rugby-tagging/constants";
 import {
@@ -37,7 +37,7 @@ const KNOWN_LOCAL_STORAGE_KEYS = [
   STORAGE_KEY,
   SAVED_MATCHES_KEY,
   CURRENT_MATCH_ID_KEY,
-  SQUAD_PROFILE_KEY,
+  TEAM_KEY,
   CORRECTION_MEMORY_KEY,
   ONBOARDING_COMPLETE_KEY,
   PLAYER_IDENTITY_KEY,
@@ -237,7 +237,7 @@ export default function CoachSettingsPage() {
         coachName?: string;
         players?: unknown[];
         correctionMemory?: unknown[];
-      } | null>(snapshot[SQUAD_PROFILE_KEY], null),
+      } | null>(snapshot[TEAM_KEY], null),
     [snapshot]
   );
   const correctionMemory = useMemo(
