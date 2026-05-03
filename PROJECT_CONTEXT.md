@@ -1122,6 +1122,19 @@ Full migration from `squad_profiles` table to new `organisations` + `teams` sche
 
 ---
 
+Batch BD (May 2026) — Move 2: Multi-tenant data model migration
+
+New tables: organisations, organisation_members, user_profiles, stripe_events_processed
+squad_profiles dropped; teams is the new primary team table with organisation_id
+team_members reshaped: team_id, user_id, role enum, status enum
+saved_matches migrated to team_id-based access; user_id renamed to created_by_user_id
+All RLS policies rewritten around the new schema
+Codebase rename: SquadProfile → Team, squadProfile.ts → team.ts, SQUAD_PROFILE_KEY → TEAM_KEY, SyncSquadProfile → SyncTeam
+Three deprecated columns kept on team_members for transition safety: owner_user_id, member_user_id, can_manage_team. Drop in Move 2.5.
+Verified locally and on production; one user, one player, full data preserved.
+
+---
+
 ## Next — what's left to do
 
 ### Completed but not yet written up
