@@ -11,7 +11,7 @@ import {
   saveSquadProfile,
   type SquadPlayer,
   type SquadProfile,
-} from "@/app/rugby-tagging/lib/squadProfile";
+} from "@/app/rugby-tagging/lib/team";
 
 type PlayerDraft = {
   fullName: string;

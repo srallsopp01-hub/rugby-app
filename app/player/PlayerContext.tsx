@@ -1,9 +1,9 @@
 "use client";
 
 import { createContext, useContext, useMemo, useSyncExternalStore } from "react";
-import { getSquadProfile, SQUAD_PROFILE_CHANGED_EVENT } from "@/app/rugby-tagging/lib/squadProfile";
+import { getSquadProfile, SQUAD_PROFILE_CHANGED_EVENT } from "@/app/rugby-tagging/lib/team";
 import { PLAYER_IDENTITY_KEY } from "@/app/rugby-tagging/constants";
-import type { SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
+import type { SquadPlayer } from "@/app/rugby-tagging/lib/team";
 
 type PlayerContextValue = {
   currentPlayer: SquadPlayer | null;

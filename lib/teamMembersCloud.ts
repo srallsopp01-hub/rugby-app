@@ -1,13 +1,14 @@
 import { createClient } from "@/lib/supabase/client";
+import { getMyTeamContext } from "@/lib/teamContext";
 
-export type TeamMemberStatus = "pending" | "accepted" | "revoked" | "pending_approval" | "notify_request";
+export type TeamMemberStatus = "active" | "invited" | "pending" | "removed";
 
 export type TeamMember = {
   id: string;
-  ownerUserId: string;
-  memberUserId: string | null;
-  email: string;
-  role: "assistant_coach" | "player";
+  teamId: string;
+  userId: string | null;
+  email: string | null;
+  role: "head_coach" | "assistant_coach" | "player";
   coachLabel: string | null;
   canManageTeam: boolean;
   playerSquadId: string | null;
@@ -22,6 +23,7 @@ export type TeamMember = {
 
 export type InviteLink = {
   id: string;
+  teamId: string | null;
   ownerUserId: string;
   token: string;
   role: "assistant_coach" | "player";
@@ -35,10 +37,10 @@ export type InviteLink = {
 
 type TeamMemberRow = {
   id: string;
-  owner_user_id: string;
-  member_user_id: string | null;
-  email: string;
-  role: "assistant_coach" | "player";
+  team_id: string;
+  user_id: string | null;
+  email: string | null;
+  role: "head_coach" | "assistant_coach" | "player";
   coach_label: string | null;
   can_manage_team: boolean | null;
   player_squad_id: string | null;
@@ -53,6 +55,7 @@ type TeamMemberRow = {
 
 type InviteLinkRow = {
   id: string;
+  team_id: string | null;
   owner_user_id: string;
   token: string;
   role: "assistant_coach" | "player";
@@ -67,8 +70,8 @@ type InviteLinkRow = {
 function rowToMember(row: TeamMemberRow): TeamMember {
   return {
     id: row.id,
-    ownerUserId: row.owner_user_id,
-    memberUserId: row.member_user_id,
+    teamId: row.team_id,
+    userId: row.user_id,
     email: row.email,
     role: row.role,
     coachLabel: row.coach_label,
@@ -87,6 +90,7 @@ function rowToMember(row: TeamMemberRow): TeamMember {
 function rowToInviteLink(row: InviteLinkRow): InviteLink {
   return {
     id: row.id,
+    teamId: row.team_id,
     ownerUserId: row.owner_user_id,
     token: row.token,
     role: row.role,
@@ -101,18 +105,15 @@ function rowToInviteLink(row: InviteLinkRow): InviteLink {
 
 export async function fetchTeamMembers(): Promise<TeamMember[]> {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return [];
+    const ctx = await getMyTeamContext();
+    if (!ctx) return [];
 
+    const supabase = createClient();
     const { data, error } = await supabase
       .from("team_members")
       .select("*")
-      .eq("owner_user_id", user.id)
-      .neq("status", "revoked")
-      .neq("status", "notify_request")
+      .eq("team_id", ctx.teamId)
+      .neq("status", "removed")
       .order("invited_at", { ascending: false });
 
     if (error || !data) return [];
@@ -192,17 +193,15 @@ export async function sendTeamMemberPasswordReset(
 
 export async function fetchPendingApprovals(): Promise<TeamMember[]> {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return [];
+    const ctx = await getMyTeamContext();
+    if (!ctx) return [];
 
+    const supabase = createClient();
     const { data, error } = await supabase
       .from("team_members")
       .select("*")
-      .eq("owner_user_id", user.id)
-      .eq("status", "pending_approval")
+      .eq("team_id", ctx.teamId)
+      .eq("status", "pending")
       .order("invited_at", { ascending: false });
 
     if (error || !data) return [];
@@ -213,25 +212,9 @@ export async function fetchPendingApprovals(): Promise<TeamMember[]> {
 }
 
 export async function fetchNotifyRequests(): Promise<TeamMember[]> {
-  try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return [];
-
-    const { data, error } = await supabase
-      .from("team_members")
-      .select("*")
-      .eq("owner_user_id", user.id)
-      .eq("status", "notify_request")
-      .order("invited_at", { ascending: false });
-
-    if (error || !data) return [];
-    return (data as TeamMemberRow[]).map(rowToMember);
-  } catch {
-    return [];
-  }
+  // notify_request status is merged into 'pending' in the new schema.
+  // This function now returns 'pending' members that joined via a link (have inviteLinkId).
+  return fetchPendingApprovals();
 }
 
 export async function approveTeamMember(memberId: string): Promise<void> {
@@ -277,16 +260,14 @@ export async function deactivateInviteLink(linkId: string): Promise<void> {
 
 export async function fetchActiveInviteLinks(): Promise<InviteLink[]> {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return [];
+    const ctx = await getMyTeamContext();
+    if (!ctx) return [];
 
+    const supabase = createClient();
     const { data, error } = await supabase
       .from("team_invite_links")
       .select("*")
-      .eq("owner_user_id", user.id)
+      .eq("team_id", ctx.teamId)
       .eq("is_active", true)
       .order("created_at", { ascending: false });
 
@@ -298,8 +279,8 @@ export async function fetchActiveInviteLinks(): Promise<InviteLink[]> {
 }
 
 export async function getMyTeamRole(): Promise<{
-  role: "coach" | "assistant_coach" | "player";
-  ownerUserId: string;
+  role: "head_coach" | "assistant_coach" | "player";
+  teamId: string;
 } | null> {
   try {
     const supabase = createClient();
@@ -308,23 +289,21 @@ export async function getMyTeamRole(): Promise<{
     } = await supabase.auth.getUser();
     if (!user) return null;
 
-    // Check if this user is an accepted member of someone else's team
     const { data } = await supabase
       .from("team_members")
-      .select("role, owner_user_id")
-      .eq("member_user_id", user.id)
-      .eq("status", "accepted")
+      .select("role, team_id")
+      .eq("user_id", user.id)
+      .eq("status", "active")
       .maybeSingle();
 
     if (data) {
       return {
-        role: data.role as "assistant_coach" | "player",
-        ownerUserId: data.owner_user_id as string,
+        role: data.role as "head_coach" | "assistant_coach" | "player",
+        teamId: data.team_id as string,
       };
     }
 
-    // Not a member of someone else's team — they are the data owner
-    return { role: "coach", ownerUserId: user.id };
+    return null;
   } catch {
     return null;
   }

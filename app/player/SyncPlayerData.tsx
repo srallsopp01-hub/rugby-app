@@ -3,14 +3,10 @@
 import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { replaceSavedMatches } from "@/app/rugby-tagging/lib/savedMatches";
-import {
-  getSquadProfile,
-  saveSquadProfile,
-  type SquadProfile,
-} from "@/app/rugby-tagging/lib/squadProfile";
+import { getTeam, saveTeam, type Team } from "@/app/rugby-tagging/lib/team";
 import { PLAYER_IDENTITY_KEY } from "@/app/rugby-tagging/constants";
 import { fetchCloudSavedMatches } from "@/lib/savedMatchesCloud";
-import { fetchCloudSquadProfile } from "@/lib/squadProfileCloud";
+import { fetchCloudTeam } from "@/lib/teamCloud";
 import type { AvailabilityResponse } from "@/app/rugby-tagging/types";
 
 function responseKey(r: AvailabilityResponse): string {
@@ -18,20 +14,20 @@ function responseKey(r: AvailabilityResponse): string {
 }
 
 function mergeLocalAvailability(
-  local: SquadProfile | null,
-  cloud: SquadProfile
-): SquadProfile {
+  local: Team | null,
+  cloud: Team
+): Team {
   const localResponses = local?.availabilityResponses ?? [];
   if (localResponses.length === 0) return cloud;
 
   const cloudResponses = cloud.availabilityResponses ?? [];
   const cloudMap = new Map(cloudResponses.map((r) => [responseKey(r), r]));
 
-  for (const local of localResponses) {
-    const key = responseKey(local);
+  for (const localResp of localResponses) {
+    const key = responseKey(localResp);
     const existing = cloudMap.get(key);
-    if (!existing || local.updatedAt > existing.updatedAt) {
-      cloudMap.set(key, local);
+    if (!existing || localResp.updatedAt > existing.updatedAt) {
+      cloudMap.set(key, localResp);
     }
   }
 
@@ -52,9 +48,9 @@ export function SyncPlayerData() {
 
       const { data: membership, error: membershipError } = await supabase
         .from("team_members")
-        .select("player_squad_id, owner_user_id")
-        .eq("member_user_id", user.id)
-        .eq("status", "accepted")
+        .select("player_squad_id")
+        .eq("user_id", user.id)
+        .eq("status", "active")
         .eq("role", "player")
         .maybeSingle();
 
@@ -63,20 +59,20 @@ export function SyncPlayerData() {
         return;
       }
       if (!membership || cancelled) {
-        console.warn("[SyncPlayerData] no accepted player membership found for", user.id);
+        console.warn("[SyncPlayerData] no active player membership found for", user.id);
         return;
       }
       console.log("[SyncPlayerData] membership found:", membership);
 
-      const [{ profile, error: profileError }, { records: cloudMatches, error: matchesError }] =
-        await Promise.all([fetchCloudSquadProfile(), fetchCloudSavedMatches()]);
+      const [{ team, error: teamError }, { records: cloudMatches, error: matchesError }] =
+        await Promise.all([fetchCloudTeam(), fetchCloudSavedMatches()]);
 
       if (cancelled) return;
 
-      if (profileError) {
-        console.error("[SyncPlayerData] squad profile fetch failed:", profileError);
+      if (teamError) {
+        console.error("[SyncPlayerData] team fetch failed:", teamError);
       } else {
-        console.log("[SyncPlayerData] profile fetched:", profile ? profile.teamName : "null");
+        console.log("[SyncPlayerData] team fetched:", team ? team.teamName : "null");
       }
       if (matchesError) {
         console.error("[SyncPlayerData] matches fetch failed:", matchesError);
@@ -84,7 +80,7 @@ export function SyncPlayerData() {
         console.log("[SyncPlayerData] matches fetched:", cloudMatches.length);
       }
 
-      if (profile) saveSquadProfile(mergeLocalAvailability(getSquadProfile(), profile));
+      if (team) saveTeam(mergeLocalAvailability(getTeam(), team));
       if (cloudMatches.length > 0) replaceSavedMatches(cloudMatches);
 
       if (membership.player_squad_id) {

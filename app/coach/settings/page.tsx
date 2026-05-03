@@ -20,7 +20,7 @@ import {
   SAVED_MATCHES_KEY,
 } from "@/app/rugby-tagging/lib/savedMatches";
 import { syncAllLocalMatchesToCloud, fetchCloudSavedMatches } from "@/lib/savedMatchesCloud";
-import { syncLocalSquadProfileToCloud } from "@/lib/squadProfileCloud";
+import { syncLocalSquadProfileToCloud } from "@/lib/teamCloud";
 import { checkCloudSchema, type CloudSchemaHealth } from "@/lib/cloudHealth";
 import { clearTeamContextCache, getMyTeamContext } from "@/lib/teamContext";
 import { CLOUD_SYNC_ERROR_EVENT } from "@/app/coach/SyncSavedMatches";

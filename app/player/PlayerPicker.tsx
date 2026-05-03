@@ -1,14 +1,14 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
-import { getSquadProfile } from "@/app/rugby-tagging/lib/squadProfile";
+import { getSquadProfile } from "@/app/rugby-tagging/lib/team";
 import { SQUAD_PROFILE_KEY } from "@/app/rugby-tagging/constants";
 import {
   SAVED_MATCHES_KEY,
   subscribeSavedMatchesChanged,
 } from "@/app/rugby-tagging/lib/savedMatches";
 import { usePlayer } from "./PlayerContext";
-import type { SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
+import type { SquadPlayer } from "@/app/rugby-tagging/lib/team";
 
 function subscribeSquadProfileChanged(cb: () => void) {
   window.addEventListener("player-identity-changed", cb);

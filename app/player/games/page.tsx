@@ -11,7 +11,7 @@ import { SAVED_MATCHES_KEY, subscribeSavedMatchesChanged } from "@/app/rugby-tag
 import { buildReportRowsFromMatch } from "@/app/rugby-tagging/helpers";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { ReportRow } from "@/app/rugby-tagging/types";
-import type { SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
+import type { SquadPlayer } from "@/app/rugby-tagging/lib/team";
 
 function playerNameSet(player: SquadPlayer): Set<string> {
   return new Set([

@@ -11,7 +11,7 @@ import { buildReportRowsFromMatch, formatTime, findMatchingPlayer } from "@/app/
 import { buildPlayerCoachingPlan } from "../../playerCoachingPlan";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { EventItem } from "@/app/rugby-tagging/types";
-import type { SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
+import type { SquadPlayer } from "@/app/rugby-tagging/lib/team";
 import { getMatchVideoSignedUrlWithResult, refreshVideoSignedUrl, SIGNED_URL_EXPIRY_SECONDS } from "@/lib/matchVideoCloud";
 
 function playerNameSet(player: SquadPlayer): Set<string> {

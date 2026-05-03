@@ -13,7 +13,7 @@ import {
   upsertSquadPlayer,
   type SquadPlayer,
   type SquadProfile,
-} from "@/app/rugby-tagging/lib/squadProfile";
+} from "@/app/rugby-tagging/lib/team";
 import type { Fixture, TrainingSession, TrainingSessionDayOfWeek } from "@/app/rugby-tagging/types";
 import { KpiTargetsSection } from "./KpiTargetsSection";
 import { PageHelp } from "@/app/components/PageHelp";

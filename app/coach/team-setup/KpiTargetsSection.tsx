@@ -8,7 +8,7 @@ import {
   type CustomKpiConfig,
   type ManualKpi,
   type SquadProfile,
-} from "@/app/rugby-tagging/lib/squadProfile";
+} from "@/app/rugby-tagging/lib/team";
 
 const BUILTIN_KPI_LABELS: Record<BuiltinKpiId, { label: string; unit: string; hint: string }> = {
   tackle_pct: { label: "Tackle %", unit: "%", hint: "% of attempted tackles completed" },

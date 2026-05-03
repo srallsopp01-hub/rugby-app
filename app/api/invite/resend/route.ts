@@ -6,7 +6,6 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 
 type InviteMember = {
   id: string;
-  owner_user_id: string;
   email: string;
   role: "assistant_coach" | "player";
   status: string;
@@ -49,7 +48,7 @@ export async function POST(req: Request) {
 
   const { data: member, error: memberError } = await supabase
     .from("team_members")
-    .select("id, owner_user_id, email, role, status, coach_label, can_manage_team")
+    .select("id, email, role, status, coach_label, can_manage_team")
     .eq("id", body.memberId)
     .single<InviteMember>();
 
@@ -57,7 +56,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Member not found" }, { status: 404 });
   }
 
-  if (member.status !== "pending") {
+  if (member.status !== "invited") {
     return NextResponse.json({ error: "Only pending email invites can be resent" }, { status: 400 });
   }
 

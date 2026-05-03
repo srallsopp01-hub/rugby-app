@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { MyTeamContext } from "@/lib/teamContext";
+import type { MyTeamContext, TeamRole } from "@/lib/teamContext";
 
 export async function getServerTeamContext(): Promise<MyTeamContext | null> {
   const supabase = await createClient();
@@ -9,34 +9,26 @@ export async function getServerTeamContext(): Promise<MyTeamContext | null> {
 
   if (!user) return null;
 
-  const { data: membership, error: membershipError } = await supabase
+  const { data: membership, error } = await supabase
     .from("team_members")
-    .select("role, owner_user_id, can_manage_team")
-    .eq("member_user_id", user.id)
-    .eq("status", "accepted")
+    .select("role, team_id, can_manage_team")
+    .eq("user_id", user.id)
+    .eq("status", "active")
     .maybeSingle();
 
-  let resolvedMembership = membership;
-  if (membershipError) {
-    const { data: fallbackMembership } = await supabase
-      .from("team_members")
-      .select("role, owner_user_id")
-      .eq("member_user_id", user.id)
-      .eq("status", "accepted")
-      .maybeSingle();
-    resolvedMembership = fallbackMembership
-      ? { ...fallbackMembership, can_manage_team: false }
-      : null;
-  }
+  if (error || !membership) return null;
 
-  if (!resolvedMembership) {
-    return { role: "coach", userId: user.id, ownerUserId: user.id, canManageTeam: true };
-  }
+  const { data: team } = await supabase
+    .from("teams")
+    .select("created_by_user_id")
+    .eq("id", membership.team_id)
+    .single();
 
   return {
-    role: resolvedMembership.role as MyTeamContext["role"],
+    role: membership.role as TeamRole,
     userId: user.id,
-    ownerUserId: resolvedMembership.owner_user_id as string,
-    canManageTeam: Boolean(resolvedMembership.can_manage_team),
+    teamId: membership.team_id as string,
+    ownerUserId: (team?.created_by_user_id as string) ?? user.id,
+    canManageTeam: Boolean(membership.can_manage_team),
   };
 }

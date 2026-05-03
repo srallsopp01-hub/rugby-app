@@ -7,12 +7,12 @@ import { PlayerPicker } from "./PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
 import { SAVED_MATCHES_KEY, subscribeSavedMatchesChanged } from "@/app/rugby-tagging/lib/savedMatches";
 import { SQUAD_PROFILE_KEY } from "@/app/rugby-tagging/constants";
-import { saveSquadProfile, SQUAD_PROFILE_CHANGED_EVENT } from "@/app/rugby-tagging/lib/squadProfile";
+import { saveSquadProfile, SQUAD_PROFILE_CHANGED_EVENT } from "@/app/rugby-tagging/lib/team";
 import { buildReportRowsFromMatch, gradeToScore } from "@/app/rugby-tagging/helpers";
 import { buildPlayerCoachingPlan } from "./playerCoachingPlan";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { ReportRow, AvailabilityResponse, Fixture, TrainingSession, TrainingSessionDayOfWeek } from "@/app/rugby-tagging/types";
-import type { SquadPlayer, SquadProfile } from "@/app/rugby-tagging/lib/squadProfile";
+import type { SquadPlayer, SquadProfile } from "@/app/rugby-tagging/lib/team";
 
 // ---------------------------------------------------------------------------
 // Storage helpers
@@ -436,7 +436,7 @@ export default function PlayerHomePage() {
         : [...savedResponses, next];
     saveSquadProfile({ ...profile, availabilityResponses: updated, updatedAt: new Date().toISOString() });
 
-    import("@/lib/squadProfileCloud")
+    import("@/lib/teamCloud")
       .then(({ upsertPlayerAvailabilityResponse }) => void upsertPlayerAvailabilityResponse(next))
       .catch(() => {});
   }

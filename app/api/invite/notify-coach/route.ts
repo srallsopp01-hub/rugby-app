@@ -4,7 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 type InviteLinkRow = {
   id: string;
-  owner_user_id: string;
+  team_id: string | null;
+  owner_user_id: string; // retained: NOT NULL, deferred drop in Move 2.5
   is_active: boolean;
   expires_at: string | null;
 };
@@ -36,10 +37,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "token and requestedName are required" }, { status: 400 });
   }
 
-  // Validate the link (anon-readable per RLS)
   const { data: link, error: linkError } = await supabase
     .from("team_invite_links")
-    .select("id, owner_user_id, is_active, expires_at")
+    .select("id, team_id, owner_user_id, is_active, expires_at")
     .eq("token", token)
     .single<InviteLinkRow>();
 
@@ -55,12 +55,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "This invite link has expired" }, { status: 410 });
   }
 
-  // Check user hasn't already sent a request or joined this team
+  if (!link.team_id) {
+    return NextResponse.json({ error: "Invalid invite link (no team)" }, { status: 400 });
+  }
+
   const { data: existing } = await admin
     .from("team_members")
     .select("id, status")
-    .eq("owner_user_id", link.owner_user_id)
-    .eq("member_user_id", user.id)
+    .eq("team_id", link.team_id)
+    .eq("user_id", user.id)
     .maybeSingle();
 
   if (existing) {
@@ -71,11 +74,12 @@ export async function POST(req: Request) {
   }
 
   const { error: insertError } = await admin.from("team_members").insert({
-    owner_user_id: link.owner_user_id,
-    member_user_id: user.id,
-    email: user.email ?? "",
+    team_id: link.team_id,
+    owner_user_id: link.owner_user_id, // retained: NOT NULL column, deferred drop in Move 2.5
+    user_id: user.id,
+    email: user.email ?? null,
     role: "player",
-    status: "notify_request",
+    status: "pending",
     requested_name: requestedName.trim(),
     requested_position: requestedPosition?.trim() || null,
     invite_link_id: link.id,

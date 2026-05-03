@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { SquadPlayer } from "../lib/squadProfile";
+import type { SquadPlayer } from "../lib/team";
 
 type PendingNameFor = "try-scored" | "penalty-conceded" | null;
 

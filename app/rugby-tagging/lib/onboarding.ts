@@ -1,5 +1,5 @@
 import { ONBOARDING_COMPLETE_KEY } from "../constants";
-import { getSquadProfile, type SquadProfile } from "./squadProfile";
+import { getSquadProfile, type SquadProfile } from "./team";
 
 export function hasCompletedOnboarding(): boolean {
   if (typeof window === "undefined") return true;

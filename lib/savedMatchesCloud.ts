@@ -8,7 +8,8 @@ import { getMyTeamContext } from "@/lib/teamContext";
 
 type SavedMatchRow = {
   id: string;
-  user_id: string;
+  team_id: string;
+  created_by_user_id: string;
   match_id: string;
   match_title: string;
   opponent: string;
@@ -21,10 +22,12 @@ type SavedMatchRow = {
 
 function recordToUpsertPayload(
   record: SavedMatchRecord,
-  userId: string
+  teamId: string,
+  createdByUserId: string
 ): Omit<SavedMatchRow, "id"> {
   return {
-    user_id: userId,
+    team_id: teamId,
+    created_by_user_id: createdByUserId,
     match_id: record.id,
     match_title: record.matchTitle,
     opponent: record.opponent,
@@ -61,7 +64,7 @@ export async function fetchCloudSavedMatches(): Promise<{
     const { data, error } = await supabase
       .from("saved_matches")
       .select("*")
-      .eq("user_id", ctx.ownerUserId)
+      .eq("team_id", ctx.teamId)
       .order("updated_at", { ascending: false });
 
     if (error) return { records: [], error: error.message };
@@ -81,25 +84,11 @@ export async function upsertCloudSavedMatch(
     if (!ctx?.canManageTeam) return { ok: false, error: "No write permission" };
 
     const supabase = createClient();
-    const payload = recordToUpsertPayload(record, ctx.ownerUserId);
+    const payload = recordToUpsertPayload(record, ctx.teamId, ctx.userId);
 
     const { error } = await supabase
       .from("saved_matches")
-      .upsert(payload, { onConflict: "user_id,match_id" });
-
-    if (error?.code === "42703") {
-      // video_storage_path column doesn't exist (migration 001 not applied) — retry without it
-      const basePayload = Object.fromEntries(
-        Object.entries(payload).filter(([k]) => k !== "video_storage_path")
-      );
-      const { error: retryError } = await supabase
-        .from("saved_matches")
-        .upsert(basePayload, { onConflict: "user_id,match_id" });
-      if (retryError) {
-        return { ok: false, error: `Saved match upsert failed: ${retryError.message}` };
-      }
-      return { ok: true };
-    }
+      .upsert(payload, { onConflict: "team_id,match_id" });
 
     if (error) return { ok: false, error: `Saved match upsert failed: ${error.message}` };
     return { ok: true };
@@ -119,7 +108,7 @@ export async function deleteCloudSavedMatch(
     const { error } = await supabase
       .from("saved_matches")
       .delete()
-      .eq("user_id", ctx.ownerUserId)
+      .eq("team_id", ctx.teamId)
       .eq("match_id", matchId);
 
     if (error) return { ok: false, error: `Delete failed: ${error.message}` };

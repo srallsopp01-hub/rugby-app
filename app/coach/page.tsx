@@ -14,7 +14,7 @@ import {
   saveSquadProfile,
   createSessionLogId,
   type SquadProfile,
-} from "@/app/rugby-tagging/lib/squadProfile";
+} from "@/app/rugby-tagging/lib/team";
 import {
   buildReportRowsFromMatch,
   buildTeamTotals,
@@ -27,7 +27,7 @@ import { GradeBadge } from "@/app/components/GradeBadge";
 import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "./help-content";
 import { DashboardChat } from "./DashboardChat";
-import { upsertCloudSquadProfile } from "@/lib/squadProfileCloud";
+import { upsertCloudSquadProfile } from "@/lib/teamCloud";
 import { fetchNotifyRequests } from "@/lib/teamMembersCloud";
 
 // ---------------------------------------------------------------------------

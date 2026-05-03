@@ -1,39 +1,32 @@
 "use client";
 
 import { useEffect } from "react";
-import {
-  getSquadProfile,
-  saveSquadProfile,
-} from "@/app/rugby-tagging/lib/squadProfile";
-import {
-  fetchCloudSquadProfile,
-  mergeSquadProfiles,
-  upsertCloudSquadProfile,
-} from "@/lib/squadProfileCloud";
+import { getTeam, saveTeam } from "@/app/rugby-tagging/lib/team";
+import { fetchCloudTeam, mergeTeams, upsertCloudTeam } from "@/lib/teamCloud";
 
-export function SyncSquadProfile() {
+export function SyncTeam() {
   useEffect(() => {
     let cancelled = false;
 
     async function sync() {
-      const local = getSquadProfile();
-      const { profile: cloud } = await fetchCloudSquadProfile();
+      const local = getTeam();
+      const { team: cloud } = await fetchCloudTeam();
 
       if (cancelled) return;
 
-      const merged = mergeSquadProfiles(cloud, local);
+      const merged = mergeTeams(cloud, local);
       if (!merged) return;
 
       // Availability responses are player-owned — always use the cloud version
       // so coach saves never overwrite what players have submitted.
-      const finalProfile = cloud
+      const finalTeam = cloud
         ? { ...merged, availabilityResponses: cloud.availabilityResponses ?? [] }
         : merged;
 
-      saveSquadProfile(finalProfile);
+      saveTeam(finalTeam);
 
-      if (!cloud || finalProfile.updatedAt !== cloud.updatedAt) {
-        void upsertCloudSquadProfile(finalProfile);
+      if (!cloud || finalTeam.updatedAt !== cloud.updatedAt) {
+        void upsertCloudTeam(finalTeam);
       }
     }
 

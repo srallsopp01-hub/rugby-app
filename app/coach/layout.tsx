@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import CoachSidebar from "./CoachSidebar";
 import { SyncSavedMatches } from "./SyncSavedMatches";
-import { SyncSquadProfile } from "./SyncSquadProfile";
+import { SyncTeam } from "./SyncTeam";
 import { FloatingHelpChat } from "@/app/components/FloatingHelpChat";
 
 export default async function CoachLayout({
@@ -22,17 +22,17 @@ export default async function CoachLayout({
   const { data: membership } = await supabase
     .from("team_members")
     .select("role")
-    .eq("member_user_id", user.id)
-    .eq("status", "accepted")
+    .eq("user_id", user!.id)
+    .eq("status", "active")
     .maybeSingle();
 
-  if (membership?.role === "player") {
+  if (!membership || membership.role === "player") {
     redirect("/player");
   }
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <SyncSquadProfile />
+      <SyncTeam />
       <SyncSavedMatches />
       <CoachSidebar />
       <main className="flex-1 overflow-auto">{children}</main>

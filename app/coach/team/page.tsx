@@ -23,7 +23,7 @@ import {
   saveSquadProfile,
   type SquadPlayer,
   type SquadProfile,
-} from "@/app/rugby-tagging/lib/squadProfile";
+} from "@/app/rugby-tagging/lib/team";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 
@@ -59,7 +59,7 @@ export default function TeamPage() {
       fetchNotifyRequests(),
       fetchActiveInviteLinks(),
     ]).then(([membersData, requestsData, linksData]) => {
-      setAcceptedMembers(membersData.filter((m) => m.status === "accepted"));
+      setAcceptedMembers(membersData.filter((m) => m.status === "active"));
       setNotifyRequests(requestsData);
       const reusable =
         linksData.find((l) => l.role === "player" && !l.preFillEmail && !l.preFillSquadPlayerId) ??
@@ -176,7 +176,7 @@ export default function TeamPage() {
     await approveTeamMember(memberId);
     setNotifyRequests((prev) => prev.filter((m) => m.id !== memberId));
     const updated = await fetchTeamMembers();
-    setAcceptedMembers(updated.filter((m) => m.status === "accepted"));
+    setAcceptedMembers(updated.filter((m) => m.status === "active"));
     setStatusMessage("Player added to squad");
   }
 

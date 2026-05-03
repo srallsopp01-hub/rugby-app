@@ -39,7 +39,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Member not found" }, { status: 404 });
   }
 
-  if (member.status !== "pending") {
+  if (member.status !== "invited") {
     return NextResponse.json(
       { error: "Only pending invite emails can be changed" },
       { status: 400 }

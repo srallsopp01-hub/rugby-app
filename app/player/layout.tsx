@@ -22,11 +22,11 @@ export default async function PlayerLayout({
   const { data: membership } = await supabase
     .from("team_members")
     .select("role")
-    .eq("member_user_id", user.id)
-    .eq("status", "accepted")
+    .eq("user_id", user!.id)
+    .eq("status", "active")
     .maybeSingle();
 
-  if (membership?.role === "assistant_coach") {
+  if (membership?.role === "head_coach" || membership?.role === "assistant_coach") {
     redirect("/coach");
   }
 

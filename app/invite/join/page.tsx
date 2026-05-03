@@ -12,7 +12,8 @@ type Params = {
 
 type InviteLinkRow = {
   id: string;
-  owner_user_id: string;
+  team_id: string | null;
+  owner_user_id: string; // retained: NOT NULL, deferred drop in Move 2.5
   role: string;
   label: string | null;
   expires_at: string | null;
@@ -52,7 +53,7 @@ export default async function InviteJoinPage({ searchParams }: Params) {
   const { data: link, error: linkError } = await supabase
     .from("team_invite_links")
     .select(
-      "id, owner_user_id, role, label, expires_at, is_active, pre_filled_email, pre_filled_squad_player_id, consumed_at"
+      "id, team_id, owner_user_id, role, label, expires_at, is_active, pre_filled_email, pre_filled_squad_player_id, consumed_at"
     )
     .eq("token", token)
     .single<InviteLinkRow>();
@@ -76,14 +77,16 @@ export default async function InviteJoinPage({ searchParams }: Params) {
 
   // Squad players — read via admin client to bypass RLS (player has no team membership yet)
   const admin = createAdminClient();
-  const { data: squadProfile } = await (admin ?? supabase)
-    .from("squad_profiles")
-    .select("team_name, players")
-    .eq("user_id", link.owner_user_id)
-    .maybeSingle<{ team_name: string | null; players: SquadPlayerRaw[] | null }>();
+  const { data: teamRow } = link.team_id
+    ? await (admin ?? supabase)
+        .from("teams")
+        .select("name, players")
+        .eq("id", link.team_id)
+        .maybeSingle<{ name: string | null; players: SquadPlayerRaw[] | null }>()
+    : { data: null };
 
-  const teamName = squadProfile?.team_name ?? null;
-  const squadPlayers: SquadPlayerPublic[] = (squadProfile?.players ?? [])
+  const teamName = teamRow?.name ?? null;
+  const squadPlayers: SquadPlayerPublic[] = (teamRow?.players ?? [])
     .filter((p) => p.status !== "unavailable")
     .map((p) => ({
       id: p.id,

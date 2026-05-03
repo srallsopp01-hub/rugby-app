@@ -10,7 +10,7 @@ import {
   saveSquadProfile,
   SQUAD_PROFILE_CHANGED_EVENT,
   type SquadProfile,
-} from "@/app/rugby-tagging/lib/squadProfile";
+} from "@/app/rugby-tagging/lib/team";
 import type { AvailabilityResponse, Fixture, TrainingSession, TrainingSessionDayOfWeek } from "@/app/rugby-tagging/types";
 
 // ---------------------------------------------------------------------------
@@ -189,7 +189,7 @@ export default function PlayerAvailabilityPage() {
     setSyncState("saving");
     if (syncTimer.current) clearTimeout(syncTimer.current);
 
-    import("@/lib/squadProfileCloud")
+    import("@/lib/teamCloud")
       .then(({ upsertPlayerAvailabilityResponse }) => upsertPlayerAvailabilityResponse(next))
       .then(({ ok }) => {
         setSyncState(ok ? "saved" : "error");

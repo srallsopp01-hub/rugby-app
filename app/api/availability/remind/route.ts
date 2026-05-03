@@ -1,16 +1,15 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getServerTeamContext } from "@/lib/serverTeamContext";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const ctx = await getServerTeamContext();
+  if (!ctx?.canManageTeam) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   let body: { fixtureId?: string };
   try {
@@ -23,22 +22,22 @@ export async function POST(req: Request) {
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
 
-  const { data: profileRow } = await admin
-    .from("squad_profiles")
+  const { data: teamRow } = await admin
+    .from("teams")
     .select("fixtures, players, availability_responses")
-    .eq("user_id", user.id)
+    .eq("id", ctx.teamId)
     .maybeSingle();
 
-  if (!profileRow) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+  if (!teamRow) return NextResponse.json({ error: "Team not found" }, { status: 404 });
 
   type AnyRecord = Record<string, unknown>;
-  const fixtures = (profileRow.fixtures as AnyRecord[]) ?? [];
+  const fixtures = (teamRow.fixtures as AnyRecord[]) ?? [];
   const fixture = fixtures.find((f) => f.id === body.fixtureId);
   if (!fixture) return NextResponse.json({ error: "Fixture not found" }, { status: 404 });
 
-  const allPlayers = (profileRow.players as AnyRecord[]) ?? [];
+  const allPlayers = (teamRow.players as AnyRecord[]) ?? [];
   const activePlayers = allPlayers.filter((p) => p.status === "active");
-  const responses = ((profileRow.availability_responses as AnyRecord[]) ?? []).filter(
+  const responses = ((teamRow.availability_responses as AnyRecord[]) ?? []).filter(
     (r) => r.fixtureId === body.fixtureId
   );
   const respondedIds = new Set(responses.map((r) => r.playerId));
@@ -52,12 +51,11 @@ export async function POST(req: Request) {
   const { data: members } = await admin
     .from("team_members")
     .select("player_squad_id, email")
-    .eq("owner_user_id", user.id)
-    .eq("status", "accepted")
+    .eq("team_id", ctx.teamId)
+    .eq("status", "active")
     .in("player_squad_id", pendingIds);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://fynlwhistle.com";
-  const coachName = user.user_metadata?.coach_name as string | undefined;
   const fixtureDate = new Date((fixture.date as string) + "T00:00:00").toLocaleDateString("en-AU", {
     weekday: "short",
     day: "numeric",
@@ -81,13 +79,13 @@ export async function POST(req: Request) {
       html: `
         <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
           <h2 style="margin:0 0 16px">Availability needed</h2>
-          <p>Hey ${name}, ${coachName ?? "your coach"} needs to know if you can make it to:</p>
+          <p>Hey ${name}, your coach needs to know if you can make it to:</p>
           <p style="font-size:18px;font-weight:600;margin:16px 0">vs ${fixture.opponent} &mdash; ${fixtureDate}</p>
           <p>Take 5 seconds to let them know:</p>
           <a href="${appUrl}/player/availability" style="display:inline-block;margin:16px 0;padding:12px 24px;background:#ed6a1f;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
             Update my availability
           </a>
-          <p style="color:#888;font-size:12px">You&apos;re receiving this because you&apos;re part of ${coachName ? `${coachName}&apos;s` : "a"} FYNL Whistle team.</p>
+          <p style="color:#888;font-size:12px">You&apos;re receiving this because you&apos;re part of a FYNL Whistle team.</p>
         </div>
       `,
     });

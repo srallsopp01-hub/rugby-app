@@ -1,5 +1,5 @@
 import { DEFAULT_POSITION_BY_NUMBER, DEFAULT_ROSTER_ROWS, POSITION_OPTIONS } from "./constants";
-import type { SquadPlayer } from "./lib/squadProfile";
+import type { SquadPlayer } from "./lib/team";
 import type {
   EventItem,
   Grade,

@@ -19,7 +19,7 @@ import {
 } from "@/app/rugby-tagging/helpers";
 import { buildPlayerCoachingPlan } from "../playerCoachingPlan";
 import type { ReportRow } from "@/app/rugby-tagging/types";
-import type { SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
+import type { SquadPlayer } from "@/app/rugby-tagging/lib/team";
 
 type CompareMode = "matches" | "players";
 

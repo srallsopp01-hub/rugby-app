@@ -4,7 +4,7 @@ import { unlinkSquadPlayerFromUser } from "@/lib/inviteServer";
 
 type InviteMember = {
   id: string;
-  owner_user_id: string;
+  team_id: string;
   role: "assistant_coach" | "player";
   player_squad_id: string | null;
 };
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
 
   const { data: member, error: memberError } = await supabase
     .from("team_members")
-    .select("id, owner_user_id, role, player_squad_id")
+    .select("id, team_id, role, player_squad_id")
     .eq("id", body.memberId)
     .single<InviteMember>();
 
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
 
   const { error } = await supabase
     .from("team_members")
-    .update({ status: "revoked", updated_at: new Date().toISOString() })
+    .update({ status: "removed", updated_at: new Date().toISOString() })
     .eq("id", member.id);
 
   if (error) {
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
 
   if (member.role === "player" && member.player_squad_id) {
     await unlinkSquadPlayerFromUser({
-      ownerUserId: member.owner_user_id,
+      teamId: member.team_id,
       playerSquadId: member.player_squad_id,
     });
   }

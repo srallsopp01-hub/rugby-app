@@ -1,8 +1,8 @@
-import { SQUAD_PROFILE_KEY } from "../constants";
+import { SQUAD_PROFILE_KEY, TEAM_KEY } from "../constants";
 import { levenshtein } from "../helpers";
 import type { Fixture, TrainingSession, AvailabilityResponse, SessionLog } from "../types";
 
-export const SQUAD_PROFILE_CHANGED_EVENT = "rugby-squad-profile-changed";
+export const TEAM_CHANGED_EVENT = "fynlwhistle-team-changed";
 
 export type SquadPlayerStatus = "active" | "injured" | "unavailable";
 
@@ -68,8 +68,9 @@ export type CorrectionMemoryEntry = {
   count: number;
 };
 
-export type SquadProfile = {
-  id: string;
+export type Team = {
+  id: string;         // teams.id UUID (database primary key)
+  profileId: string;  // legacy app-generated id, carried forward for reference
   teamName: string;
   coachName: string;
   primaryColour: string;
@@ -93,10 +94,6 @@ export function createPlayerId(): string {
   return `player_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function createSquadProfileId(): string {
-  return `squad_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
 export function createFixtureId(): string {
   return `fixture_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -109,10 +106,11 @@ export function createSessionLogId(): string {
   return `slog_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function createDefaultSquadProfile(): SquadProfile {
+export function createDefaultTeam(): Team {
   const now = new Date().toISOString();
   return {
-    id: createSquadProfileId(),
+    id: typeof crypto !== "undefined" ? crypto.randomUUID() : `team_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    profileId: "",
     teamName: "",
     coachName: "",
     primaryColour: "",
@@ -126,64 +124,89 @@ export function createDefaultSquadProfile(): SquadProfile {
   };
 }
 
-export function getSquadProfile(): SquadProfile | null {
-  if (typeof window === "undefined") return null;
+// Migrates localStorage data from the old SQUAD_PROFILE_KEY to the new TEAM_KEY.
+// Runs once per session on first read; safe to call repeatedly.
+function migrateTeamLocalStorageKey(): void {
+  if (typeof window === "undefined") return;
+  if (localStorage.getItem(TEAM_KEY) !== null) return; // already migrated
+
+  const oldRaw = localStorage.getItem(SQUAD_PROFILE_KEY);
+  if (!oldRaw) return;
 
   try {
-    const raw = localStorage.getItem(SQUAD_PROFILE_KEY);
+    // Preserve the raw data as-is under the new key. The cloud sync step will
+    // reconcile the old profileId (squad_...) with the DB UUID after first sync.
+    localStorage.setItem(TEAM_KEY, oldRaw);
+    localStorage.removeItem(SQUAD_PROFILE_KEY);
+  } catch {
+    // If storage write fails, leave old key in place — next read will retry.
+  }
+}
+
+export function getTeam(): Team | null {
+  if (typeof window === "undefined") return null;
+
+  migrateTeamLocalStorageKey();
+
+  try {
+    const raw = localStorage.getItem(TEAM_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return null;
-    return parsed as SquadProfile;
+    // Ensure the profileId field exists on data migrated from the old format
+    if (!parsed.profileId && parsed.id && typeof parsed.id === "string" && !parsed.id.match(/^[0-9a-f-]{36}$/)) {
+      parsed.profileId = parsed.id;
+    }
+    return parsed as Team;
   } catch {
     return null;
   }
 }
 
-export function saveSquadProfile(profile: SquadProfile): void {
+export function saveTeam(team: Team): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(SQUAD_PROFILE_KEY, JSON.stringify(profile));
-  window.dispatchEvent(new Event(SQUAD_PROFILE_CHANGED_EVENT));
-  import("@/lib/squadProfileCloud")
-    .then(({ upsertCloudSquadProfile }) => void upsertCloudSquadProfile(profile))
+  localStorage.setItem(TEAM_KEY, JSON.stringify(team));
+  window.dispatchEvent(new Event(TEAM_CHANGED_EVENT));
+  import("@/lib/teamCloud")
+    .then(({ upsertCloudTeam }) => void upsertCloudTeam(team))
     .catch(() => {});
 }
 
-export function clearSquadProfile(): void {
+export function clearTeam(): void {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(SQUAD_PROFILE_KEY);
+  localStorage.removeItem(TEAM_KEY);
 }
 
 export function upsertSquadPlayer(
-  profile: SquadProfile,
+  team: Team,
   player: SquadPlayer
-): SquadProfile {
-  const exists = profile.players.findIndex((p) => p.id === player.id) >= 0;
+): Team {
+  const exists = team.players.findIndex((p) => p.id === player.id) >= 0;
   const players = exists
-    ? profile.players.map((p) => (p.id === player.id ? player : p))
-    : [...profile.players, player];
+    ? team.players.map((p) => (p.id === player.id ? player : p))
+    : [...team.players, player];
 
-  return { ...profile, players, updatedAt: new Date().toISOString() };
+  return { ...team, players, updatedAt: new Date().toISOString() };
 }
 
 export function removeSquadPlayer(
-  profile: SquadProfile,
+  team: Team,
   playerId: string
-): SquadProfile {
+): Team {
   return {
-    ...profile,
-    players: profile.players.filter((p) => p.id !== playerId),
+    ...team,
+    players: team.players.filter((p) => p.id !== playerId),
     updatedAt: new Date().toISOString(),
   };
 }
 
 export function findPlayerByName(
-  profile: SquadProfile,
+  team: Team,
   name: string
 ): SquadPlayer | null {
   const needle = name.toLowerCase().trim();
   return (
-    profile.players.find((p) => {
+    team.players.find((p) => {
       if (p.fullName.toLowerCase() === needle) return true;
       if (p.preferredName.toLowerCase() === needle) return true;
       return p.nicknames.some((n) => n.toLowerCase() === needle);
@@ -192,14 +215,14 @@ export function findPlayerByName(
 }
 
 export function resolvePlayerName(
-  profile: SquadProfile,
+  team: Team,
   name: string
 ): string | null {
-  const exact = findPlayerByName(profile, name);
+  const exact = findPlayerByName(team, name);
   if (exact) return exact.fullName;
 
   const needle = name.toLowerCase().trim();
-  const surnameMatch = profile.players.find((p) => {
+  const surnameMatch = team.players.find((p) => {
     const parts = p.fullName.trim().split(/\s+/);
     const surname = parts[parts.length - 1]?.toLowerCase() ?? "";
     return surname.length > 1 && surname === needle;
@@ -207,7 +230,7 @@ export function resolvePlayerName(
   if (surnameMatch) return surnameMatch.fullName;
 
   // Fuzzy surname fallback: catches Whisper mishearings (e.g. "Thomson" → "Thompson")
-  const fuzzyMatch = profile.players.find((p) => {
+  const fuzzyMatch = team.players.find((p) => {
     const parts = p.fullName.trim().split(/\s+/);
     const surname = parts[parts.length - 1]?.toLowerCase() ?? "";
     return surname.length >= 4 && levenshtein(surname, needle) <= 1;
@@ -217,35 +240,35 @@ export function resolvePlayerName(
 }
 
 export function addCorrectionEntry(
-  profile: SquadProfile,
+  team: Team,
   rawWhisperText: string,
   resolvedPlayerName: string,
   resolvedAction: string
-): SquadProfile {
-  const existing = profile.correctionMemory.find(
+): Team {
+  const existing = team.correctionMemory.find(
     (e) => e.rawWhisperText === rawWhisperText
   );
 
   const correctionMemory = existing
-    ? profile.correctionMemory.map((e) =>
+    ? team.correctionMemory.map((e) =>
         e.rawWhisperText === rawWhisperText ? { ...e, count: e.count + 1 } : e
       )
     : [
-        ...profile.correctionMemory,
+        ...team.correctionMemory,
         { rawWhisperText, resolvedPlayerName, resolvedAction, count: 1 },
       ];
 
-  return { ...profile, correctionMemory, updatedAt: new Date().toISOString() };
+  return { ...team, correctionMemory, updatedAt: new Date().toISOString() };
 }
 
 const MAX_VOICE_SAMPLES = 20;
 
 export function addVoiceSample(
-  profile: SquadProfile,
+  team: Team,
   playerId: string,
   sample: string
-): SquadProfile {
-  const players = profile.players.map((p) => {
+): Team {
+  const players = team.players.map((p) => {
     if (p.id !== playerId) return p;
     if (p.voiceSamples.includes(sample)) return p;
 
@@ -253,5 +276,31 @@ export function addVoiceSample(
     return { ...p, voiceSamples };
   });
 
-  return { ...profile, players, updatedAt: new Date().toISOString() };
+  return { ...team, players, updatedAt: new Date().toISOString() };
+}
+
+// ---------------------------------------------------------------------------
+// Backwards-compatibility aliases — remove in Move 2.5
+// ---------------------------------------------------------------------------
+
+/** @deprecated Use Team */
+export type SquadProfile = Team;
+/** @deprecated Use TEAM_CHANGED_EVENT */
+export const SQUAD_PROFILE_CHANGED_EVENT = TEAM_CHANGED_EVENT;
+/** @deprecated Use getTeam */
+export const getSquadProfile = getTeam;
+/** @deprecated Use saveTeam */
+export const saveSquadProfile = saveTeam;
+/** @deprecated Use clearTeam */
+export const clearSquadProfile = clearTeam;
+/** @deprecated Use createDefaultTeam */
+export const createDefaultSquadProfile = createDefaultTeam;
+/** @deprecated Use upsertSquadPlayer (signature unchanged) */
+// upsertSquadPlayer already works for both Team and SquadProfile since they're the same type.
+// @deprecated Use resolvePlayerName */
+// resolvePlayerName already works for both.
+
+/** @deprecated Generates a legacy squad_ id — prefer crypto.randomUUID() */
+export function createSquadProfileId(): string {
+  return `squad_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }

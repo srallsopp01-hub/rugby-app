@@ -30,7 +30,7 @@ export async function GET(request: Request) {
         if (tokenRow && !tokenRow.used_at && new Date(tokenRow.expires_at) >= new Date()) {
           const { data: member } = await supabase
             .from("team_members")
-            .select("id, role, player_squad_id, owner_user_id, email")
+            .select("id, role, player_squad_id, email")
             .eq("id", tokenRow.team_member_id)
             .single();
 

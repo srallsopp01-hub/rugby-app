@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { linkSquadPlayerToUser, createAndLinkSquadPlayer } from "@/lib/inviteServer";
+import { getServerTeamContext } from "@/lib/serverTeamContext";
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -26,62 +27,59 @@ export async function POST(req: Request) {
 
   const { data: member, error: fetchError } = await supabase
     .from("team_members")
-    .select("id, owner_user_id, member_user_id, role, player_squad_id, status, requested_name, requested_position")
+    .select("id, team_id, user_id, role, player_squad_id, status, requested_name, requested_position")
     .eq("id", body.memberId)
-    .in("status", ["pending_approval", "notify_request"])
-    .single();
+    .eq("status", "pending")
+    .single<{
+      id: string;
+      team_id: string;
+      user_id: string | null;
+      role: "assistant_coach" | "player";
+      player_squad_id: string | null;
+      status: string;
+      requested_name: string | null;
+      requested_position: string | null;
+    }>();
 
   if (fetchError || !member) {
     return NextResponse.json({ error: "Member not found or not pending" }, { status: 404 });
   }
 
-  const ownerIsUser = member.owner_user_id === user.id;
-  if (!ownerIsUser) {
-    const { data: callerMembership } = await supabase
-      .from("team_members")
-      .select("can_manage_team")
-      .eq("owner_user_id", member.owner_user_id)
-      .eq("member_user_id", user.id)
-      .eq("status", "accepted")
-      .maybeSingle();
-
-    if (!callerMembership?.can_manage_team) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-    }
+  const ctx = await getServerTeamContext();
+  if (!ctx || ctx.teamId !== member.team_id || !ctx.canManageTeam) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
   const admin = createAdminClient();
 
   let resolvedPlayerSquadId: string | null = member.player_squad_id;
 
-  // For notify_request: create a new squad player from the requested name/position
-  if (member.status === "notify_request" && member.member_user_id && member.requested_name) {
+  // requested_name present = user joined via link with no pre-assigned slot; create their player
+  if (member.requested_name && member.user_id) {
     if (!admin) {
       return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
     }
     const newPlayerId = await createAndLinkSquadPlayer({
-      ownerUserId: member.owner_user_id,
-      displayName: member.requested_name as string,
-      memberUserId: member.member_user_id as string,
-      position: (member.requested_position as string | null) ?? undefined,
+      teamId: member.team_id,
+      displayName: member.requested_name,
+      memberUserId: member.user_id,
+      position: member.requested_position ?? undefined,
     });
     if (!newPlayerId) {
       return NextResponse.json({ error: "Failed to create squad player" }, { status: 500 });
     }
     resolvedPlayerSquadId = newPlayerId;
 
-    if (admin) {
-      await admin
-        .from("team_members")
-        .update({ player_squad_id: newPlayerId })
-        .eq("id", member.id);
-    }
+    await admin
+      .from("team_members")
+      .update({ player_squad_id: newPlayerId })
+      .eq("id", member.id);
   }
 
   const { error: updateError } = await supabase
     .from("team_members")
     .update({
-      status: "accepted",
+      status: "active",
       accepted_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
@@ -91,17 +89,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to approve member" }, { status: 500 });
   }
 
-  // For pending_approval rows that already have a player_squad_id and member_user_id
+  // Link the squad player slot for users who joined with a pre-assigned slot (no requested_name)
   if (
-    member.status === "pending_approval" &&
+    !member.requested_name &&
     member.role === "player" &&
     resolvedPlayerSquadId &&
-    member.member_user_id
+    member.user_id
   ) {
     await linkSquadPlayerToUser({
-      ownerUserId: member.owner_user_id,
+      teamId: member.team_id,
       playerSquadId: resolvedPlayerSquadId,
-      memberUserId: member.member_user_id as string,
+      memberUserId: member.user_id,
     });
   }
 

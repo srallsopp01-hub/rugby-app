@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Member not found" }, { status: 404 });
   }
 
-  if (member.status !== "accepted") {
+  if (member.status !== "active") {
     return NextResponse.json(
       { error: "Password reset links can only be sent to joined members" },
       { status: 400 }

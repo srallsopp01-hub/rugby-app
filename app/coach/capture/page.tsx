@@ -44,7 +44,7 @@ import {
   getSquadProfile,
   resolvePlayerName,
   type SquadProfile,
-} from "@/app/rugby-tagging/lib/squadProfile";
+} from "@/app/rugby-tagging/lib/team";
 import {
   CORRECTION_MEMORY_KEY,
   DEFAULT_ROSTER_ROWS,

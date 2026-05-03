@@ -1,30 +1,10 @@
 import { NextResponse } from "next/server";
+import { getServerTeamContext } from "@/lib/serverTeamContext";
 import { createClient } from "@/lib/supabase/server";
 
-async function getOwnerUserId(
-  supabase: Awaited<ReturnType<typeof createClient>>
-): Promise<string | null> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  const { data: membership } = await supabase
-    .from("team_members")
-    .select("owner_user_id, can_manage_team")
-    .eq("member_user_id", user.id)
-    .eq("status", "accepted")
-    .maybeSingle();
-
-  if (membership && !membership.can_manage_team) return null;
-
-  return membership?.owner_user_id ?? user.id;
-}
-
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const ownerUserId = await getOwnerUserId(supabase);
-  if (!ownerUserId) {
+  const ctx = await getServerTeamContext();
+  if (!ctx?.canManageTeam) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -49,10 +29,12 @@ export async function POST(req: Request) {
     ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
     : null;
 
+  const supabase = await createClient();
   const { data: link, error } = await supabase
     .from("team_invite_links")
     .insert({
-      owner_user_id: ownerUserId,
+      team_id: ctx.teamId,
+      owner_user_id: ctx.ownerUserId, // retained: NOT NULL column, deferred drop in Move 2.5
       token,
       role,
       label,
@@ -74,9 +56,8 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const supabase = await createClient();
-  const ownerUserId = await getOwnerUserId(supabase);
-  if (!ownerUserId) {
+  const ctx = await getServerTeamContext();
+  if (!ctx?.canManageTeam) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -91,6 +72,7 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "linkId is required" }, { status: 400 });
   }
 
+  const supabase = await createClient();
   const { error } = await supabase
     .from("team_invite_links")
     .update({ is_active: false })

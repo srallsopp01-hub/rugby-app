@@ -13,7 +13,7 @@ export async function checkCloudSchema(): Promise<CloudSchemaHealth> {
   const missingTables: string[] = [];
   const missingColumns: string[] = [];
 
-  const tables = ["squad_profiles", "saved_matches", "team_members"] as const;
+  const tables = ["organisations", "teams", "saved_matches", "team_members"] as const;
   await Promise.all(
     tables.map(async (table) => {
       const { error } = await supabase.from(table).select("id").limit(0);

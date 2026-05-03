@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createPlayerId, type SquadPlayer } from "@/app/rugby-tagging/lib/squadProfile";
+import { createPlayerId, type SquadPlayer } from "@/app/rugby-tagging/lib/team";
 
 type SupabaseClientLike = {
   from: (table: string) => {
@@ -28,7 +28,7 @@ type InviteTokenRow = {
 
 type InviteMemberRow = {
   id: string;
-  owner_user_id: string;
+  team_id: string;
   role: "assistant_coach" | "player";
   player_squad_id: string | null;
   status: string;
@@ -39,7 +39,7 @@ export type RedeemInviteResult =
   | {
       ok: true;
       role: "assistant_coach" | "player";
-      ownerUserId: string;
+      teamId: string;
       playerSquadId: string | null;
     }
   | {
@@ -69,72 +69,72 @@ function createInvitePlayer(fullName: string, memberUserId: string, position?: s
 }
 
 export async function linkSquadPlayerToUser({
-  ownerUserId,
+  teamId,
   playerSquadId,
   memberUserId,
 }: {
-  ownerUserId: string;
+  teamId: string;
   playerSquadId: string;
   memberUserId: string;
 }) {
   const admin = createAdminClient();
   if (!admin) return;
 
-  const { data: profileRow } = await admin
-    .from("squad_profiles")
+  const { data: teamRow } = await admin
+    .from("teams")
     .select("players")
-    .eq("user_id", ownerUserId)
+    .eq("id", teamId)
     .single();
 
-  if (!profileRow?.players) return;
+  if (!teamRow?.players) return;
 
-  const players = (profileRow.players as Array<Record<string, unknown>>).map((player) =>
+  const players = (teamRow.players as Array<Record<string, unknown>>).map((player) =>
     player.id === playerSquadId ? { ...player, linkedUserId: memberUserId } : player
   );
 
   await admin
-    .from("squad_profiles")
+    .from("teams")
     .update({ players, updated_at: new Date().toISOString() })
-    .eq("user_id", ownerUserId);
+    .eq("id", teamId);
 }
 
 export async function unlinkSquadPlayerFromUser({
-  ownerUserId,
+  teamId,
   playerSquadId,
 }: {
-  ownerUserId: string;
+  teamId: string;
   playerSquadId: string;
 }) {
   const admin = createAdminClient();
   if (!admin) return;
 
-  const { data: profileRow } = await admin
-    .from("squad_profiles")
+  const { data: teamRow } = await admin
+    .from("teams")
     .select("players")
-    .eq("user_id", ownerUserId)
+    .eq("id", teamId)
     .single();
 
-  if (!profileRow?.players) return;
+  if (!teamRow?.players) return;
 
-  const players = (profileRow.players as Array<Record<string, unknown>>).map((player) => {
+  const players = (teamRow.players as Array<Record<string, unknown>>).map((player) => {
     if (player.id !== playerSquadId) return player;
     const { linkedUserId: _linkedUserId, ...rest } = player;
     return rest;
   });
 
   await admin
-    .from("squad_profiles")
+    .from("teams")
     .update({ players, updated_at: new Date().toISOString() })
-    .eq("user_id", ownerUserId);
+    .eq("id", teamId);
 }
 
 export async function createAndLinkSquadPlayer({
-  ownerUserId,
+  teamId,
   displayName,
   memberUserId,
   position,
 }: {
-  ownerUserId: string;
+  teamId: string;
   displayName: string;
   memberUserId: string;
   position?: string;
@@ -142,24 +142,24 @@ export async function createAndLinkSquadPlayer({
   const admin = createAdminClient();
   if (!admin) return null;
 
-  const { data: profileRow } = await admin
-    .from("squad_profiles")
+  const { data: teamRow } = await admin
+    .from("teams")
     .select("players")
-    .eq("user_id", ownerUserId)
+    .eq("id", teamId)
     .single();
 
   const newPlayer = createInvitePlayer(displayName, memberUserId, position);
-  const existingPlayers = Array.isArray(profileRow?.players)
-    ? (profileRow.players as SquadPlayer[])
+  const existingPlayers = Array.isArray(teamRow?.players)
+    ? (teamRow.players as SquadPlayer[])
     : [];
 
   const { error } = await admin
-    .from("squad_profiles")
+    .from("teams")
     .update({
       players: [...existingPlayers, newPlayer],
       updated_at: new Date().toISOString(),
     })
-    .eq("user_id", ownerUserId);
+    .eq("id", teamId);
 
   if (error) return null;
   return newPlayer.id;
@@ -202,7 +202,7 @@ export async function redeemInviteToken({
 
   const { data: memberData, error: memberError } = await db
     .from("team_members")
-    .select("id, owner_user_id, role, player_squad_id, status, email")
+    .select("id, team_id, role, player_squad_id, status, email")
     .eq("id", tokenRow.team_member_id)
     .single();
   const member = memberData as InviteMemberRow | null;
@@ -226,7 +226,7 @@ export async function redeemInviteToken({
       resolvedPlayerSquadId = playerSquadId;
     } else if (trimmedDisplayName) {
       resolvedPlayerSquadId = await createAndLinkSquadPlayer({
-        ownerUserId: member.owner_user_id,
+        teamId: member.team_id,
         displayName: trimmedDisplayName,
         memberUserId: user.id,
       });
@@ -241,8 +241,8 @@ export async function redeemInviteToken({
   const { error: acceptError } = await db
     .from("team_members")
     .update({
-      member_user_id: user.id,
-      status: "accepted",
+      user_id: user.id,
+      status: "active",
       accepted_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       player_squad_id: resolvedPlayerSquadId,
@@ -260,7 +260,7 @@ export async function redeemInviteToken({
 
   if (member.role === "player" && resolvedPlayerSquadId) {
     await linkSquadPlayerToUser({
-      ownerUserId: member.owner_user_id,
+      teamId: member.team_id,
       playerSquadId: resolvedPlayerSquadId,
       memberUserId: user.id,
     });
@@ -269,7 +269,7 @@ export async function redeemInviteToken({
   return {
     ok: true,
     role: member.role,
-    ownerUserId: member.owner_user_id,
+    teamId: member.team_id,
     playerSquadId: resolvedPlayerSquadId,
   };
 }
