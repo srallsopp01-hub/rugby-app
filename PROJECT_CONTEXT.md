@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** May 2026 — Move 2.5 shipped: deprecated `team_members` columns dropped (`owner_user_id`, `member_user_id`, `can_manage_team`); `can_manage_team()` RLS helper now derives from `role = 'head_coach'` only; `team_invite_links.team_id` enforced NOT NULL; join-page membership check migrated to new schema. Pending Move 3 (`/coach/organisation` + team switcher) and Stripe webhook batch.
+**Last updated:** May 2026 — Move 2.5 shipped: deprecated `team_members` columns dropped; `invite_tokens` RLS policies rewritten to use new schema; `team_invite_links.team_id` enforced NOT NULL. Pending Move 3 (`/coach/organisation` + team switcher) and Stripe webhook batch.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -1296,6 +1296,8 @@ Two related bugs fixed:
 
 - ✅ `can_manage_team(p_team_id uuid)` RLS function rewritten to use `role = 'head_coach'` only — no longer reads the deprecated column
 - ✅ `team_members.owner_user_id`, `member_user_id`, `can_manage_team` dropped (`supabase/migrations/20260505000000_move_2_5_cleanup.sql`)
+- ✅ `invite_tokens` RLS policies "Coach can create/update own invite tokens" and "Invitee can mark own token used" rewritten — old versions referenced `owner_user_id`/`member_user_id` and were never updated by Move 2; now use `can_manage_team(tm.team_id)` and `tm.user_id` respectively
+- ✅ Orphaned `team_invite_links` rows (null `team_id`, unresolvable via `owner_user_id`) deleted during migration
 - ✅ `team_invite_links.team_id` enforced NOT NULL
 - ✅ `lib/teamContext.ts`, `lib/serverTeamContext.ts` — SELECT drops `can_manage_team`; `canManageTeam` derived from `role === "head_coach"`
 - ✅ `lib/teamMembersCloud.ts` — `TeamMemberRow` type updated; `rowToMember` derives `canManageTeam` from role
@@ -1304,7 +1306,7 @@ Two related bugs fixed:
 - ✅ `app/api/team/member-permissions/route.ts` — now updates `role` (`head_coach`/`assistant_coach`) instead of the dropped boolean column
 - ✅ `app/invite/join/page.tsx` — membership check migrated to `.eq("team_id", ...).eq("user_id", ...)`; fixed stale `"accepted"` status string → `"active"`
 
-**Production deploy order:** Apply migration in Supabase SQL editor first, then Vercel redeploys automatically.
+**Shipped:** Migration applied to production, code pushed and deployed to Vercel (commit 31b355a).
 
 ---
 
