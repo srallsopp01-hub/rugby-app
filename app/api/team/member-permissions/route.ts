@@ -50,7 +50,7 @@ export async function POST(req: Request) {
 
   const { error } = await supabase
     .from("team_members")
-    .update({ can_manage_team: body.canManageTeam, updated_at: new Date().toISOString() })
+    .update({ role: body.canManageTeam ? "head_coach" : "assistant_coach", updated_at: new Date().toISOString() })
     .eq("id", member.id);
 
   if (error) {

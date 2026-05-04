@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 type InviteLinkRow = {
   id: string;
   team_id: string | null;
-  owner_user_id: string; // retained: NOT NULL, deferred drop in Move 2.5
+  owner_user_id: string;
   is_active: boolean;
   expires_at: string | null;
 };
@@ -75,7 +75,6 @@ export async function POST(req: Request) {
 
   const { error: insertError } = await admin.from("team_members").insert({
     team_id: link.team_id,
-    owner_user_id: link.owner_user_id, // retained: NOT NULL column, deferred drop in Move 2.5
     user_id: user.id,
     email: user.email ?? null,
     role: "player",

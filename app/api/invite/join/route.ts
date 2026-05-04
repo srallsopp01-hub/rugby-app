@@ -6,7 +6,7 @@ import { linkSquadPlayerToUser } from "@/lib/inviteServer";
 type InviteLinkRow = {
   id: string;
   team_id: string | null;
-  owner_user_id: string; // retained: NOT NULL, deferred drop in Move 2.5
+  owner_user_id: string;
   role: string;
   label: string | null;
   expires_at: string | null;
@@ -257,7 +257,6 @@ export async function POST(req: Request) {
         player_squad_id: isPlayerRole ? (squadPlayerId ?? null) : null,
         display_name: coachData.displayName,
         coach_label: coachData.coachLabel,
-        can_manage_team: coachData.canManageTeam,
       })
       .eq("id", existingByEmail.id);
 
@@ -269,7 +268,6 @@ export async function POST(req: Request) {
     // No existing row — insert fresh
     const insertPayload = {
       team_id: link.team_id,
-      owner_user_id: link.owner_user_id, // retained: NOT NULL column, deferred drop in Move 2.5
       user_id: user.id,
       email: normalizedEmail || null,
       role: link.role,
@@ -279,7 +277,6 @@ export async function POST(req: Request) {
       player_squad_id: isPlayerRole ? (squadPlayerId ?? null) : null,
       display_name: coachData.displayName,
       coach_label: coachData.coachLabel,
-      can_manage_team: coachData.canManageTeam,
       invited_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };

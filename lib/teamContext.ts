@@ -85,7 +85,7 @@ export async function getMyTeamContext(): Promise<MyTeamContext | null> {
     // 2. Fetch role + canManageTeam from the specific membership row.
     const { data: membership, error: membershipError } = await supabase
       .from("team_members")
-      .select("role, can_manage_team")
+      .select("role")
       .eq("user_id", user.id)
       .eq("team_id", teamId)
       .eq("status", "active")
@@ -117,7 +117,7 @@ export async function getMyTeamContext(): Promise<MyTeamContext | null> {
       teamId,
       currentTeamId: teamId,
       ownerUserId: (team?.created_by_user_id as string) ?? user.id,
-      canManageTeam: Boolean(membership.can_manage_team),
+      canManageTeam: membership.role === "head_coach",
       _v: CACHE_VERSION,
       _userId: user.id,
     };

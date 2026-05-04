@@ -42,7 +42,6 @@ type TeamMemberRow = {
   email: string | null;
   role: "head_coach" | "assistant_coach" | "player";
   coach_label: string | null;
-  can_manage_team: boolean | null;
   player_squad_id: string | null;
   display_name: string | null;
   invite_link_id: string | null;
@@ -75,7 +74,7 @@ function rowToMember(row: TeamMemberRow): TeamMember {
     email: row.email,
     role: row.role,
     coachLabel: row.coach_label,
-    canManageTeam: Boolean(row.can_manage_team),
+    canManageTeam: row.role === "head_coach",
     playerSquadId: row.player_squad_id,
     displayName: row.display_name,
     inviteLinkId: row.invite_link_id,

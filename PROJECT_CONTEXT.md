@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** May 2026 — Move 2 (Batch BD) shipped: multi-tenant data model migration (Organisation → Team → User). Org/Team/User spec added as new section. AI assistant coach context now covers all saved matches (per-game stats + season averages). Pending Move 2.5 cleanup, Move 3 (`/coach/organisation` + team switcher), and Stripe webhook batch.
+**Last updated:** May 2026 — Move 2.5 shipped: deprecated `team_members` columns dropped (`owner_user_id`, `member_user_id`, `can_manage_team`); `can_manage_team()` RLS helper now derives from `role = 'head_coach'` only; `team_invite_links.team_id` enforced NOT NULL; join-page membership check migrated to new schema. Pending Move 3 (`/coach/organisation` + team switcher) and Stripe webhook batch.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -191,10 +191,7 @@ player_squad_id     uuid null     (only when role = 'player')
 email               text null     (used for pending invitations)
 invited_by_user_id  uuid → auth.users null
 invited_at, accepted_at, removed_at, left_team_at
-created_at, updated_at-- Deprecated columns kept for Move 2.5 cleanup:
-owner_user_id       (was the coach's user ID — replaced by team_id)
-member_user_id      (replaced by user_id)
-can_manage_team     (still read in can_manage_team RLS for assistant_coach check)
+created_at, updated_at
 Partial unique index on (user_id, team_id) where user_id is not null.
 
 #### `saved_matches` (reshaped)team_id             uuid → teams not null
@@ -1273,7 +1270,7 @@ team_members reshaped: team_id, user_id, role enum, status enum
 saved_matches migrated to team_id-based access; user_id renamed to created_by_user_id
 All RLS policies rewritten around the new schema
 Codebase rename: SquadProfile → Team, squadProfile.ts → team.ts, SQUAD_PROFILE_KEY → TEAM_KEY, SyncSquadProfile → SyncTeam
-Three deprecated columns kept on team_members for transition safety: owner_user_id, member_user_id, can_manage_team. Drop in Move 2.5.
+Three deprecated columns kept on team_members for transition safety: owner_user_id, member_user_id, can_manage_team. Dropped in Move 2.5.
 Verified locally and on production; one user, one player, full data preserved.
 
 ---
@@ -1295,14 +1292,23 @@ Two related bugs fixed:
 
 ---
 
-## Next — what's left to do
+### Move 2.5 (May 2026) — Drop deprecated team_members columns
 
-markdown### Move 2.5 — Drop deprecated columns (small follow-up)
-Once invite flows are verified clean on production for at least a week:
-- DROP `team_members.owner_user_id`
-- DROP `team_members.member_user_id`
-- DROP `team_members.can_manage_team` (after updating `can_manage_team()` RLS function to derive from role only)
-- Enforce NOT NULL on `team_invite_links.team_id` (currently nullable for safety)
+- ✅ `can_manage_team(p_team_id uuid)` RLS function rewritten to use `role = 'head_coach'` only — no longer reads the deprecated column
+- ✅ `team_members.owner_user_id`, `member_user_id`, `can_manage_team` dropped (`supabase/migrations/20260505000000_move_2_5_cleanup.sql`)
+- ✅ `team_invite_links.team_id` enforced NOT NULL
+- ✅ `lib/teamContext.ts`, `lib/serverTeamContext.ts` — SELECT drops `can_manage_team`; `canManageTeam` derived from `role === "head_coach"`
+- ✅ `lib/teamMembersCloud.ts` — `TeamMemberRow` type updated; `rowToMember` derives `canManageTeam` from role
+- ✅ `app/api/invite/join/route.ts`, `app/api/invite/notify-coach/route.ts` — removed `owner_user_id` and `can_manage_team` from `team_members` INSERT payloads
+- ✅ `app/api/invite/resend/route.ts` — removed `can_manage_team` from type/SELECT; `formatCoachRoleLabel` simplified
+- ✅ `app/api/team/member-permissions/route.ts` — now updates `role` (`head_coach`/`assistant_coach`) instead of the dropped boolean column
+- ✅ `app/invite/join/page.tsx` — membership check migrated to `.eq("team_id", ...).eq("user_id", ...)`; fixed stale `"accepted"` status string → `"active"`
+
+**Production deploy order:** Apply migration in Supabase SQL editor first, then Vercel redeploys automatically.
+
+---
+
+## Next — what's left to do
 
 ### Move 3 — Read-only `/coach/organisation` display + team switcher
 - Build `/coach/organisation` route (read-only org details: name, plan, team count, member count)

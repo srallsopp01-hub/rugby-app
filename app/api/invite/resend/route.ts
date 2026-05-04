@@ -10,18 +10,15 @@ type InviteMember = {
   role: "assistant_coach" | "player";
   status: string;
   coach_label: string | null;
-  can_manage_team: boolean | null;
 };
 
-function formatCoachRoleLabel(label: string | null, canManageTeam: boolean) {
-  if (!canManageTeam) return `${label ? `${label} ` : ""}coach`;
-  if (!label || label.toLowerCase() === "head") return "head coach";
-  return `${label} head coach`;
+function formatCoachRoleLabel(label: string | null) {
+  return `${label ? `${label} ` : ""}coach`;
 }
 
 function roleLabelFor(member: InviteMember) {
   return member.role === "assistant_coach"
-    ? formatCoachRoleLabel(member.coach_label, Boolean(member.can_manage_team))
+    ? formatCoachRoleLabel(member.coach_label)
     : "player";
 }
 
@@ -48,7 +45,7 @@ export async function POST(req: Request) {
 
   const { data: member, error: memberError } = await supabase
     .from("team_members")
-    .select("id, email, role, status, coach_label, can_manage_team")
+    .select("id, email, role, status, coach_label")
     .eq("id", body.memberId)
     .single<InviteMember>();
 

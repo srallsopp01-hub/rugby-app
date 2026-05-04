@@ -13,7 +13,7 @@ type Params = {
 type InviteLinkRow = {
   id: string;
   team_id: string | null;
-  owner_user_id: string; // retained: NOT NULL, deferred drop in Move 2.5
+  owner_user_id: string;
   role: string;
   label: string | null;
   expires_at: string | null;
@@ -206,14 +206,16 @@ export default async function InviteJoinPage({ searchParams }: Params) {
   }
 
   // Check for existing membership
-  const { data: existing } = await supabase
-    .from("team_members")
-    .select("id, status")
-    .eq("owner_user_id", link.owner_user_id)
-    .eq("member_user_id", user.id)
-    .maybeSingle<{ id: string; status: string }>();
+  const { data: existing } = link.team_id
+    ? await supabase
+        .from("team_members")
+        .select("id, status")
+        .eq("team_id", link.team_id)
+        .eq("user_id", user.id)
+        .maybeSingle<{ id: string; status: string }>()
+    : { data: null };
 
-  if (existing?.status === "accepted") {
+  if (existing?.status === "active") {
     return (
       <PageShell>
         <div className="text-center">
