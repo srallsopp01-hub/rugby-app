@@ -1362,26 +1362,40 @@ Two related bugs fixed:
 - `lib/serverTeamContext.ts` org-admin fallback — returns context with `isOrgAdminOnly: true` when no `team_members` row
 - Migration `20260506000000_move_3_org_access.sql` — org RLS policies, extended `can_read_team_data`, `resolve_active_team_id`, `set_active_team_id`
 
-### Near-term
+### Ordered next steps
 
-1. **Batch AX — Coach Review improvements**
-   - Per-clip notes/comments field
-   - Quick-jump visual scrubber timeline with event markers
-   - Fullscreen video mode
-   - Export clip list as PDF for team presentations
+**1. Live Stripe prices** ← blocking dependency for real revenue
+- Create live-mode prices in Stripe dashboard (monthly + annual for each plan)
+- Update price IDs in `app/(marketing)/pricing/pricingConfig.ts`
+- Create a second webhook endpoint in Stripe live mode with its own signing secret
+- Set `STRIPE_SECRET_KEY=sk_live_...` and `STRIPE_WEBHOOK_SECRET=whsec_live_...` in Vercel
+- Do not start selling to real customers until this is done
 
-2. **Complete email delivery** — manual Resend/Vercel/Supabase task
-   - Resend: verify `fynlwhistle.com` domain status is `verified`
-   - Vercel DNS: add missing `_dmarc` TXT record `v=DMARC1; p=none;`
-   - Supabase Auth SMTP: route signup/reset emails through Resend SMTP with sender `FYNL Whistle <noreply@fynlwhistle.com>`
+**2. Move 4 — Business admin panel** (`/admin/organisations`, `/admin/billing`)
+- Internal visibility layer: customer list, MRR, subscription status, plan breakdown
+- Data source: `organisations` table (status/plan/current_period_end now kept in sync by webhooks)
+- Scope: read-only internal tool, no customer-facing UI
+- Replaces the current admin stubs
 
-3. **Live Stripe prices** — create live-mode prices, swap IDs in `pricingConfig.ts`, switch `STRIPE_SECRET_KEY` to `sk_live_...`
+**3. Stripe Customer Portal**
+- Lets customers manage their own billing (cancel, upgrade, update card) without a custom billing UI
+- One Vercel serverless function: create a Billing Portal session and redirect
+- Sits naturally after Move 4 so we can see who's using it
 
-4. **Clip sharing** — export or share individual video clips externally
+**4. Complete email delivery** — manual DNS/SMTP task
+- Resend: verify `fynlwhistle.com` domain status is `verified`
+- Vercel DNS: add missing `_dmarc` TXT record `v=DMARC1; p=none;`
+- Supabase Auth SMTP: route signup/reset emails through Resend with sender `FYNL Whistle <noreply@fynlwhistle.com>`
 
-5. **Wire up the contact form** — connect `app/(marketing)/contact/page.tsx` to Resend or CRM
+**5. Coach Review improvements** (Batch AX)
+- Per-clip notes/comments field
+- Quick-jump visual scrubber timeline with event markers
+- Fullscreen video mode
+- Export clip list as PDF for team presentations
 
-6. **Add OG images and brand assets to `public/`** — needed for social sharing previews
+**6. Wire up the contact form** — connect `app/(marketing)/contact/page.tsx` to Resend or CRM
+
+**7. OG images + brand assets** — add to `public/` for social sharing previews
 
 ### Longer-term
 
@@ -1390,7 +1404,6 @@ Two related bugs fixed:
 - Cross-match player trends backed by cloud data
 - Shared team analysis links
 - Advanced video annotation / telestration
-- Production-grade multi-team/member permissions and audit trail
 - Automated test suite (start with data transformation and export utilities)
 
 ---
