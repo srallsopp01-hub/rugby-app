@@ -1310,6 +1310,46 @@ Two related bugs fixed:
 
 ---
 
+### Batch BE (May 2026) — Stripe webhook scaffold
+
+- ✅ `app/api/stripe/webhook/route.ts` — POST handler with Stripe signature verification (`stripe.webhooks.constructEvent`)
+- ✅ Idempotency via `stripe_events_processed` PK; duplicate events return 200 immediately
+- ✅ Switch/dispatch pattern for event routing
+
+---
+
+### Batch BF (May 2026) — `checkout.session.completed` handler
+
+- ✅ Creates new `organisations` row (plan, status=trialing, trial_ends_at, Stripe IDs) on first subscription checkout
+- ✅ Creates `organisation_members` row (role=club_admin) for the purchasing user
+- ✅ Sets `user_profiles.has_used_trial = true`
+- ✅ If a matching org already exists by `stripe_customer_id`, revives/updates it instead of inserting
+
+---
+
+### Batch BG (May 2026) — Subscription lifecycle handlers
+
+- ✅ `customer.subscription.updated` — updates plan (`priceIdToPlan`), status (`stripeToOrgStatus` map), `current_period_end` (item-level, SDK v22), `canceled_at`, `trial_ends_at`
+- ✅ `customer.subscription.deleted` — sets status=canceled, canceled_at=now
+- ✅ `invoice.payment_failed` — sets status=past_due
+- ✅ `invoice.payment_succeeded` — updates `current_period_end`; recovers past_due→active; leaves trialing untouched
+- ✅ `customer.subscription.trial_will_end` — log only, no DB write
+- All handlers look up org strictly by `stripe_customer_id`; rows with NULL stripe_customer_id are never touched
+- `stripeToOrgStatus` map handles all Stripe statuses including unpaid, incomplete, incomplete_expired, paused
+
+---
+
+### Batch BH (May 2026) — Stripe webhook production rollout
+
+- ✅ Created production Stripe webhook endpoint (`we_1TU453QL0gCVdJZiGrFL6B2N`): `https://fynlwhistle.com/api/stripe/webhook`
+- ✅ Events: `checkout.session.completed`, `customer.subscription.updated/deleted`, `invoice.payment_succeeded/failed`, `customer.subscription.trial_will_end`
+- ✅ `STRIPE_WEBHOOK_SECRET` set in Vercel Production env vars
+- ✅ End-to-end smoke test passed: checkout → org created with `plan=club_5`, `status=trialing`, `trial_ends_at` 14 days out, `stripe_customer_id` populated
+- ✅ 5 events logged in `stripe_events_processed` (idempotency confirmed)
+- ✅ Test data cleaned up
+
+---
+
 ## Next — what's left to do
 
 ### Move 3 — Read-only `/coach/organisation` display + team switcher
@@ -1317,31 +1357,6 @@ Two related bugs fixed:
 - Build team switcher in coach/player sidebars (groups by org, shows current team name, dropdown of all memberships)
 - Server-side `last_active_team_id` sync via `user_profiles` for cross-device consistency
 - Visually distinct UI when club_admin views a team they don't coach (read-only banner)
-
-### ✅ Stripe webhook batch — fully shipped (Batches BE, BF, BG)
-
-**Batch BE** — Webhook scaffold
-- `app/api/stripe/webhook/route.ts` — POST handler with Stripe signature verification (`stripe.webhooks.constructEvent`)
-- Idempotency via `stripe_events_processed` PK; duplicate events return 200 immediately
-- Switch/dispatch pattern for event routing
-
-**Batch BF** — `checkout.session.completed` handler
-- Creates new `organisations` row (plan, status=trialing, trial_ends_at, Stripe IDs) on first subscription checkout
-- Creates `organisation_members` row (role=club_admin) for the purchasing user
-- Sets `user_profiles.has_used_trial = true`
-- If a matching org already exists by `stripe_customer_id`, revives/updates it instead of inserting
-
-**Batch BG** — Subscription lifecycle handlers
-- `customer.subscription.updated` — updates plan (`priceIdToPlan`), status (`stripeToOrgStatus` map), `current_period_end` (item-level, SDK v22), `canceled_at`, `trial_ends_at`
-- `customer.subscription.deleted` — sets status=canceled, canceled_at=now
-- `invoice.payment_failed` — sets status=past_due
-- `invoice.payment_succeeded` — updates `current_period_end`; recovers past_due→active; leaves trialing untouched
-- `customer.subscription.trial_will_end` — log only, no DB write
-- All handlers look up org strictly by `stripe_customer_id`; rows with NULL stripe_customer_id are never touched
-- `stripeToOrgStatus` map handles all Stripe statuses including unpaid, incomplete, incomplete_expired, paused
-
-### Completed but not yet written up
-Batches AS, AT, AU, AV, AW were shipped but their narrative was not added to this file. Check git log for details.
 
 ### Near-term
 
