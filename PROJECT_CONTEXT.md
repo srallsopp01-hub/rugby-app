@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** May 2026 — Move 2.5 shipped: deprecated `team_members` columns dropped; `invite_tokens` RLS policies rewritten to use new schema; `team_invite_links.team_id` enforced NOT NULL. Pending Move 3 (`/coach/organisation` + team switcher) and Stripe webhook batch.
+**Last updated:** May 2026 — Stripe webhook batch fully shipped (Batches BE, BF, BG): signature verification, idempotency, checkout.session.completed org creation, and all five subscription lifecycle handlers. Pending Move 3 (`/coach/organisation` + team switcher).
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -1318,14 +1318,27 @@ Two related bugs fixed:
 - Server-side `last_active_team_id` sync via `user_profiles` for cross-device consistency
 - Visually distinct UI when club_admin views a team they don't coach (read-only banner)
 
-### Stripe webhook batch (must ship before first Club 5 customer)
-- New endpoint at `/api/stripe/webhook/route.ts`
-- Listens for: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_succeeded`, `invoice.payment_failed`, `customer.subscription.trial_will_end`
-- Idempotent via `stripe_events_processed` table
-- Signature verified via Stripe SDK
-- Updates `organisations.plan`, `status`, `current_period_end`, Stripe IDs
-- Trial-end cron and read-only mode logic
-- One-trial-per-user enforcement via `auth.users.has_used_trial`
+### ✅ Stripe webhook batch — fully shipped (Batches BE, BF, BG)
+
+**Batch BE** — Webhook scaffold
+- `app/api/stripe/webhook/route.ts` — POST handler with Stripe signature verification (`stripe.webhooks.constructEvent`)
+- Idempotency via `stripe_events_processed` PK; duplicate events return 200 immediately
+- Switch/dispatch pattern for event routing
+
+**Batch BF** — `checkout.session.completed` handler
+- Creates new `organisations` row (plan, status=trialing, trial_ends_at, Stripe IDs) on first subscription checkout
+- Creates `organisation_members` row (role=club_admin) for the purchasing user
+- Sets `user_profiles.has_used_trial = true`
+- If a matching org already exists by `stripe_customer_id`, revives/updates it instead of inserting
+
+**Batch BG** — Subscription lifecycle handlers
+- `customer.subscription.updated` — updates plan (`priceIdToPlan`), status (`stripeToOrgStatus` map), `current_period_end` (item-level, SDK v22), `canceled_at`, `trial_ends_at`
+- `customer.subscription.deleted` — sets status=canceled, canceled_at=now
+- `invoice.payment_failed` — sets status=past_due
+- `invoice.payment_succeeded` — updates `current_period_end`; recovers past_due→active; leaves trialing untouched
+- `customer.subscription.trial_will_end` — log only, no DB write
+- All handlers look up org strictly by `stripe_customer_id`; rows with NULL stripe_customer_id are never touched
+- `stripeToOrgStatus` map handles all Stripe statuses including unpaid, incomplete, incomplete_expired, paused
 
 ### Completed but not yet written up
 Batches AS, AT, AU, AV, AW were shipped but their narrative was not added to this file. Check git log for details.

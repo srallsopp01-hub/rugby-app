@@ -4,6 +4,17 @@ import { priceIdToPlan } from "@/app/(marketing)/pricing/pricingConfig";
 
 type AdminClient = NonNullable<ReturnType<typeof createAdminClient>>;
 
+const stripeToOrgStatus: Record<string, string> = {
+  trialing: "trialing",
+  active: "active",
+  past_due: "past_due",
+  unpaid: "past_due",
+  canceled: "canceled",
+  incomplete: "past_due",
+  incomplete_expired: "canceled",
+  paused: "past_due",
+};
+
 export async function POST(req: Request) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -57,6 +68,24 @@ export async function POST(req: Request) {
         supabase
       );
       break;
+    case "customer.subscription.updated":
+      await handleSubscriptionUpdated(event.data.object as Stripe.Subscription, supabase);
+      break;
+    case "customer.subscription.deleted":
+      await handleSubscriptionDeleted(event.data.object as Stripe.Subscription, supabase);
+      break;
+    case "invoice.payment_failed":
+      await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice, supabase);
+      break;
+    case "invoice.payment_succeeded":
+      await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice, supabase);
+      break;
+    case "customer.subscription.trial_will_end": {
+      const sub = event.data.object as Stripe.Subscription;
+      const cid = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
+      console.log(`[stripe-webhook] trial ending soon for customer ${cid}`);
+      break;
+    }
     default:
       console.log(`[stripe-webhook] unhandled event type ${event.type} (${event.id})`);
   }
@@ -187,5 +216,154 @@ async function handleCheckoutCompleted(
 
   console.log(
     `[stripe-webhook] created org ${newOrg.id} ("${firstName}'s Club") for user ${userId}, plan ${plan}`
+  );
+}
+
+async function handleSubscriptionUpdated(
+  sub: Stripe.Subscription,
+  supabase: AdminClient
+) {
+  const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
+
+  const { data: org } = await supabase
+    .from("organisations")
+    .select("id")
+    .eq("stripe_customer_id", customerId)
+    .maybeSingle();
+
+  if (!org) {
+    console.log(
+      `[stripe-webhook] customer.subscription.updated: no org for customer ${customerId}, skipping`
+    );
+    return;
+  }
+
+  const item = sub.items.data[0];
+  const plan = item ? priceIdToPlan(item.price.id) : null;
+  const status = stripeToOrgStatus[sub.status] ?? "past_due";
+  const currentPeriodEnd = item?.current_period_end
+    ? new Date(item.current_period_end * 1000).toISOString()
+    : null;
+  const canceledAt = sub.cancel_at ? new Date(sub.cancel_at * 1000).toISOString() : null;
+  const trialEndsAt = sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
+
+  const updatePayload: Record<string, unknown> = {
+    status,
+    current_period_end: currentPeriodEnd,
+    canceled_at: canceledAt,
+    trial_ends_at: trialEndsAt,
+    updated_at: new Date().toISOString(),
+  };
+  if (plan) updatePayload.plan = plan;
+
+  await supabase.from("organisations").update(updatePayload).eq("id", org.id);
+  console.log(
+    `[stripe-webhook] customer.subscription.updated: updated org ${org.id} status=${status}`
+  );
+}
+
+async function handleSubscriptionDeleted(
+  sub: Stripe.Subscription,
+  supabase: AdminClient
+) {
+  const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
+
+  const { data: org } = await supabase
+    .from("organisations")
+    .select("id")
+    .eq("stripe_customer_id", customerId)
+    .maybeSingle();
+
+  if (!org) {
+    console.log(
+      `[stripe-webhook] customer.subscription.deleted: no org for customer ${customerId}, skipping`
+    );
+    return;
+  }
+
+  await supabase
+    .from("organisations")
+    .update({
+      status: "canceled",
+      canceled_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", org.id);
+  console.log(
+    `[stripe-webhook] customer.subscription.deleted: canceled org ${org.id}`
+  );
+}
+
+async function handleInvoicePaymentFailed(
+  invoice: Stripe.Invoice,
+  supabase: AdminClient
+) {
+  const customerId =
+    typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
+
+  if (!customerId) {
+    console.error("[stripe-webhook] invoice.payment_failed: no customer ID on invoice");
+    return;
+  }
+
+  const { data: org } = await supabase
+    .from("organisations")
+    .select("id")
+    .eq("stripe_customer_id", customerId)
+    .maybeSingle();
+
+  if (!org) {
+    console.log(
+      `[stripe-webhook] invoice.payment_failed: no org for customer ${customerId}, skipping`
+    );
+    return;
+  }
+
+  await supabase
+    .from("organisations")
+    .update({ status: "past_due", updated_at: new Date().toISOString() })
+    .eq("id", org.id);
+  console.log(
+    `[stripe-webhook] invoice.payment_failed: marked org ${org.id} past_due`
+  );
+}
+
+async function handleInvoicePaymentSucceeded(
+  invoice: Stripe.Invoice,
+  supabase: AdminClient
+) {
+  const customerId =
+    typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
+
+  if (!customerId) {
+    console.error("[stripe-webhook] invoice.payment_succeeded: no customer ID on invoice");
+    return;
+  }
+
+  const { data: org } = await supabase
+    .from("organisations")
+    .select("id, status")
+    .eq("stripe_customer_id", customerId)
+    .maybeSingle();
+
+  if (!org) {
+    console.log(
+      `[stripe-webhook] invoice.payment_succeeded: no org for customer ${customerId}, skipping`
+    );
+    return;
+  }
+
+  const periodEnd = invoice.lines.data[0]?.period?.end;
+  const currentPeriodEnd = periodEnd ? new Date(periodEnd * 1000).toISOString() : null;
+
+  const updatePayload: Record<string, unknown> = {
+    current_period_end: currentPeriodEnd,
+    updated_at: new Date().toISOString(),
+  };
+  if (org.status === "past_due") updatePayload.status = "active";
+
+  await supabase.from("organisations").update(updatePayload).eq("id", org.id);
+  console.log(
+    `[stripe-webhook] invoice.payment_succeeded: updated org ${org.id}`
   );
 }
