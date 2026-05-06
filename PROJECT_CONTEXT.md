@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** May 2026 — Stripe webhook batch fully shipped (Batches BE, BF, BG): signature verification, idempotency, checkout.session.completed org creation, and all five subscription lifecycle handlers. Pending Move 3 (`/coach/organisation` + team switcher).
+**Last updated:** May 2026 — Move 3 fully shipped (Batch BI): club_admin gate fix, `/coach/organisation` overview page, team switcher in sidebar, `isOrgAdminOnly` banner, org-access RLS migration. All Stripe webhook batches (BE–BH) and Move 3 (BI) complete.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -71,6 +71,7 @@ The app is split into four clearly separated layers with independent layouts and
 | `/coach/compare` | Live | Side-by-side saved match and player comparison with confidence cues |
 | `/coach/saved-matches` | Live | Reopen / delete saved matches, local storage context |
 | `/coach/settings` | Live | Browser-local coach settings, setup shortcuts, raw JSON export, guarded data management |
+| `/coach/organisation` | Live | Club admin only — org name, plan, status, billing date, active team count, coach seat count |
 
 ### Player platform
 | Route | Status | Purpose |
@@ -262,8 +263,8 @@ app/
     ThemeSchemeToggle.tsx             ← Shared dark / bright scheme toggle
 
   coach/
-    layout.tsx                        ← Coach layout: h-screen, sidebar + scrollable main
-    CoachSidebar.tsx                  ← Coach left sidebar (accent bar active state, logo mark)
+    layout.tsx                        ← Coach layout: gate (team_members OR org_members), isOrgAdminOnly banner, sidebar + scrollable main
+    CoachSidebar.tsx                  ← Coach left sidebar — team switcher dropdown, accent bar active state, Organisation nav item
     page.tsx                          ← Coach home (quick nav cards)
     OnboardingWizard.tsx              ← First-time setup wizard component
     onboarding/page.tsx               ← Dedicated onboarding route
@@ -276,6 +277,7 @@ app/
     saved-matches/page.tsx            ← Saved match management
     compare/page.tsx                  ← Saved match + player comparison
     settings/page.tsx                 ← Coach settings: local storage status, shortcuts, JSON export, guarded resets
+    organisation/page.tsx             ← Club admin only: org name, plan, status, billing date, team count, seat count
 
   player/
     layout.tsx                        ← Player layout: h-screen, sidebar + scrollable main (wraps PlayerProvider)
@@ -1352,11 +1354,13 @@ Two related bugs fixed:
 
 ## Next — what's left to do
 
-### Move 3 — Read-only `/coach/organisation` display + team switcher
-- Build `/coach/organisation` route (read-only org details: name, plan, team count, member count)
-- Build team switcher in coach/player sidebars (groups by org, shows current team name, dropdown of all memberships)
-- Server-side `last_active_team_id` sync via `user_profiles` for cross-device consistency
-- Visually distinct UI when club_admin views a team they don't coach (read-only banner)
+### Move 3 — ✅ Shipped (Batch BI, May 2026)
+- `/coach/organisation` — club_admin read-only: org name, plan, status, billing date, team count, coach seat count
+- Club_admin gate fix in `app/coach/layout.tsx` — accepts `organisation_members` as well as `team_members`
+- `isOrgAdminOnly` banner in coach layout — amber strip when viewing as club admin
+- Team switcher in `CoachSidebar` — fetches all accessible teams, grouped by org, reactive via `ACTIVE_TEAM_CHANGED_EVENT`
+- `lib/serverTeamContext.ts` org-admin fallback — returns context with `isOrgAdminOnly: true` when no `team_members` row
+- Migration `20260506000000_move_3_org_access.sql` — org RLS policies, extended `can_read_team_data`, `resolve_active_team_id`, `set_active_team_id`
 
 ### Near-term
 

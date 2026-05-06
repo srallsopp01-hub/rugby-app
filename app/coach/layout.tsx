@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getServerTeamContext } from "@/lib/serverTeamContext";
 import CoachSidebar from "./CoachSidebar";
 import { SyncSavedMatches } from "./SyncSavedMatches";
 import { SyncTeam } from "./SyncTeam";
@@ -19,23 +20,26 @@ export default async function CoachLayout({
     redirect("/login");
   }
 
-  const { data: membership } = await supabase
-    .from("team_members")
-    .select("role")
-    .eq("user_id", user!.id)
-    .eq("status", "active")
-    .maybeSingle();
-
-  if (!membership || membership.role === "player") {
+  const ctx = await getServerTeamContext();
+  if (!ctx || ctx.role === "player") {
     redirect("/player");
   }
+
+  const isOrgAdminOnly = ctx.isOrgAdminOnly;
 
   return (
     <div className="flex h-screen overflow-hidden">
       <SyncTeam />
       <SyncSavedMatches />
-      <CoachSidebar />
-      <main className="flex-1 overflow-auto">{children}</main>
+      <CoachSidebar isOrgAdminOnly={isOrgAdminOnly} />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {isOrgAdminOnly && (
+          <div className="shrink-0 bg-amber-500/10 border-b border-amber-500/30 px-5 py-2 text-sm font-medium text-amber-300">
+            You&apos;re viewing this team as club admin — editing is disabled.
+          </div>
+        )}
+        <main className="flex-1 overflow-auto">{children}</main>
+      </div>
       <FloatingHelpChat />
     </div>
   );

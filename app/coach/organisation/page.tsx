@@ -1,0 +1,147 @@
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+
+const PLAN_LABELS: Record<string, string> = {
+  solo: "Solo",
+  team_launch: "Team Launch",
+  club_5: "Club 5",
+  org_custom: "Custom",
+};
+
+const STATUS_STYLES: Record<string, { label: string; className: string }> = {
+  trialing: { label: "Trialing", className: "bg-amber-500/15 text-amber-300" },
+  active: { label: "Active", className: "bg-green-500/15 text-green-400" },
+  past_due: { label: "Past due", className: "bg-red-500/15 text-red-400" },
+  canceled: { label: "Canceled", className: "bg-muted-2/20 text-muted-2" },
+  archived: { label: "Archived", className: "bg-muted-2/20 text-muted-2" },
+};
+
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+export default async function OrganisationPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: orgMember } = await supabase
+    .from("organisation_members")
+    .select("organisation_id")
+    .eq("user_id", user.id)
+    .eq("role", "club_admin")
+    .maybeSingle();
+  if (!orgMember) redirect("/coach");
+
+  const orgId = orgMember.organisation_id;
+
+  const [{ data: org }, { data: teams }] = await Promise.all([
+    supabase
+      .from("organisations")
+      .select("name, plan, status, trial_ends_at, current_period_end")
+      .eq("id", orgId)
+      .single(),
+    supabase
+      .from("teams")
+      .select("id, name")
+      .eq("organisation_id", orgId)
+      .eq("status", "active"),
+  ]);
+
+  const teamIds = (teams ?? []).map((t) => t.id);
+
+  const [{ count: coachMemberCount }, { count: adminCount }] = await Promise.all([
+    supabase
+      .from("team_members")
+      .select("id", { count: "exact", head: true })
+      .in("team_id", teamIds.length ? teamIds : ["00000000-0000-0000-0000-000000000000"])
+      .in("role", ["head_coach", "assistant_coach"])
+      .eq("status", "active"),
+    supabase
+      .from("organisation_members")
+      .select("id", { count: "exact", head: true })
+      .eq("organisation_id", orgId),
+  ]);
+
+  const totalSeats = (coachMemberCount ?? 0) + (adminCount ?? 0);
+
+  const status = org?.status ?? "active";
+  const statusInfo = STATUS_STYLES[status] ?? STATUS_STYLES.active;
+  const billingDate =
+    status === "trialing" ? org?.trial_ends_at : org?.current_period_end;
+  const billingLabel = status === "trialing" ? "Trial ends" : "Renews";
+
+  return (
+    <div className="max-w-2xl mx-auto px-6 py-10">
+      <h1 className="text-2xl font-bold text-foreground-strong mb-1">Organisation</h1>
+      <p className="text-sm text-muted mb-8">Billing overview and plan details.</p>
+
+      {/* Overview tile */}
+      <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)] mb-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs text-muted mb-1">Organisation name</p>
+            <p className="text-lg font-semibold text-foreground-strong">{org?.name ?? "—"}</p>
+          </div>
+          <span
+            className={`shrink-0 mt-0.5 px-2.5 py-1 rounded-full text-xs font-semibold ${statusInfo.className}`}
+          >
+            {statusInfo.label}
+          </span>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-6">
+          <div>
+            <p className="text-xs text-muted mb-0.5">Plan</p>
+            <p className="text-sm font-medium text-foreground">
+              {PLAN_LABELS[org?.plan ?? ""] ?? org?.plan ?? "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted mb-0.5">{billingLabel}</p>
+            <p className="text-sm font-medium text-foreground">{formatDate(billingDate)}</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Usage tile */}
+      <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)] mb-4">
+        <h2 className="text-sm font-semibold text-foreground-strong mb-4">Usage</h2>
+        <div className="flex gap-8">
+          <div>
+            <p className="text-xs text-muted mb-0.5">Active teams</p>
+            <p className="text-2xl font-bold text-foreground-strong">{teams?.length ?? 0}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted mb-0.5">Coach seats used</p>
+            <p className="text-2xl font-bold text-foreground-strong">{totalSeats}</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Teams list */}
+      {teams && teams.length > 0 && (
+        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+          <h2 className="text-sm font-semibold text-foreground-strong mb-3">Teams</h2>
+          <ul className="flex flex-col gap-1.5">
+            {teams.map((t) => (
+              <li
+                key={t.id}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-panel-2 text-sm text-foreground"
+              >
+                <span className="w-2 h-2 rounded-full bg-green-400 shrink-0" />
+                {t.name}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}

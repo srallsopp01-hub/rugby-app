@@ -1,9 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useSyncExternalStore } from "react";
-import { usePathname } from "next/navigation";
+import { useSyncExternalStore, useEffect, useState, useRef } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
+import { createClient } from "@/lib/supabase/client";
+import {
+  ACTIVE_TEAM_ID_KEY,
+  ACTIVE_TEAM_CHANGED_EVENT,
+  setActiveTeam,
+} from "@/lib/teamContext";
 
 const navItems = [
   {
@@ -109,6 +115,18 @@ const navItems = [
     ),
   },
   {
+    label: "Organisation",
+    href: "/coach/organisation",
+    exact: false,
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="2" y="7" width="12" height="7" rx="1" stroke="currentColor" strokeWidth="1.25"/>
+        <path d="M5 7V5a3 3 0 016 0v2" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round"/>
+        <path d="M8 10v2" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+  {
     label: "Settings",
     href: "/coach/settings",
     exact: false,
@@ -121,6 +139,8 @@ const navItems = [
   },
 ];
 
+type TeamOption = { id: string; name: string; orgName: string };
+
 const COACH_SIDEBAR_EVENT = "coach-sidebar-collapsed-changed";
 
 function subscribeCoachCollapsed(cb: () => void) {
@@ -128,13 +148,172 @@ function subscribeCoachCollapsed(cb: () => void) {
   return () => window.removeEventListener(COACH_SIDEBAR_EVENT, cb);
 }
 
-export default function CoachSidebar() {
+function subscribeTeamChanged(cb: () => void) {
+  window.addEventListener(ACTIVE_TEAM_CHANGED_EVENT, cb);
+  return () => window.removeEventListener(ACTIVE_TEAM_CHANGED_EVENT, cb);
+}
+
+function TeamSwitcherDropdown({
+  teams,
+  activeTeamId,
+  loading,
+  onSelect,
+}: {
+  teams: TeamOption[];
+  activeTeamId: string;
+  loading: boolean;
+  onSelect: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  const activeTeam = teams.find((t) => t.id === activeTeamId);
+  const label = loading ? "Loading…" : (activeTeam?.name ?? "Select team");
+
+  // Group by org name
+  const grouped: Record<string, TeamOption[]> = {};
+  for (const t of teams) {
+    const key = t.orgName || "Teams";
+    (grouped[key] ??= []).push(t);
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm text-muted hover:text-foreground hover:bg-panel-2 transition-colors duration-150"
+      >
+        <span className="truncate font-medium text-foreground-strong text-xs">{label}</span>
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 12 12"
+          fill="none"
+          className={`shrink-0 transition-transform duration-150 ${open ? "rotate-180" : ""}`}
+        >
+          <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-xl border border-border bg-panel shadow-[var(--shadow-soft)] overflow-hidden">
+          {Object.entries(grouped).map(([orgName, orgTeams]) => (
+            <div key={orgName}>
+              {Object.keys(grouped).length > 1 && (
+                <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-2">
+                  {orgName}
+                </div>
+              )}
+              {orgTeams.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    onSelect(t.id);
+                  }}
+                  className={`w-full text-left px-3 py-2 text-sm transition-colors duration-100 ${
+                    t.id === activeTeamId
+                      ? "text-foreground-strong bg-panel-3 font-medium"
+                      : "text-muted hover:text-foreground hover:bg-panel-2"
+                  }`}
+                >
+                  {t.name}
+                </button>
+              ))}
+            </div>
+          ))}
+          {teams.length === 0 && !loading && (
+            <div className="px-3 py-2 text-sm text-muted-2">No teams found</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function CoachSidebar({
+  isOrgAdminOnly = false,
+}: {
+  isOrgAdminOnly?: boolean;
+}) {
   const pathname = usePathname();
+  const router = useRouter();
+
   const collapsed = useSyncExternalStore(
     subscribeCoachCollapsed,
     () => localStorage.getItem("coach-sidebar-collapsed") === "true",
     () => false
   );
+
+  const activeTeamId = useSyncExternalStore(
+    subscribeTeamChanged,
+    () => localStorage.getItem(ACTIVE_TEAM_ID_KEY) ?? "",
+    () => ""
+  );
+
+  const [teams, setTeams] = useState<TeamOption[]>([]);
+  const [loadingTeams, setLoadingTeams] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const [{ data: tms }, { data: oms }] = await Promise.all([
+        supabase
+          .from("team_members")
+          .select("team_id, teams!inner(id, name, organisations!inner(id, name))")
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .in("role", ["head_coach", "assistant_coach"]),
+        supabase
+          .from("organisation_members")
+          .select("organisations!inner(id, name, teams(id, name))")
+          .eq("user_id", user.id),
+      ]);
+
+      const seen = new Set<string>();
+      const result: TeamOption[] = [];
+
+      for (const row of tms ?? []) {
+        const t = (row as any).teams;
+        const o = t?.organisations;
+        if (t?.id && !seen.has(t.id)) {
+          seen.add(t.id);
+          result.push({ id: t.id, name: t.name, orgName: o?.name ?? "" });
+        }
+      }
+      for (const row of oms ?? []) {
+        const org = (row as any).organisations;
+        for (const t of org?.teams ?? []) {
+          if (t?.id && !seen.has(t.id)) {
+            seen.add(t.id);
+            result.push({ id: t.id, name: t.name, orgName: org?.name ?? "" });
+          }
+        }
+      }
+
+      setTeams(result);
+      setLoadingTeams(false);
+    }
+    load();
+  }, []);
 
   const toggle = () => {
     localStorage.setItem("coach-sidebar-collapsed", String(!collapsed));
@@ -144,6 +323,12 @@ export default function CoachSidebar() {
   function isActive(href: string, exact: boolean) {
     if (exact) return pathname === href;
     return pathname === href || pathname.startsWith(href + "/");
+  }
+
+  async function handleTeamSelect(teamId: string) {
+    await setActiveTeam(teamId);
+    router.push("/coach");
+    router.refresh();
   }
 
   return (
@@ -176,7 +361,29 @@ export default function CoachSidebar() {
         )}
       </div>
 
-      <nav className="flex flex-col gap-0.5 p-2 flex-1">
+      {/* Team switcher */}
+      <div className={`border-b border-border ${collapsed ? "px-2 py-2" : "px-2 py-2"}`}>
+        {collapsed ? (
+          <button
+            type="button"
+            title="Switch team"
+            className="w-full flex justify-center py-2 text-muted hover:text-foreground transition-colors duration-150"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 4h10M2 4l2-2M2 4l2 2M12 10H2M12 10l-2-2M12 10l-2 2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        ) : (
+          <TeamSwitcherDropdown
+            teams={teams}
+            activeTeamId={activeTeamId}
+            loading={loadingTeams}
+            onSelect={handleTeamSelect}
+          />
+        )}
+      </div>
+
+      <nav className="flex flex-col gap-0.5 p-2 flex-1 overflow-y-auto">
         {navItems.map((item) => {
           const active = isActive(item.href, item.exact);
           return (
