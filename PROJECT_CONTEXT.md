@@ -1362,40 +1362,73 @@ Two related bugs fixed:
 - `lib/serverTeamContext.ts` org-admin fallback — returns context with `isOrgAdminOnly: true` when no `team_members` row
 - Migration `20260506000000_move_3_org_access.sql` — org RLS policies, extended `can_read_team_data`, `resolve_active_team_id`, `set_active_team_id`
 
-### Ordered next steps
+### Pre-launch checklist — do these before sharing with any club
 
-**1. Live Stripe prices** ← blocking dependency for real revenue
+**1. Live Stripe prices** (~1 hr) ← hard blocker
 - Create live-mode prices in Stripe dashboard (monthly + annual for each plan)
 - Update price IDs in `app/(marketing)/pricing/pricingConfig.ts`
 - Create a second webhook endpoint in Stripe live mode with its own signing secret
 - Set `STRIPE_SECRET_KEY=sk_live_...` and `STRIPE_WEBHOOK_SECRET=whsec_live_...` in Vercel
-- Do not start selling to real customers until this is done
 
-**2. Move 4 — Business admin panel** (`/admin/organisations`, `/admin/billing`)
-- Internal visibility layer: customer list, MRR, subscription status, plan breakdown
-- Data source: `organisations` table (status/plan/current_period_end now kept in sync by webhooks)
-- Scope: read-only internal tool, no customer-facing UI
-- Replaces the current admin stubs
+**2. Sentry error monitoring** (~20 min) ← bundle with #1, same sitting
+- Install `@sentry/nextjs`, run `npx @sentry/wizard@latest -i nextjs`
+- Free tier is fine for this stage
+- Gives immediate email alerts with stack traces when anything crashes in production
+- Without this you are blind to errors real users hit
 
-**3. Stripe Customer Portal**
-- Lets customers manage their own billing (cancel, upgrade, update card) without a custom billing UI
-- One Vercel serverless function: create a Billing Portal session and redirect
-- Sits naturally after Move 4 so we can see who's using it
-
-**4. Complete email delivery** — manual DNS/SMTP task
+**3. Email delivery** (~1 hr) ← needed for signup confirmation to arrive reliably
 - Resend: verify `fynlwhistle.com` domain status is `verified`
 - Vercel DNS: add missing `_dmarc` TXT record `v=DMARC1; p=none;`
 - Supabase Auth SMTP: route signup/reset emails through Resend with sender `FYNL Whistle <noreply@fynlwhistle.com>`
 
-**5. Coach Review improvements** (Batch AX)
+**4. Terms of Service + Privacy Policy** ← legal requirement before taking real payments
+- Use Termly, iubenda, or similar generator — ~1 hr
+- Add links to the pricing page footer and signup flow
+- GDPR note: if targeting UK/EU clubs, consider switching Supabase project region to EU (can be done in project settings before you have real data)
+
+---
+### ✅ READY TO SHARE WITH CLUBS — after the four items above are done
+
+At this point: a club can discover the product, sign up, pay with a real card, receive a confirmation email, log in, and use the full coach app. The backend is complete and resilient.
+
+**Confidence checklist before first outreach:**
+- Know how to do a Vercel rollback (Deployments tab → find last working deploy → Redeploy). Practice it once.
+- Bookmark Stripe dashboard → Developers → Webhooks → your live endpoint. Failed deliveries show here; one click to retry.
+- Sentry is alerting to your email. Test it by deliberately triggering a 404.
+
+---
+### Post-launch — internal tooling
+
+**5. Move 4 — Business admin panel** (`/admin/organisations`, `/admin/billing`)
+- Internal visibility layer: customer list, MRR, subscription status, plan breakdown
+- Data source: `organisations` table — status/plan/current_period_end kept in sync by webhooks
+- Scope: read-only internal tool, no customer-facing UI
+- Replaces the current admin stubs
+
+**6. Stripe Customer Portal**
+- Lets customers manage their own billing (cancel, upgrade, update card) without a custom billing UI
+- One serverless function: create a Billing Portal session and redirect
+- Until this exists, cancellations and card updates come to you manually — fine at low volume
+
+### Post-launch — product
+
+**7. Coach Review improvements** (Batch AX)
 - Per-clip notes/comments field
-- Quick-jump visual scrubber timeline with event markers
+- Quick-jump scrubber timeline with event markers
 - Fullscreen video mode
 - Export clip list as PDF for team presentations
 
-**6. Wire up the contact form** — connect `app/(marketing)/contact/page.tsx` to Resend or CRM
+**8. Wire up the contact form** — connect `app/(marketing)/contact/page.tsx` to Resend or CRM
 
-**7. OG images + brand assets** — add to `public/` for social sharing previews
+### Around launch — quick marketing and UI wins
+These are low-effort, high-signal for early clubs:
+
+- **OG images** — add to `public/` so links shared in WhatsApp/Twitter show a branded preview card instead of a blank
+- **Status page** — Instatus free tier, ~10 min setup. Clubs can check themselves if the app is slow rather than messaging you. Link it in the footer.
+- **Early adopter framing on pricing page** — make sure the early adopter yearly offer messaging is current and compelling; first clubs respond to feeling like insiders
+- **Trial period in Stripe checkout** — consider adding a 14-day free trial to the checkout session to reduce signup friction for the first wave of clubs
+- **Simple welcome message** — even a plain-text email you send manually to the first 5–10 signups goes a long way; personal touch matters at this stage
+- **Changelog or "what's new"** — a simple Notion page (or a `/updates` route) linked from the sidebar so early users feel the product is moving; clubs that can see active development stay engaged
 
 ### Longer-term
 
@@ -1404,6 +1437,7 @@ Two related bugs fixed:
 - Cross-match player trends backed by cloud data
 - Shared team analysis links
 - Advanced video annotation / telestration
+- Plan limit enforcement (schema ready, code enforcement not yet built)
 - Automated test suite (start with data transformation and export utilities)
 
 ---
