@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** May 2026 — Move 3 fully shipped (Batch BI): club_admin gate fix, `/coach/organisation` overview page, team switcher in sidebar, `isOrgAdminOnly` banner, org-access RLS migration. All Stripe webhook batches (BE–BH) and Move 3 (BI) complete.
+**Last updated:** May 2026 — Terms of Service and Privacy Policy live (`/terms`, `/privacy`); footer and signup wired. Pre-launch checklist: items 1 (Stripe live prices), 2 (Sentry), 3 (email/DNS) remain. Move 3 (BI) and all Stripe webhook batches (BE–BH) complete.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -1381,9 +1381,9 @@ Two related bugs fixed:
 - Vercel DNS: add missing `_dmarc` TXT record `v=DMARC1; p=none;`
 - Supabase Auth SMTP: route signup/reset emails through Resend with sender `FYNL Whistle <noreply@fynlwhistle.com>`
 
-**4. Terms of Service + Privacy Policy** ← legal requirement before taking real payments
-- Use Termly, iubenda, or similar generator — ~1 hr
-- Add links to the pricing page footer and signup flow
+**4. Terms of Service + Privacy Policy** ✅ Done (May 2026)
+- `/terms` and `/privacy` live — UK GDPR-compliant, covers all sub-processors
+- Footer links added to marketing layout; legal disclaimer added to signup form
 - GDPR note: if targeting UK/EU clubs, consider switching Supabase project region to EU (can be done in project settings before you have real data)
 
 ---
