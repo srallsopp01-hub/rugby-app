@@ -255,6 +255,15 @@ export const comparisonRows = [
   ["Dedicated support", "Standard", "Priority", "Dedicated success/support"],
 ] as const;
 
+export function priceIdToPlan(priceId: string): "team_launch" | "club_5" | null {
+  for (const currency of Object.values(stripePriceIds)) {
+    if ([currency.teamLaunchMonthly, currency.teamLaunchYearly].includes(priceId))
+      return "team_launch";
+    if ([currency.club5Monthly, currency.club5Yearly].includes(priceId)) return "club_5";
+  }
+  return null;
+}
+
 export const faqs = [
   {
     question: "Is there a free trial?",

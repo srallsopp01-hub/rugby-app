@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
+import { priceIdToPlan } from "@/app/(marketing)/pricing/pricingConfig";
 
 export async function POST(request: NextRequest) {
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -35,10 +36,11 @@ export async function POST(request: NextRequest) {
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: { trial_period_days: 14 },
+      client_reference_id: user.id,
       customer_email: user.email,
       success_url: `${origin}/coach?checkout=success`,
       cancel_url: `${origin}/pricing`,
-      metadata: { userId: user.id },
+      metadata: { userId: user.id, plan: priceIdToPlan(priceId) ?? "" },
     });
   } catch (error) {
     console.error("Stripe checkout session failed", error);
