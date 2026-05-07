@@ -361,7 +361,7 @@ Theme CSS variables available as Tailwind classes. Default is the dark scheme; a
 | `text-muted-2` | #6b7484 | Tertiary / labels |
 | `border-border` | #262d3a | Default borders |
 | `border-border-light` | #3a4557 | Hover/active borders |
-| `bg-accent` / `text-accent` | #3b8ef0 | Primary CTAs, focus rings, brand glow |
+| `bg-accent` / `text-accent` | #ed6a1f | Primary CTAs, focus rings, brand glow (same orange in both schemes) |
 | `text-success` | #22c55e | Success / positive |
 | `text-warning` | #f59e0b | Warning / amber |
 | `text-danger` | #ef4444 | Danger / destructive |
@@ -370,7 +370,7 @@ Body has a radial + linear gradient applied (faint accent-blue glow at top). But
 
 Dark-only rules at the bottom of `globals.css` (scoped under `[data-theme-scheme="dark"]`):
 - `.bg-panel` / `.bg-panel-2` / `.bg-panel-3` get a 1px inset top highlight + `var(--shadow-panel)` so panels read as carved out of the background.
-- `button.bg-accent` carries an inset highlight and a coloured `rgba(59, 142, 240, 0.45)` glow; hover deepens it, active softens it, `:disabled` removes it.
+- `button.bg-accent` carries an inset highlight and an orange `rgba(237, 106, 31, 0.45)` glow; hover deepens it, active softens it, `:disabled` removes it.
 - `button:focus-visible` shows a 3px accent-coloured focus ring (keyboard only).
 - Input/select/textarea focus tints the border to accent and shows a 3px ring at 0.28 opacity.
 
@@ -1427,9 +1427,9 @@ Two-way coaching loop. Players can react to and comment on coach clips, and coac
 
 ---
 
-### Batch BL (May 2026) — Dark mode premium refresh v2
+### Batch BL (May 2026) — Dark mode premium refresh v2 + unified orange brand
 
-Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Stripe — deeper near-black base, cleaner panel scale, layered shadows, primary buttons that visibly glow. Supersedes the partial Batch AK refresh. Bright scheme untouched. No component files modified.
+Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Stripe — deeper near-black base, cleaner panel scale, layered shadows, primary buttons that visibly glow. Supersedes the partial Batch AK refresh. **Both schemes now share the orange `#ed6a1f` accent for a single coherent brand identity** (decision made mid-batch after seeing the dark refresh land — see "Accent decision" below). No component files modified.
 
 **`app/globals.css` only:**
 - ✅ Backgrounds deepened and re-spaced for clearer panel hierarchy: `--background` `#060709`, `--background-elevated` `#0b0d13`, `--panel` `#11141d`, `--panel-2` `#181d27`, `--panel-3` `#232a37`
@@ -1437,23 +1437,31 @@ Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Str
 - ✅ Borders shifted cooler and slightly tighter (`--border: #262d3a`, `--border-light: #3a4557`)
 - ✅ Status colours moved from pastel to Tailwind 500-range for legibility against the deeper base: `--success: #22c55e`, `--warning: #f59e0b`, `--danger: #ef4444`
 - ✅ Shadow tokens layered (ambient + contact): `--shadow-soft` and `--shadow-panel` now have two-shadow values for visible card depth
-- ✅ Body gradient hardcodes updated to track the new background tokens; accent radial glow strengthened from `0.05` → `0.08`
-- ✅ Accent unchanged at `#3b8ef0` (already the right value, just needed to actually pop)
+- ✅ Dark `--accent` set to `#ed6a1f` (matches bright scheme — unified brand orange across both modes)
+- ✅ Body gradient hardcodes updated to track the new background tokens; accent radial glow now warm orange `rgba(237, 106, 31, 0.1)`
 
 **New dark-scoped rules (appended, scoped under `[data-theme-scheme="dark"]`):**
 - ✅ Panel inset top highlight on `.bg-panel` / `.bg-panel-2` / `.bg-panel-3` (1px white at 4% opacity) + `var(--shadow-panel)` underneath — Linear/Vercel-style "carved out of the background" effect
-- ✅ `button.bg-accent` glow: inset top highlight + `rgba(59, 142, 240, 0.45)` blue glow, animated; `:not(:disabled):hover` deepens it; `:not(:disabled):active` softens it; `:disabled` kills the glow entirely (component opacity utilities still drive the dim state)
-- ✅ `button:focus-visible` ring (3px accent at 0.4 opacity) — buttons previously had no focus ring at all
+- ✅ `button.bg-accent` glow: inset top highlight + `rgba(237, 106, 31, 0.45)` orange glow, animated; `:not(:disabled):hover` deepens it; `:not(:disabled):active` softens it; `:disabled` kills the glow entirely (component opacity utilities still drive the dim state)
+- ✅ `button:focus-visible` ring (3px accent-orange at 0.4 opacity) — buttons previously had no focus ring at all
 - ✅ Input/select/textarea focus override tints the border to accent and lifts the ring opacity from 0.18 → 0.28
+
+**Shared focus rule fix (incidental):**
+- ✅ Existing input focus rule at lines 125-131 had a hardcoded **blue** ring (`rgba(59, 142, 240, 0.18)`) inherited from a previous scheme. With the unified orange accent, the rgba values were updated to `rgba(237, 106, 31, 0.18)` — corrects a pre-existing inconsistency where bright mode (orange-accent theme) was showing a blue input focus ring. Bright mode now also gets the matching orange ring.
+
+**Accent decision:**
+- Initial dark refresh used `#3b8ef0` blue for the accent ("a vivid but not garish blue").
+- After seeing the refresh land, decided the strong orange `#ed6a1f` from the bright scheme was preferable — gives a single coherent brand identity across both schemes rather than blue-led-dark + orange-led-bright.
+- Trade-off: less differentiation between the two themes, but a much stronger overall brand signal. Orange on near-black reads warm and confident; cards and CTAs feel anchored.
 
 **Implementation notes:**
 - Selectors use `button.bg-accent` because every primary CTA in the app already carries the `bg-accent` Tailwind class — token-only path with zero component edits
-- Full transition list duplicated inside the dark `button.bg-accent` rule so `box-shadow` animates smoothly without modifying the global `button` transition (which would touch bright mode)
+- Full transition list duplicated inside the dark `button.bg-accent` rule so `box-shadow` animates smoothly without modifying the global `button` transition
 - `:not(:disabled)` guards on hover/active prevent disabled CTAs from "flashing to life" on mouseover
 
 **Verification:**
-- ✅ Pages walked in dark: `/coach`, `/coach/capture`, `/coach/insights`, `/coach/review`, `/pricing` — panels lift, primary CTAs glow, focus rings visible
-- ✅ Bright mode toggle confirms zero visual change (every dark-only rule is `[data-theme-scheme="dark"]`-scoped)
+- ✅ Pages walked in dark: `/coach`, `/coach/capture`, `/coach/insights`, `/coach/review`, `/pricing` — panels lift, primary CTAs glow orange, focus rings visible
+- ✅ Bright mode toggle confirms structural visuals unchanged (only the input focus ring colour shifts from blue → orange, which fixes the pre-existing inconsistency)
 - ✅ Spot-checked `/player`, `/coach/team-setup`, `/coach/settings` for text contrast against the new backgrounds
 
 ---
