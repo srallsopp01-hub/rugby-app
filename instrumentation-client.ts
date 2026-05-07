@@ -11,6 +11,7 @@ Sentry.init({
       blockAllMedia: true,
     }),
   ],
+  enableLogs: true,
   debug: false,
 });
 
