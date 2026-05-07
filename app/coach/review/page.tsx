@@ -11,6 +11,7 @@ import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfid
 import { DEFAULT_ROSTER_ROWS, STORAGE_KEY } from "@/app/rugby-tagging/constants";
 import { formatTime, hydrateRosterRows } from "@/app/rugby-tagging/helpers";
 import { getCurrentMatchId, getSavedMatchById, upsertSavedMatch } from "@/app/rugby-tagging/lib/savedMatches";
+import { getTeam } from "@/app/rugby-tagging/lib/team";
 import {
   buildSetPieceReviewMoments,
   filterSetPieceReviewMoments,
@@ -61,6 +62,15 @@ function createLocalReviewId(existingIds: number[]) {
   const nextId = nextLocalReviewId;
   nextLocalReviewId += 1;
   return nextId;
+}
+
+function lookupPlayerName(rosterRows: RosterRow[], playerId: string): string {
+  if (!playerId) return "Player";
+  const rosterMatch = rosterRows.find((r) => r.playerId === playerId);
+  if (rosterMatch?.name) return rosterMatch.name;
+  const teamMatch = getTeam()?.players.find((p) => p.id === playerId);
+  if (teamMatch) return teamMatch.preferredName || teamMatch.fullName;
+  return "Player";
 }
 
 function safeClips(clips: unknown): ClipAnnotation[] {
@@ -208,6 +218,7 @@ export default function ReviewPage() {
   const [clipInProgress, setClipInProgress] = useState<number | null>(null);
   const [pendingEndTime, setPendingEndTime] = useState<number | null>(null);
   const [clipLabelDraft, setClipLabelDraft] = useState("");
+  const [clipCommentDraft, setClipCommentDraft] = useState("");
   const [clipCategoryDraft, setClipCategoryDraft] = useState("");
   const [activeClipId, setActiveClipId] = useState<number | null>(null);
   const [clipFilter, setClipFilter] = useState<ClipFilter>("All");
@@ -219,6 +230,13 @@ export default function ReviewPage() {
   const [annotationTool, setAnnotationTool] = useState<AnnotationTool>(null);
   const [draftAnnotation, setDraftAnnotation] = useState<VideoAnnotation | null>(null);
   const [autosaveStatus, setAutosaveStatus] = useState("Saved locally");
+  const [isPresenting, setIsPresenting] = useState(false);
+  const [presentationIndex, setPresentationIndex] = useState(0);
+  const [presentationPaused, setPresentationPaused] = useState(false);
+  const presentationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [viewMode, setViewMode] = useState<"clips" | "byPlayer">("clips");
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [savedFromEventIds, setSavedFromEventIds] = useState<Set<number>>(() => new Set());
 
   const persistReviewState = useCallback(
     (next: Partial<SavedSession>) => {
@@ -299,6 +317,16 @@ export default function ReviewPage() {
         .sort((a, b) => a.startTime - b.startTime)
         .filter((clip) => clipFilter === "All" || clip.category === clipFilter),
     [clipFilter, clips]
+  );
+
+  const playerQuestionCount = useMemo(
+    () =>
+      clips.reduce(
+        (count, clip) =>
+          count + ((clip.reactions ?? []).some((r) => r.type === "question") ? 1 : 0),
+        0
+      ),
+    [clips]
   );
   const setPieceMoments = useMemo(() => buildSetPieceReviewMoments(events), [events]);
   const filteredSetPieceMoments = useMemo(
@@ -470,6 +498,64 @@ export default function ReviewPage() {
     return () => window.removeEventListener("resize", redrawAnnotations);
   }, [redrawAnnotations]);
 
+  useEffect(() => {
+    if (!isPresenting) return;
+    if (presentationPaused) return;
+    if (presentationTimerRef.current) return;
+    const clip = filteredClips[presentationIndex];
+    if (!clip) return;
+    if (currentTime < clip.endTime) return;
+    const video = videoRef.current;
+    video?.pause();
+    presentationTimerRef.current = setTimeout(() => {
+      presentationTimerRef.current = null;
+      const nextIndex = presentationIndex + 1;
+      if (nextIndex >= filteredClips.length) {
+        setIsPresenting(false);
+        setPresentationPaused(false);
+        return;
+      }
+      const nextClip = filteredClips[nextIndex];
+      setPresentationIndex(nextIndex);
+      if (videoRef.current && nextClip) {
+        videoRef.current.currentTime = nextClip.startTime;
+        setCurrentTime(nextClip.startTime);
+        setActiveClipId(nextClip.id);
+        void videoRef.current.play();
+      }
+    }, 1500);
+  }, [currentTime, filteredClips, isPresenting, presentationIndex, presentationPaused]);
+
+  useEffect(() => {
+    return () => {
+      if (presentationTimerRef.current) {
+        clearTimeout(presentationTimerRef.current);
+        presentationTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const presentingFilterRef = useRef<ClipFilter | null>(null);
+  useEffect(() => {
+    if (!isPresenting) {
+      presentingFilterRef.current = null;
+      return;
+    }
+    if (presentingFilterRef.current === null) {
+      presentingFilterRef.current = clipFilter;
+      return;
+    }
+    if (presentingFilterRef.current !== clipFilter) {
+      if (presentationTimerRef.current) {
+        clearTimeout(presentationTimerRef.current);
+        presentationTimerRef.current = null;
+      }
+      setIsPresenting(false);
+      setPresentationPaused(false);
+      presentingFilterRef.current = null;
+    }
+  }, [clipFilter, isPresenting]);
+
   const addCoachNote = () => {
     if (!coachNoteDraft.trim() && !coachRawDraft.trim()) return;
     const timestamp = videoRef.current?.currentTime || currentTime;
@@ -508,6 +594,7 @@ export default function ReviewPage() {
     setClipInProgress(currentVideoTime());
     setPendingEndTime(null);
     setClipLabelDraft("");
+    setClipCommentDraft("");
     setClipCategoryDraft("");
   }
 
@@ -521,13 +608,84 @@ export default function ReviewPage() {
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.code !== "Space" || isTypingTarget(event.target)) return;
-      event.preventDefault();
-      if (!videoRef.current) return;
-      if (clipInProgress === null) {
-        markStart();
-      } else if (pendingEndTime === null) {
-        markEnd();
+      if (isTypingTarget(event.target)) return;
+      const video = videoRef.current;
+
+      if (event.code === "Space") {
+        if (isPresenting) {
+          event.preventDefault();
+          return;
+        }
+        event.preventDefault();
+        if (!video) return;
+        if (clipInProgress === null) {
+          markStart();
+        } else if (pendingEndTime === null) {
+          markEnd();
+        }
+        return;
+      }
+
+      if (isPresenting) {
+        if (event.code === "ArrowDown" || event.code === "KeyN") {
+          event.preventDefault();
+          goToPresentationClip(presentationIndex + 1);
+          return;
+        }
+        if (event.code === "ArrowUp" || event.code === "KeyP") {
+          event.preventDefault();
+          goToPresentationClip(presentationIndex - 1);
+          return;
+        }
+        if (event.code === "Escape") {
+          event.preventDefault();
+          exitPresentation();
+          return;
+        }
+      }
+
+      if (!video) return;
+
+      if (!isPresenting && (event.code === "ArrowLeft" || event.code === "ArrowRight")) {
+        if (!video.paused) return;
+        event.preventDefault();
+        const delta = event.code === "ArrowRight" ? 1 / 30 : -1 / 30;
+        const duration = Number.isFinite(video.duration) ? video.duration : 0;
+        const next = Math.max(0, Math.min(video.currentTime + delta, duration || video.currentTime + delta));
+        video.currentTime = next;
+        setCurrentTime(next);
+        return;
+      }
+
+      if (event.code === "KeyJ") {
+        event.preventDefault();
+        const delta = video.paused ? -2 : -5;
+        const next = Math.max(0, video.currentTime + delta);
+        video.currentTime = next;
+        setCurrentTime(next);
+        return;
+      }
+
+      if (event.code === "KeyK") {
+        event.preventDefault();
+        if (video.paused) {
+          void video.play();
+        } else {
+          video.pause();
+        }
+        return;
+      }
+
+      if (event.code === "KeyL") {
+        event.preventDefault();
+        if (video.paused) {
+          void video.play();
+          return;
+        }
+        const nextRate = Math.min(4, video.playbackRate * 2);
+        video.playbackRate = nextRate;
+        setPlaybackRate(nextRate);
+        return;
       }
     }
 
@@ -544,7 +702,9 @@ export default function ReviewPage() {
       endTime: range.endTime,
       label: clipLabelDraft.trim() || "Clip",
       category: clipCategoryDraft || undefined,
+      comment: clipCommentDraft.trim() || undefined,
       annotations: [],
+      createdAt: new Date().toISOString(),
     };
     const next = [...clips, nextClip].sort((a, b) => a.startTime - b.startTime);
     setClips(next);
@@ -552,6 +712,7 @@ export default function ReviewPage() {
     setClipInProgress(null);
     setPendingEndTime(null);
     setClipLabelDraft("");
+    setClipCommentDraft("");
     setClipCategoryDraft("");
     persistReviewState({ clips: next });
   };
@@ -560,6 +721,7 @@ export default function ReviewPage() {
     setClipInProgress(null);
     setPendingEndTime(null);
     setClipLabelDraft("");
+    setClipCommentDraft("");
     setClipCategoryDraft("");
   };
 
@@ -581,6 +743,105 @@ export default function ReviewPage() {
     persistReviewState({ clips: next });
   };
 
+  function playerActionLabel(action: EventItem["playerAction"]) {
+    if (action === "tackle") return "Tackle";
+    if (action === "missed tackle") return "Missed tackle";
+    if (action === "carry") return "Carry";
+    if (action === "turnover") return "Turnover";
+    return null;
+  }
+
+  function categoryForAction(action: EventItem["playerAction"]) {
+    if (action === "tackle" || action === "missed tackle") return "Defence";
+    if (action === "carry" || action === "turnover") return "Attack";
+    return undefined;
+  }
+
+  const sortedRosterPlayers = useMemo(
+    () =>
+      [...rosterRows]
+        .filter((row) => row.name && row.name.trim().length > 0)
+        .sort((a, b) => {
+          if (typeof a.number === "number" && typeof b.number === "number") {
+            return a.number - b.number;
+          }
+          return a.name.localeCompare(b.name);
+        }),
+    [rosterRows]
+  );
+
+  const selectedPlayerRow = useMemo(
+    () => sortedRosterPlayers.find((row) => (row.playerId ?? row.name) === selectedPlayerId) ?? null,
+    [selectedPlayerId, sortedRosterPlayers]
+  );
+
+  const playerInvolvements = useMemo(() => {
+    if (!selectedPlayerRow) return [] as EventItem[];
+    const targetName = selectedPlayerRow.name.trim().toLowerCase();
+    return events
+      .filter((event) => {
+        if (event.category !== "player") return false;
+        if (!event.playerAction) return false;
+        if (!playerActionLabel(event.playerAction)) return false;
+        const eventName = (event.playerName ?? "").trim().toLowerCase();
+        return eventName === targetName;
+      })
+      .sort((a, b) => a.timestamp - b.timestamp);
+  }, [events, selectedPlayerRow]);
+
+  const buildClipFromEvent = (event: EventItem, existingIds: number[]): ClipAnnotation | null => {
+    if (!selectedPlayerRow) return null;
+    const action = playerActionLabel(event.playerAction);
+    if (!action) return null;
+    const rawStart = event.timestamp - 3;
+    const rawEnd = event.timestamp + 7;
+    const range = clampRange(Math.max(0, rawStart), rawEnd, videoDuration);
+    return {
+      id: createLocalReviewId(existingIds),
+      startTime: range.startTime,
+      endTime: range.endTime,
+      label: `${selectedPlayerRow.name} — ${action}`,
+      category: categoryForAction(event.playerAction),
+      comment: undefined,
+      annotations: [],
+      createdAt: new Date().toISOString(),
+    };
+  };
+
+  const saveEventAsClip = (event: EventItem) => {
+    const newClip = buildClipFromEvent(event, clips.map((clip) => clip.id));
+    if (!newClip) return;
+    const next = [...clips, newClip].sort((a, b) => a.startTime - b.startTime);
+    setClips(next);
+    setSavedFromEventIds((prev) => {
+      const nextSet = new Set(prev);
+      nextSet.add(event.id);
+      return nextSet;
+    });
+    persistReviewState({ clips: next });
+  };
+
+  const saveAllEventsAsClips = () => {
+    const remaining = playerInvolvements.filter((event) => !savedFromEventIds.has(event.id));
+    if (remaining.length === 0) return;
+    const existingIds = clips.map((clip) => clip.id);
+    const newClips: ClipAnnotation[] = [];
+    remaining.forEach((event) => {
+      const allIds = existingIds.concat(newClips.map((clip) => clip.id));
+      const built = buildClipFromEvent(event, allIds);
+      if (built) newClips.push(built);
+    });
+    if (newClips.length === 0) return;
+    const next = [...clips, ...newClips].sort((a, b) => a.startTime - b.startTime);
+    setClips(next);
+    setSavedFromEventIds((prev) => {
+      const nextSet = new Set(prev);
+      remaining.forEach((event) => nextSet.add(event.id));
+      return nextSet;
+    });
+    persistReviewState({ clips: next });
+  };
+
   const seekToClip = (clip: ClipAnnotation) => {
     if (videoRef.current) {
       videoRef.current.currentTime = clip.startTime;
@@ -588,6 +849,66 @@ export default function ReviewPage() {
     }
     setCurrentTime(clip.startTime);
     setActiveClipId(clip.id);
+  };
+
+  const clearPresentationTimer = () => {
+    if (presentationTimerRef.current) {
+      clearTimeout(presentationTimerRef.current);
+      presentationTimerRef.current = null;
+    }
+  };
+
+  const seekAndPlayClip = (clip: ClipAnnotation) => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.currentTime = clip.startTime;
+    setCurrentTime(clip.startTime);
+    setActiveClipId(clip.id);
+    void video.play();
+  };
+
+  const startPresentation = () => {
+    if (filteredClips.length === 0) return;
+    clearPresentationTimer();
+    setIsPresenting(true);
+    setPresentationPaused(false);
+    setPresentationIndex(0);
+    seekAndPlayClip(filteredClips[0]);
+  };
+
+  const exitPresentation = () => {
+    clearPresentationTimer();
+    setIsPresenting(false);
+    setPresentationPaused(false);
+  };
+
+  const goToPresentationClip = (nextIndex: number) => {
+    clearPresentationTimer();
+    if (filteredClips.length === 0) {
+      exitPresentation();
+      return;
+    }
+    if (nextIndex >= filteredClips.length) {
+      exitPresentation();
+      return;
+    }
+    const safeIndex = Math.max(0, nextIndex);
+    setPresentationIndex(safeIndex);
+    seekAndPlayClip(filteredClips[safeIndex]);
+  };
+
+  const togglePresentationPaused = () => {
+    const video = videoRef.current;
+    setPresentationPaused((prev) => {
+      const next = !prev;
+      if (next) {
+        clearPresentationTimer();
+        video?.pause();
+      } else {
+        void video?.play();
+      }
+      return next;
+    });
   };
 
   const seekToSetPieceMoment = (timestamp: number) => {
@@ -694,6 +1015,14 @@ export default function ReviewPage() {
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">Coach Review</h1>
                 <PageHelp {...COACH_PAGE_HELP["/coach/review"]} />
+                {playerQuestionCount > 0 && (
+                  <span
+                    title="Players have asked questions on these clips"
+                    className="rounded-full border border-warning/40 bg-warning/10 px-2.5 py-1 text-xs font-semibold text-warning"
+                  >
+                    {playerQuestionCount} question{playerQuestionCount !== 1 ? "s" : ""}
+                  </span>
+                )}
               </div>
               <p className="mt-2 text-sm text-muted">
                 Team meeting film room with flexible clips, coaching notes, and lightweight telestration.
@@ -787,6 +1116,77 @@ export default function ReviewPage() {
                       onPointerMove={handleCanvasPointerMove}
                       onPointerUp={handleCanvasPointerUp}
                     />
+                    <button
+                      type="button"
+                      title="Fullscreen"
+                      onClick={async () => {
+                        const container = videoRef.current?.parentElement;
+                        if (!container) return;
+                        try {
+                          await container.requestFullscreen();
+                        } catch (error) {
+                          console.error("Failed to enter fullscreen", error);
+                        }
+                      }}
+                      className="absolute right-3 top-3 z-10 rounded-lg border border-border bg-panel/90 backdrop-blur px-2 py-1.5 text-foreground hover:bg-panel"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M2 5V2h3" />
+                        <path d="M12 5V2H9" />
+                        <path d="M2 9v3h3" />
+                        <path d="M12 9v3H9" />
+                      </svg>
+                    </button>
+                    {isPresenting && filteredClips[presentationIndex] && (
+                      <div className="absolute bottom-0 left-0 right-0 z-10 border-t border-border bg-background/85 px-4 py-3 backdrop-blur">
+                        <div className="flex items-center gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs uppercase tracking-widest text-muted-2">
+                              Clip {presentationIndex + 1} of {filteredClips.length}
+                            </div>
+                            <div className="mt-0.5 truncate text-sm font-medium text-foreground">
+                              {filteredClips[presentationIndex].label}
+                            </div>
+                            {filteredClips[presentationIndex].comment && (
+                              <div className="mt-0.5 truncate text-xs text-muted">
+                                {filteredClips[presentationIndex].comment}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => goToPresentationClip(presentationIndex - 1)}
+                              disabled={presentationIndex === 0}
+                              className="rounded-xl border border-border px-3 py-1.5 text-xs font-medium text-foreground disabled:opacity-40"
+                            >
+                              Previous
+                            </button>
+                            <button
+                              type="button"
+                              onClick={togglePresentationPaused}
+                              className="rounded-xl border border-border-light bg-panel-3 px-3 py-1.5 text-xs font-medium text-foreground"
+                            >
+                              {presentationPaused ? "Play" : "Pause"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => goToPresentationClip(presentationIndex + 1)}
+                              className="rounded-xl border border-border px-3 py-1.5 text-xs font-medium text-foreground"
+                            >
+                              Next
+                            </button>
+                            <button
+                              type="button"
+                              onClick={exitPresentation}
+                              className="rounded-xl border border-border px-3 py-1.5 text-xs font-medium text-foreground"
+                            >
+                              Exit
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="mt-4 rounded-2xl border border-border bg-panel-2 p-4">
@@ -800,7 +1200,7 @@ export default function ReviewPage() {
 
                       <div className="ml-0 h-6 w-px bg-border md:ml-1" />
 
-                      {[0.5, 0.75, 1, 2].map((rate) => (
+                      {[0.25, 0.5, 0.75, 1, 2].map((rate) => (
                         <button
                           type="button"
                           key={rate}
@@ -890,6 +1290,13 @@ export default function ReviewPage() {
                           Cancel
                         </button>
                       </div>
+                      <textarea
+                        value={clipCommentDraft}
+                        onChange={(event) => setClipCommentDraft(event.target.value)}
+                        placeholder="Coach comment for this clip…"
+                        rows={2}
+                        className="mt-2 w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm text-foreground resize-none"
+                      />
                     </div>
                   )}
                 </>
@@ -933,12 +1340,113 @@ export default function ReviewPage() {
           </section>
 
           <aside className="space-y-5 xl:sticky xl:top-5 xl:col-span-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto xl:pr-1">
+            <div className="flex flex-wrap gap-1.5">
+              {(["clips", "byPlayer"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setViewMode(mode)}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                    viewMode === mode ? "border-border-light bg-panel-3 text-foreground" : "border-border bg-panel-2 text-muted"
+                  }`}
+                >
+                  {mode === "clips" ? "Clips" : "By Player"}
+                </button>
+              ))}
+            </div>
+
+            {viewMode === "byPlayer" ? (
+              <div className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <h2 className="text-base font-semibold text-foreground-strong">By Player</h2>
+                  {selectedPlayerRow && playerInvolvements.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={saveAllEventsAsClips}
+                      className="rounded-xl border border-border-light bg-panel-3 px-3 py-1.5 text-xs font-medium text-foreground"
+                    >
+                      Save all as clips
+                    </button>
+                  )}
+                </div>
+
+                <select
+                  value={selectedPlayerId ?? ""}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setSelectedPlayerId(value || null);
+                    setSavedFromEventIds(new Set());
+                  }}
+                  className="mb-3 w-full rounded-xl border border-border bg-panel-2 px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="">Pick a player…</option>
+                  {sortedRosterPlayers.map((row) => {
+                    const value = row.playerId ?? row.name;
+                    return (
+                      <option key={value} value={value}>
+                        {row.number ? `#${row.number} ` : ""}{row.name}
+                        {row.position ? ` · ${row.position}` : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+
+                {!selectedPlayerRow ? (
+                  <div className="rounded-xl border border-dashed border-border p-3 text-sm text-muted">
+                    Pick a player to see their involvements
+                  </div>
+                ) : playerInvolvements.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-border p-3 text-sm text-muted">
+                    No logged involvements for this player yet.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {playerInvolvements.map((event) => {
+                      const action = playerActionLabel(event.playerAction);
+                      const saved = savedFromEventIds.has(event.id);
+                      return (
+                        <div
+                          key={event.id}
+                          className="flex items-center justify-between gap-2 rounded-xl border border-border bg-panel-2 px-3 py-2"
+                        >
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className="font-mono text-[11px] text-muted-2">{formatTime(event.timestamp)}</span>
+                            <span className="truncate text-sm text-foreground">{action}</span>
+                          </div>
+                          {saved ? (
+                            <span className="text-xs text-muted">Saved ✓</span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => saveEventAsClip(event)}
+                              className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-foreground"
+                            >
+                              Save as clip
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
             <div className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3 flex items-center justify-between gap-2">
                 <h2 className="text-base font-semibold text-foreground-strong">Clip playlist</h2>
-                <span className="rounded-full border border-border bg-panel-2 px-3 py-1 text-xs text-muted">
-                  {clips.length} clip{clips.length === 1 ? "" : "s"}
-                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={startPresentation}
+                    disabled={filteredClips.length === 0}
+                    className="rounded-xl border border-border-light bg-panel-3 px-3 py-1.5 text-xs font-medium text-foreground disabled:opacity-40"
+                  >
+                    Present clips
+                  </button>
+                  <span className="rounded-full border border-border bg-panel-2 px-3 py-1 text-xs text-muted">
+                    {clips.length} clip{clips.length === 1 ? "" : "s"}
+                  </span>
+                </div>
               </div>
 
               <div className="mb-3 flex flex-wrap gap-1.5">
@@ -1018,6 +1526,54 @@ export default function ReviewPage() {
                           ))}
                         </div>
 
+                        <textarea
+                          value={clip.comment ?? ""}
+                          onChange={(event) => updateClip(clip.id, { comment: event.target.value || undefined })}
+                          placeholder="Coach comment for this clip…"
+                          rows={2}
+                          className="mt-2 w-full rounded-lg border border-border bg-panel px-2 py-1.5 text-sm text-foreground resize-none"
+                        />
+
+                        {((clip.reactions?.length ?? 0) > 0 || (clip.playerNotes?.length ?? 0) > 0) && (
+                          <div className="mt-3 space-y-2 border-t border-border pt-2">
+                            {(clip.reactions ?? []).length > 0 && (
+                              <div className="flex flex-col gap-1.5">
+                                {(clip.reactions ?? []).map((reaction) => {
+                                  const name = lookupPlayerName(rosterRows, reaction.playerId);
+                                  const isQuestion = reaction.type === "question";
+                                  return (
+                                    <div key={`${reaction.playerId}-${reaction.createdAt}`} className="flex flex-col gap-0.5">
+                                      <span
+                                        className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                                          isQuestion
+                                            ? "border-warning/40 bg-warning/10 text-warning"
+                                            : "border-success/40 bg-success/10 text-success"
+                                        }`}
+                                      >
+                                        <span>{isQuestion ? "🤔" : "👍"}</span>
+                                        <span>{name}</span>
+                                      </span>
+                                      {isQuestion && reaction.note && (
+                                        <span className="ml-1 text-[11px] text-muted">{reaction.note}</span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            {(clip.playerNotes ?? []).length > 0 && (
+                              <div className="space-y-0.5">
+                                {(clip.playerNotes ?? []).map((note) => (
+                                  <div key={`${note.playerId}-${note.updatedAt}`} className="text-[11px] text-muted">
+                                    <span className="font-medium text-muted-2">{lookupPlayerName(rosterRows, note.playerId)}:</span>{" "}
+                                    {note.text}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         {(clip.annotations ?? []).length > 0 && (
                           <div className="mt-3 space-y-1.5 border-t border-border pt-2">
                             {(clip.annotations ?? []).map((annotation) => (
@@ -1036,6 +1592,7 @@ export default function ReviewPage() {
                 </div>
               )}
             </div>
+            )}
 
             <div className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
               <div className="mb-3 flex items-center justify-between">

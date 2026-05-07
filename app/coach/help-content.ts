@@ -110,6 +110,7 @@ export const COACH_PAGE_HELP: Record<string, PageHelpProps> = {
     tips: [
       "Use specific, actionable language in notes — 'arrive at the ruck 2 seconds faster' is more useful than 'needs to work harder'.",
       "Link notes to individual players so they see their own feedback in their player profile.",
+      "Keyboard shortcuts: Space marks clip start/end, K toggles play/pause, J rewinds, L speeds up (to 4x), and ←/→ step one frame when paused. Use the fullscreen button (top-right of the video) for film-room playback.",
     ],
   },
 

@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** May 2026 — Terms of Service and Privacy Policy live (`/terms`, `/privacy`); footer and signup wired. Pre-launch checklist: items 1 (Stripe live prices), 2 (Sentry), 3 (email/DNS) remain. Move 3 (BI) and all Stripe webhook batches (BE–BH) complete.
+**Last updated:** May 2026 — Coach Review Phases 1–3 shipped (Batches BI, BJ, BK): per-clip comments + J/K/L + frame-step + slow-mo + fullscreen + autosave badge; presentation mode + per-player auto-clip generation; player reactions + per-clip player notes + "new clips" badge + coach-side surfacing of player feedback. Dark mode token refresh + unified orange brand (Batch BL). Move 3 shipped: `/coach/organisation` + team switcher + club_admin access. Terms of Service + Privacy Policy live. Pre-launch checklist: items 1 (Stripe live prices), 2 (Sentry), 3 (email/DNS) remain.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -83,7 +83,7 @@ The app is split into four clearly separated layers with independent layouts and
 | `/player/compare` | Live | Read-only match and player comparison inside the player app — shared stats only except own-player coaching plan |
 | `/player/games` | Live | Match history |
 | `/player/games/[gameId]` | Live | Game detail: full-screen two-column layout — video player + stats + coaching plan (left, scrollable), involvement playlist sidebar (right, scrollable); Previous/Next clip navigation, current-clip card, active-clip highlight, set piece section |
-| `/player/review` | Live | Shared coach clips from film review; unscoped text notes are hidden until notes can be assigned to a player |
+| `/player/review` | Live | Shared coach clips from film review with per-clip 👍 "Got it" / 🤔 "Question" reactions, optional question text, and a per-player free-text "Your note" field (debounced); marks all clips as seen on open |
 | `/player/settings` | Live | Profile, identity switch, theme, local data snapshot, quick nav links |
 
 ### Admin panel (internal only)
@@ -292,7 +292,9 @@ app/
     compare/page.tsx                  ← Read-only match/player comparison for players
     games/page.tsx                    ← All matches player appeared in, sorted newest first
     games/[gameId]/page.tsx           ← Game detail: full-screen two-column layout (video+stats left, playlist right)
-    review/page.tsx                   ← Playlist of all tagged moments grouped by match
+    review/page.tsx                   ← Coach clip playlist with per-clip 👍/🤔 reactions + per-player notes (debounced 600 ms); marks page as seen on mount
+    lib/reviewSeen.ts                 ← Per-player last-seen timestamp helpers (`fynlwhistle-player-review-last-seen-{id}`)
+    lib/unseenClips.ts                ← `countUnseenClips(matches, player, lastSeenAt)` — drives "new clips" badges
     settings/page.tsx                 ← Profile card, identity switch, theme, local data snapshot, quick nav links
 
   admin/
@@ -350,22 +352,29 @@ Theme CSS variables available as Tailwind classes. Default is the dark scheme; a
 
 | Token | Value | Usage |
 |---|---|---|
-| `bg-background` | #0b0c0f | Base page background |
-| `bg-background-elevated` | #111317 | Elevated surfaces |
-| `bg-panel` | #17191d | Cards and panels |
-| `bg-panel-2` | #1d2025 | Inset / secondary panels |
-| `bg-panel-3` | #23272d | Active sidebar items |
-| `text-foreground` | #d7dbe2 | Primary text |
-| `text-foreground-strong` | #f1f4f8 | Headings / strong text |
-| `text-muted` | #98a0ab | Secondary text |
-| `text-muted-2` | #7e8793 | Tertiary / labels |
-| `border-border` | #373c44 | Default borders |
-| `border-border-light` | #505762 | Hover/active borders |
-| `text-success` | #7ea37e | Muted green |
-| `text-warning` | #b79a63 | Muted gold |
-| `text-danger` | #b16e6e | Muted red |
+| `bg-background` | #060709 | Base page background (deep near-black) |
+| `bg-background-elevated` | #0b0d13 | Elevated surfaces |
+| `bg-panel` | #11141d | Cards and panels |
+| `bg-panel-2` | #181d27 | Inset / secondary panels |
+| `bg-panel-3` | #232a37 | Active sidebar items, focused inputs |
+| `text-foreground` | #e4e7ec | Primary text |
+| `text-foreground-strong` | #ffffff | Headings / strong text |
+| `text-muted` | #9aa3b2 | Secondary text |
+| `text-muted-2` | #6b7484 | Tertiary / labels |
+| `border-border` | #262d3a | Default borders |
+| `border-border-light` | #3a4557 | Hover/active borders |
+| `bg-accent` / `text-accent` | #ed6a1f | Primary CTAs, focus rings, brand glow (same orange in both schemes) |
+| `text-success` | #22c55e | Success / positive |
+| `text-warning` | #f59e0b | Warning / amber |
+| `text-danger` | #ef4444 | Danger / destructive |
 
-Body has a radial + linear gradient applied. Buttons get `translateY(-1px)` on hover. Inputs have 0.18s transitions.
+Body has a radial + linear gradient applied (faint accent-blue glow at top). Buttons get `translateY(-1px)` on hover. Inputs have 0.18s transitions. Shadow tokens are layered (ambient + contact) for visible card depth.
+
+Dark-only rules at the bottom of `globals.css` (scoped under `[data-theme-scheme="dark"]`):
+- `.bg-panel` / `.bg-panel-2` / `.bg-panel-3` get a 1px inset top highlight + `var(--shadow-panel)` so panels read as carved out of the background.
+- `button.bg-accent` carries an inset highlight and an orange `rgba(237, 106, 31, 0.45)` glow; hover deepens it, active softens it, `:disabled` removes it.
+- `button:focus-visible` shows a 3px accent-coloured focus ring (keyboard only).
+- Input/select/textarea focus tints the border to accent and shows a 3px ring at 0.28 opacity.
 
 Bright scheme:
 - Uses white / off-white surfaces with black text and orange accent (`--accent: #ed6a1f`).
@@ -481,6 +490,12 @@ All previous CSV downloads have been removed. One polished report.
 **SquadProfile** (lib/squadProfile.ts — cross-match, persistent): `id`, `teamName`, `coachName`, `primaryColour`, `secondaryColour`, `logoUrl`, `players[]`, `actionSamples[]`, `correctionMemory[]`, `fixtures?[]`, `trainingSessions?[]`, `availabilityResponses?[]`, `sessionLogs?[]`, `leaguePosition?`
 
 **SavedMatchRecord** (lib/savedMatches.ts — local-first, cloud synced): `id`, `createdAt`, `updatedAt`, `matchTitle`, `opponent`, `matchDate`, `activeMode`, `rosterRows[]`, `selectedPlayer`, `events[]`, `reviewQueue[]`, `coachNotes[]`, `clips?`, `showRawTranscript`, `videoStoragePath?`
+
+**ClipAnnotation** (types.ts): `id`, `startTime`, `endTime`, `label`, `category?`, `comment?`, `annotations?` (telestration), `reactions?` (player 👍/🤔), `playerNotes?` (per-player free-text), `createdAt?` (used for "new clips" detection)
+
+**ClipReaction**: `playerId`, `type` (`"got_it"` | `"question"`), `note?` (optional question text), `createdAt`
+
+**ClipPlayerNote**: `playerId`, `text`, `createdAt`, `updatedAt`
 
 **SquadPlayer**: `id`, `fullName`, `preferredName`, `nicknames[]`, `primaryPosition`, `secondaryPositions[]`, `jerseyNumber`, `voiceSamples[]`, `status`, `email?`, `linkedUserId?`
 
@@ -1352,9 +1367,128 @@ Two related bugs fixed:
 
 ---
 
+### Batch BI (May 2026) — Coach Review Phase 1: meeting-room polish
+
+Per-clip coaching depth and pro-grade keyboard control on `/coach/review`. No schema changes — everything piggybacks on existing `clips`/`comment`/`annotations` fields.
+
+- ✅ **Per-clip comment field** — every clip card on the right-side playlist now has a coach-comment textarea persisted via the shared review autosave path; comments round-trip through `STORAGE_KEY` and the saved match record
+- ✅ **Frame-step** — Arrow Left / Right step the video by 1/30 s when paused (typing-field guard prevents firing inside text inputs)
+- ✅ **J / K / L shortcuts** — J rewinds (−2 s paused, −5 s playing); K toggles play/pause; L plays at 1× then doubles playback rate up to 4× on each press
+- ✅ **Slow-mo / fast playback toolbar** — playback rate buttons (0.5× / 0.75× / 1× / 2×) on the video controls; current rate persisted in component state and re-applied on play
+- ✅ **Fullscreen** — fullscreen toggle on the video container with graceful error logging if the browser denies the request
+- ✅ **Autosave badge** — `autosaveStatus` pill in the page header surfaces "Saved locally" / "Saving…" so coaches can see persistence state at a glance
+- ✅ **Spacebar scoping** — spacebar starts/ends clips on `/coach/review` only; never triggers when typing or when presentation mode is active
+
+---
+
+### Batch BJ (May 2026) — Coach Review Phase 2: presentation mode + per-player auto-clips
+
+Two team-meeting workflows on top of Phase 1.
+
+- ✅ **Presentation mode** — full-screen meeting playback that walks through `filteredClips` in order; ArrowDown/N goes to next clip, ArrowUp/P goes to previous, Escape exits; auto-advance based on `currentTime` reaching the clip endpoint with `presentationPaused` guard; presentation overlay shows `"Clip N of M"`, label, and comment
+- ✅ **Per-player view + auto-clip generation** — selecting a roster player surfaces all their tagged involvements (`playerInvolvements` filtered to their tackles/missed tackles/carries/turnovers); each event has a "Save as clip" button that builds a 10 s window (−3 s before, +7 s after the event) via `buildClipFromEvent`; "Save all" bulk-creates clips for every remaining involvement at once
+- ✅ **Per-player clip metadata** — generated clips inherit category from the action (`tackle`/`missed tackle` → Defence; `carry`/`turnover` → Attack) and use `"{Player name} — {Action}"` as the label; `savedFromEventIds` set tracks already-saved events so the "Save as clip" button disables after a save
+- ✅ **Clip-filter chips** — All / Attack / Defence / Set Piece / Lineout filter pills above the playlist; presentation mode and per-player view both honour the active filter
+
+---
+
+### Batch BK (May 2026) — Coach Review Phase 3: player reactions, notes, and "new clips" badge
+
+Two-way coaching loop. Players can react to and comment on coach clips, and coaches see all player feedback at a glance. Privacy rule preserved: a player only sees their own reactions/notes; coaches see everyone's.
+
+**Type changes** (`app/rugby-tagging/types.ts`):
+- ✅ `ClipReaction` — `playerId`, `type` (`"got_it" | "question"`), `note?`, `createdAt`
+- ✅ `ClipPlayerNote` — `playerId`, `text`, `createdAt`, `updatedAt`
+- ✅ `ClipAnnotation` extended with `reactions?`, `playerNotes?`, `createdAt?` (used for unseen-clip detection; missing `createdAt` treated as legacy "old" clip)
+
+**Coach side** (`app/coach/review/page.tsx`):
+- ✅ `confirmClip` and `buildClipFromEvent` set `createdAt: new Date().toISOString()` on every new clip
+- ✅ Clip cards on the right-side playlist now render a player-feedback section: 👍 / 🤔 pills tagged with player name (resolved via `lookupPlayerName(rosterRows, playerId)` with team fallback); question pills show their note text below in muted styling; player notes render as `"Name: text"` lines
+- ✅ Header shows an amber `"N questions"` badge with tooltip `title="Players have asked questions on these clips"` — counts clips where at least one reaction has `type === "question"`
+
+**Player side** (`app/player/review/page.tsx`):
+- ✅ Clip rows refactored from a single `<button>` to a `<div>` with a clickable header (still seeks the video) and an interactive footer (reactions + notes); footer uses `e.stopPropagation()` so seeks don't fire when clicking pills or typing
+- ✅ Two reaction pills per clip: "Got it 👍" (green border when active, `border-success bg-success/10`) and "Question 🤔" (amber, `border-warning bg-warning/10`); clicking the active pill toggles it off; "Question" reveals a small textarea for the optional question text; switching to "Got it" clears any pending question
+- ✅ Per-player note textarea ("Your note") at the right of the footer, debounced 600 ms before persisting; empty text removes the note for this player only; notes are scoped per-`playerId` so each player only ever sees their own
+- ✅ Persistence helper `updateClipInSavedMatch(matchId, clipId, mutate)` reads via `getSavedMatchById`, applies the mutation, writes via `upsertSavedMatch` so localStorage + cloud sync round-trip in one call
+- ✅ `markReviewAsSeen(currentPlayer.id)` fires on `/player/review` mount so unseen-clip badges clear
+
+**"New clips" badge** (new helpers in `app/player/lib/`):
+- ✅ `reviewSeen.ts` — `getLastSeenAt(playerId)` / `markReviewAsSeen(playerId)` / `subscribeReviewSeenChanged(cb)` over localStorage key `fynlwhistle-player-review-last-seen-{playerId}`
+- ✅ `unseenClips.ts` — `countUnseenClips(matches, currentPlayer, lastSeenAt)` filters matches by roster ID-first / name-fallback (mirrors `/player/games/page.tsx` pattern), counts clips whose `createdAt` is after `lastSeenAt` (or any clip when `lastSeenAt` is null AND `createdAt` is missing)
+- ✅ `app/player/page.tsx` — header shows "X new clips from your coach" pill linking to `/player/review` next to the existing unanswered-availability badge
+- ✅ `app/player/PlayerSidebar.tsx` — Review nav link gets a numeric warning-coloured badge (`bg-warning text-background-elevated text-[10px] font-semibold rounded-full`); collapses to a small dot when the sidebar is collapsed
+
+**Verification:**
+- ✅ Lint clean for all touched files (one pre-existing `react-hooks/set-state-in-effect` error in `app/coach/team/page.tsx` left alone — file untouched in this batch)
+- ✅ `npm run build` compiled and TypeScript-checked successfully (no type errors)
+
+**Deferred to a future batch:**
+- Coach-reply mechanism for player questions (badge currently surfaces "N questions" with no resolution state)
+- Server-side notification beyond localStorage tracking (clearing the browser resets unseen-clip counts — acceptable for v1)
+
+---
+
+### Batch BL (May 2026) — Dark mode premium refresh v2 + unified orange brand
+
+Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Stripe — deeper near-black base, cleaner panel scale, layered shadows, primary buttons that visibly glow. Supersedes the partial Batch AK refresh. **Both schemes now share the orange `#ed6a1f` accent for a single coherent brand identity** (decision made mid-batch after seeing the dark refresh land — see "Accent decision" below). No component files modified.
+
+**`app/globals.css` only:**
+- ✅ Backgrounds deepened and re-spaced for clearer panel hierarchy: `--background` `#060709`, `--background-elevated` `#0b0d13`, `--panel` `#11141d`, `--panel-2` `#181d27`, `--panel-3` `#232a37`
+- ✅ Body text lifted to `--foreground: #e4e7ec`; `--foreground-strong` stays pure white; muted shades cooled (`#9aa3b2` / `#6b7484`)
+- ✅ Borders shifted cooler and slightly tighter (`--border: #262d3a`, `--border-light: #3a4557`)
+- ✅ Status colours moved from pastel to Tailwind 500-range for legibility against the deeper base: `--success: #22c55e`, `--warning: #f59e0b`, `--danger: #ef4444`
+- ✅ Shadow tokens layered (ambient + contact): `--shadow-soft` and `--shadow-panel` now have two-shadow values for visible card depth
+- ✅ Dark `--accent` set to `#ed6a1f` (matches bright scheme — unified brand orange across both modes)
+- ✅ Body gradient hardcodes updated to track the new background tokens; accent radial glow now warm orange `rgba(237, 106, 31, 0.1)`
+
+**New dark-scoped rules (appended, scoped under `[data-theme-scheme="dark"]`):**
+- ✅ Panel inset top highlight on `.bg-panel` / `.bg-panel-2` / `.bg-panel-3` (1px white at 4% opacity) + `var(--shadow-panel)` underneath — Linear/Vercel-style "carved out of the background" effect
+- ✅ `button.bg-accent` glow: inset top highlight + `rgba(237, 106, 31, 0.45)` orange glow, animated; `:not(:disabled):hover` deepens it; `:not(:disabled):active` softens it; `:disabled` kills the glow entirely (component opacity utilities still drive the dim state)
+- ✅ `button:focus-visible` ring (3px accent-orange at 0.4 opacity) — buttons previously had no focus ring at all
+- ✅ Input/select/textarea focus override tints the border to accent and lifts the ring opacity from 0.18 → 0.28
+
+**Shared focus rule fix (incidental):**
+- ✅ Existing input focus rule at lines 125-131 had a hardcoded **blue** ring (`rgba(59, 142, 240, 0.18)`) inherited from a previous scheme. With the unified orange accent, the rgba values were updated to `rgba(237, 106, 31, 0.18)` — corrects a pre-existing inconsistency where bright mode (orange-accent theme) was showing a blue input focus ring. Bright mode now also gets the matching orange ring.
+
+**Accent decision:**
+- Initial dark refresh used `#3b8ef0` blue for the accent ("a vivid but not garish blue").
+- After seeing the refresh land, decided the strong orange `#ed6a1f` from the bright scheme was preferable — gives a single coherent brand identity across both schemes rather than blue-led-dark + orange-led-bright.
+- Trade-off: less differentiation between the two themes, but a much stronger overall brand signal. Orange on near-black reads warm and confident; cards and CTAs feel anchored.
+
+**Implementation notes:**
+- Selectors use `button.bg-accent` because every primary CTA in the app already carries the `bg-accent` Tailwind class — token-only path with zero component edits
+- Full transition list duplicated inside the dark `button.bg-accent` rule so `box-shadow` animates smoothly without modifying the global `button` transition
+- `:not(:disabled)` guards on hover/active prevent disabled CTAs from "flashing to life" on mouseover
+
+**Verification:**
+- ✅ Pages walked in dark: `/coach`, `/coach/capture`, `/coach/insights`, `/coach/review`, `/pricing` — panels lift, primary CTAs glow orange, focus rings visible
+- ✅ Bright mode toggle confirms structural visuals unchanged (only the input focus ring colour shifts from blue → orange, which fixes the pre-existing inconsistency)
+- ✅ Spot-checked `/player`, `/coach/team-setup`, `/coach/settings` for text contrast against the new backgrounds
+
+---
+
+### Move 3 (May 2026) — Club admin access: `/coach/organisation` + team switcher
+
+- `/coach/organisation` route — club_admin read-only: org name, plan, status, billing date, active team count, coach seat count
+- Club_admin gate fix in `app/coach/layout.tsx` — accepts `organisation_members` as well as `team_members`
+- `isOrgAdminOnly` amber banner in coach layout — displayed when viewing as club admin without a coaching role on the active team
+- Team switcher in `CoachSidebar` — fetches all accessible teams, grouped by org, reactive via `ACTIVE_TEAM_CHANGED_EVENT`
+- `lib/serverTeamContext.ts` org-admin fallback — returns context with `isOrgAdminOnly: true` when no `team_members` row
+- Migration `20260506000000_move_3_org_access.sql` — org RLS policies, extended `can_read_team_data`, `resolve_active_team_id`, `set_active_team_id`
+
+---
+
+### Terms of Service + Privacy Policy (May 2026)
+
+- `/terms` and `/privacy` routes live — UK GDPR-compliant, covers all sub-processors
+- Footer links added to `app/(marketing)/layout.tsx`; legal disclaimer added to signup form
+
+---
+
 ## Next — what's left to do
 
-### Move 3 — ✅ Shipped (Batch BI, May 2026)
+### Move 3 — ✅ Shipped (May 2026)
 - `/coach/organisation` — club_admin read-only: org name, plan, status, billing date, team count, coach seat count
 - Club_admin gate fix in `app/coach/layout.tsx` — accepts `organisation_members` as well as `team_members`
 - `isOrgAdminOnly` banner in coach layout — amber strip when viewing as club admin
@@ -1412,10 +1546,11 @@ At this point: a club can discover the product, sign up, pay with a real card, r
 
 ### Post-launch — product
 
-**7. Coach Review improvements** (Batch AX)
-- Per-clip notes/comments field
-- Quick-jump scrubber timeline with event markers
-- Fullscreen video mode
+**7. Coach Review Phase 4 — close the question loop**
+- Coach-reply textarea on each player question; mark question as answered
+- "N questions" header badge becomes "N unanswered questions" (filters out resolved)
+- Notify the player that their question has a reply (in-app first, server-side push later)
+- Quick-jump visual scrubber timeline with event markers
 - Export clip list as PDF for team presentations
 
 **8. Wire up the contact form** — connect `app/(marketing)/contact/page.tsx` to Resend or CRM

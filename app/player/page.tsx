@@ -10,6 +10,8 @@ import { SQUAD_PROFILE_KEY } from "@/app/rugby-tagging/constants";
 import { saveSquadProfile, SQUAD_PROFILE_CHANGED_EVENT } from "@/app/rugby-tagging/lib/team";
 import { buildReportRowsFromMatch, gradeToScore } from "@/app/rugby-tagging/helpers";
 import { buildPlayerCoachingPlan } from "./playerCoachingPlan";
+import { countUnseenClips } from "./lib/unseenClips";
+import { getLastSeenAt, subscribeReviewSeenChanged } from "./lib/reviewSeen";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { ReportRow, AvailabilityResponse, Fixture, TrainingSession, TrainingSessionDayOfWeek } from "@/app/rugby-tagging/types";
 import type { SquadPlayer, SquadProfile } from "@/app/rugby-tagging/lib/team";
@@ -463,6 +465,19 @@ export default function PlayerHomePage() {
 
   const hasAnyEvent = upcomingFixtures.length > 0 || trainingSessions.length > 0;
 
+  const lastSeenAt = useSyncExternalStore(
+    subscribeReviewSeenChanged,
+    () => (currentPlayer ? getLastSeenAt(currentPlayer.id) : null),
+    () => null
+  );
+
+  const unseenClipCount = useMemo(() => {
+    if (!currentPlayer) return 0;
+    let all: SavedMatchRecord[];
+    try { all = JSON.parse(matchesRaw); } catch { return 0; }
+    return countUnseenClips(all, currentPlayer, lastSeenAt);
+  }, [matchesRaw, currentPlayer, lastSeenAt]);
+
   const unansweredCount = useMemo(() => {
     if (!currentPlayer) return 0;
     let count = 0;
@@ -520,11 +535,21 @@ export default function PlayerHomePage() {
               {currentPlayer.primaryPosition}
             </p>
           </div>
-          {unansweredCount > 0 && (
-            <span className="shrink-0 rounded-full border border-warning/30 bg-warning/10 px-3 py-1.5 text-xs font-semibold text-warning">
-              {unansweredCount} response{unansweredCount !== 1 ? "s" : ""} needed
-            </span>
-          )}
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            {unansweredCount > 0 && (
+              <span className="rounded-full border border-warning/30 bg-warning/10 px-3 py-1.5 text-xs font-semibold text-warning">
+                {unansweredCount} response{unansweredCount !== 1 ? "s" : ""} needed
+              </span>
+            )}
+            {unseenClipCount > 0 && (
+              <Link
+                href="/player/review"
+                className="rounded-full border border-warning/30 bg-warning/10 px-3 py-1.5 text-xs font-semibold text-warning hover:border-warning/60 transition-colors"
+              >
+                {unseenClipCount} new clip{unseenClipCount !== 1 ? "s" : ""} from your coach
+              </Link>
+            )}
+          </div>
         </section>
 
         {/* Availability */}

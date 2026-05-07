@@ -122,13 +122,31 @@ export type VideoAnnotation = {
   color?: string;
 };
 
+export type ClipReaction = {
+  playerId: string;
+  type: "got_it" | "question";
+  note?: string;
+  createdAt: string;
+};
+
+export type ClipPlayerNote = {
+  playerId: string;
+  text: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type ClipAnnotation = {
   id: number;
   startTime: number;
   endTime: number;
   label: string;
   category?: string;
+  comment?: string;
   annotations?: VideoAnnotation[];
+  reactions?: ClipReaction[];
+  playerNotes?: ClipPlayerNote[];
+  createdAt?: string;
 };
 
 export type Fixture = {
