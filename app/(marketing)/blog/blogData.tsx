@@ -1,4 +1,5 @@
 import type React from "react";
+import Link from "next/link";
 
 export type BlogPost = {
   slug: string;
@@ -386,7 +387,242 @@ const post3Content = (
   </>
 );
 
+const post4Content = (
+  <>
+    <p className={p}>
+      To track turnovers in rugby, count every change of possession that
+      happens without a referee&apos;s whistle and capture two pieces of
+      context: where on the pitch it happened, and what type it was
+      (breakdown, tackle, handling error, or set piece). Most amateur club
+      matches have between 8 and 18 turnovers per side, and tracking them
+      gives you a more useful picture of the game than penalty count.
+    </p>
+
+    <p className={p}>
+      This guide covers what counts as a turnover, how to log them during
+      match analysis, and what good looks like at club level.
+    </p>
+
+    <h2 className={h2}>What counts as a turnover in rugby</h2>
+
+    <p className={p}>
+      A turnover is any change of possession that isn&apos;t caused by a
+      referee&apos;s decision. That excludes:
+    </p>
+
+    <ul className={ul}>
+      <li className={li}>Penalties</li>
+      <li className={li}>Free kicks</li>
+      <li className={li}>
+        Set piece outcomes (a lost lineout or scrum is a set piece result,
+        not a turnover)
+      </li>
+      <li className={li}>Scoring plays</li>
+    </ul>
+
+    <p className={p}>It includes:</p>
+
+    <ul className={ul}>
+      <li className={li}>
+        <span className={strong}>Breakdown turnovers</span> — jackal,
+        counter-ruck, or held-up over the ball
+      </li>
+      <li className={li}>
+        <span className={strong}>Tackle turnovers</span> — ball ripped or
+        stripped in contact
+      </li>
+      <li className={li}>
+        <span className={strong}>Handling errors under pressure</span> —
+        knock-ons, dropped passes, bad offloads
+      </li>
+      <li className={li}>
+        <span className={strong}>Kick recoveries</span> — when an attacking
+        kick is regathered cleanly by the defence
+      </li>
+      <li className={li}>
+        <span className={strong}>Held up over the line</span> — possession
+        lost trying to score
+      </li>
+    </ul>
+
+    <p className={p}>
+      Some coaches separate &ldquo;errors&rdquo; (knock-ons, dropped passes)
+      from &ldquo;contests won&rdquo; (jackals, rips). Both are useful to
+      track, but the simplest starting point is to count any non-whistle
+      change of possession as one turnover.
+    </p>
+
+    <h2 className={h2}>The two fields that matter</h2>
+
+    <p className={p}>
+      You don&apos;t need a 12-column spreadsheet. For each turnover, capture:
+    </p>
+
+    <ol className="list-decimal list-outside ml-5 mb-5 space-y-2">
+      <li className={li}>
+        <span className={strong}>Pitch location</span> — own 22, own half,
+        opposition half, opposition 22. Four zones is plenty.
+      </li>
+      <li className={li}>
+        <span className={strong}>Type</span> — breakdown, tackle, handling
+        error, kick, set piece (held up).
+      </li>
+    </ol>
+
+    <p className={p}>
+      That&apos;s it. Two fields. Anything else is overhead that stops you
+      from actually doing it.
+    </p>
+
+    <h2 className={h2}>How to log turnovers during match analysis</h2>
+
+    <p className={p}>
+      Three approaches work, depending on how you watch matches back.
+    </p>
+
+    <p className={p}>
+      <span className={strong}>Paper.</span> Print a small grid — four pitch
+      zones across the top, five turnover types down the side. Every time
+      possession changes without a whistle, put a tick in the right box. Takes
+      15 seconds to set up, no tooling needed. This is how to start.
+    </p>
+
+    <p className={p}>
+      <span className={strong}>Spreadsheet.</span> A row per turnover, columns
+      for time, location, type, won/lost. Slower to log but easier to filter
+      later. Use this if you want to look at trends across multiple matches.
+    </p>
+
+    <p className={p}>
+      <span className={strong}>Voice or video tagging tools.</span> Tag
+      turnovers in real time as you watch the video back. Faster than
+      spreadsheets, captures timestamps automatically, and means you can
+      rewatch the moment in two clicks. FYNL Whistle does this with voice
+      commands — say &ldquo;turnover won, breakdown&rdquo; while watching,
+      and it logs the event with the video timestamp.
+    </p>
+
+    <p className={p}>
+      Whichever method you use, log every turnover for at least three matches
+      before you start analysing patterns. Single-match data is too noisy.
+    </p>
+
+    <h2 className={h2}>What good looks like</h2>
+
+    <p className={p}>
+      There isn&apos;t a public benchmark for turnover differential at amateur
+      club level — the data simply isn&apos;t tracked widely enough. From the
+      matches we&apos;ve seen analysed in FYNL Whistle, a rough guide for
+      amateur 1st XV rugby:
+    </p>
+
+    <div className="overflow-x-auto my-6">
+      <table className="w-full text-sm border-collapse">
+        <thead>
+          <tr className="border-b border-border">
+            <th className="text-left py-2 pr-4 font-semibold text-foreground-strong">Metric</th>
+            <th className="text-left py-2 pr-4 font-semibold text-foreground-strong">Below average</th>
+            <th className="text-left py-2 pr-4 font-semibold text-foreground-strong">Average</th>
+            <th className="text-left py-2 font-semibold text-foreground-strong">Strong</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr className="border-b border-border">
+            <td className="py-2 pr-4 text-foreground">Turnovers won per match</td>
+            <td className="py-2 pr-4 text-foreground">Under 6</td>
+            <td className="py-2 pr-4 text-foreground">6–10</td>
+            <td className="py-2 text-foreground">10+</td>
+          </tr>
+          <tr className="border-b border-border">
+            <td className="py-2 pr-4 text-foreground">Turnovers conceded per match</td>
+            <td className="py-2 pr-4 text-foreground">14+</td>
+            <td className="py-2 pr-4 text-foreground">8–13</td>
+            <td className="py-2 text-foreground">Under 8</td>
+          </tr>
+          <tr>
+            <td className="py-2 pr-4 text-foreground">Differential (won minus conceded)</td>
+            <td className="py-2 pr-4 text-foreground">-5 or worse</td>
+            <td className="py-2 pr-4 text-foreground">-2 to +2</td>
+            <td className="py-2 text-foreground">+3 or better</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p className={p}>
+      A side with a +3 differential or better is usually controlling
+      possession well and forcing errors from the opposition. A side with -5
+      or worse is usually either turning the ball over too easily or failing
+      to contest at the breakdown.
+    </p>
+
+    <p className={p}>
+      These numbers will vary by level. Higher grades tend to have lower
+      absolute turnover counts because handling and breakdown skills are
+      sharper, but the differential is still the most useful comparison.
+    </p>
+
+    <h2 className={h2}>Why this matters more than penalty count</h2>
+
+    <p className={p}>
+      Penalty count is the stat coaches default to because it&apos;s visible
+      and easy to count. Turnover differential is more useful because it tells
+      you about possession and territory together — the two things that most
+      often decide a rugby match.
+    </p>
+
+    <p className={p}>
+      We covered the case for shifting your debrief from penalty count to
+      turnover differential in{" "}
+      <Link
+        href="/blog/the-one-stat-club-coaches-under-track"
+        className="text-accent hover:underline"
+      >
+        The One Stat Club Coaches Over-Track
+      </Link>
+      . The short version: leading with turnovers makes debriefs less personal,
+      more team-focused, and easier to turn into Tuesday training sessions.
+    </p>
+
+    <h2 className={h2}>What to do next</h2>
+
+    <p className={p}>
+      Pick one match this season and track turnovers for it. Use paper, a
+      spreadsheet, or whatever&apos;s easiest. Capture two fields per turnover:
+      location and type.
+    </p>
+
+    <p className={p}>
+      After three matches, look at the patterns. Most coaches find their
+      turnovers cluster in a way they didn&apos;t expect — maybe most are
+      happening in their own 22, or most are handling errors rather than
+      contests, or most are happening in the last 20 minutes when fitness
+      drops.
+    </p>
+
+    <p className={p}>That cluster is your coaching message for the next training block.</p>
+
+    <p className={p}>
+      If tracking turnovers manually starts to feel like work, FYNL Whistle
+      logs them automatically when you tag a match by voice. Either way, the
+      most important thing is to start counting. The number you lead your
+      debrief with shapes the conversation that follows.
+    </p>
+  </>
+);
+
 export const blogPosts: BlogPost[] = [
+  {
+    slug: "how-to-track-turnovers-in-rugby",
+    title: "How to Track Turnovers in Rugby (A Coach's Guide)",
+    description:
+      "A practical guide to tracking turnovers in rugby — what counts as a turnover, how to log them quickly during match analysis, and what good looks like at amateur club level.",
+    date: "May 2026",
+    dateISO: "2026-05-14",
+    readingTime: "4 min read",
+    tags: ["Reference"],
+    content: post4Content,
+  },
   {
     slug: "the-one-stat-club-coaches-under-track",
     title: "The One Stat Club Coaches Over-Track (and the One They Under-Track)",

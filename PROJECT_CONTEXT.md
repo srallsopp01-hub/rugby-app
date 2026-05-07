@@ -812,6 +812,8 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 - ✅ `/blog/[slug]` — individual post: breadcrumb nav, article header, JSX body, JSON-LD structured data, `generateStaticParams`, post-article CTA
 - ✅ Seed post 1: "Why We Built FYNL Whistle" — Sunday-evening spreadsheet problem, voice-tagging workflow, beta status
 - ✅ Seed post 2: "What Good Coaching Feedback Actually Looks Like" — Specific → Contextual → Forward-looking structure, callout examples, lineout example, data as enabler
+- ✅ Post 3 (May 2026): "The One Stat Club Coaches Over-Track (and the One They Under-Track)" — opinion post; penalty count vs turnover differential; tag: Analysis; slug: `the-one-stat-club-coaches-under-track`
+- ✅ Post 4 (May 2026): "How to Track Turnovers in Rugby (A Coach's Guide)" — reference post (SEO/search-led); what counts as a turnover, two-field logging method, benchmark table, internal link to post 3; tag: Reference; slug: `how-to-track-turnovers-in-rugby`
 
 ---
 
