@@ -277,37 +277,21 @@ export default function CoachSidebar({
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      const [{ data: tms }, { data: oms }] = await Promise.all([
-        supabase
-          .from("team_members")
-          .select("team_id, teams!inner(id, name, organisations!inner(id, name))")
-          .eq("user_id", user.id)
-          .eq("status", "active")
-          .in("role", ["head_coach", "assistant_coach"]),
-        supabase
-          .from("organisation_members")
-          .select("organisations!inner(id, name, teams(id, name))")
-          .eq("user_id", user.id),
-      ]);
+      const { data: tms } = await supabase
+        .from("team_members")
+        .select("team_id, teams!inner(id, name)")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .in("role", ["head_coach", "assistant_coach"]);
 
       const seen = new Set<string>();
       const result: TeamOption[] = [];
 
       for (const row of tms ?? []) {
         const t = (row as any).teams;
-        const o = t?.organisations;
         if (t?.id && !seen.has(t.id)) {
           seen.add(t.id);
-          result.push({ id: t.id, name: t.name, orgName: o?.name ?? "" });
-        }
-      }
-      for (const row of oms ?? []) {
-        const org = (row as any).organisations;
-        for (const t of org?.teams ?? []) {
-          if (t?.id && !seen.has(t.id)) {
-            seen.add(t.id);
-            result.push({ id: t.id, name: t.name, orgName: org?.name ?? "" });
-          }
+          result.push({ id: t.id, name: t.name, orgName: "" });
         }
       }
 
