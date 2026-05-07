@@ -61,7 +61,7 @@ function formatPrice(currency: CurrencyCode, value: number) {
 }
 
 function getVisiblePrice(plan: PlanPrice, cycle: BillingCycle) {
-  return cycle === "yearly" ? plan.yearlyPromo : plan.monthly;
+  return cycle === "yearly" ? plan.yearlyPromo : plan.monthlyFounder;
 }
 
 function BillingToggle({
@@ -154,9 +154,15 @@ function PriceDisplay({
           <span className="text-muted-2">First year only</span>
         </div>
       ) : (
-        <p className="mt-3 text-xs text-muted">
-          Standard monthly pricing. Switch to yearly for the launch offer.
-        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+          <span className="rounded-md border border-success/35 bg-success/10 px-2.5 py-1 font-bold uppercase text-success">
+            Founder pricing
+          </span>
+          <span className="text-muted">
+            {prefix.toLowerCase()}{formatPrice(currency, plan.monthly)}/month after 6 months
+          </span>
+          <span className="text-muted-2">First 20 clubs only</span>
+        </div>
       )}
     </div>
   );

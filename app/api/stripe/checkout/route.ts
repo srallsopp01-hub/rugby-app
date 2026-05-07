@@ -32,10 +32,12 @@ export async function POST(request: NextRequest) {
   let session: Stripe.Checkout.Session;
 
   try {
+    const founderCouponId = process.env.STRIPE_FOUNDER_COUPON_ID;
     session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: { trial_period_days: 14 },
+      ...(founderCouponId ? { discounts: [{ coupon: founderCouponId }] } : {}),
       client_reference_id: user.id,
       customer_email: user.email,
       success_url: `${origin}/coach?checkout=success`,
