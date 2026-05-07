@@ -208,6 +208,7 @@ export default function ReviewPage() {
   const [clipInProgress, setClipInProgress] = useState<number | null>(null);
   const [pendingEndTime, setPendingEndTime] = useState<number | null>(null);
   const [clipLabelDraft, setClipLabelDraft] = useState("");
+  const [clipCommentDraft, setClipCommentDraft] = useState("");
   const [clipCategoryDraft, setClipCategoryDraft] = useState("");
   const [activeClipId, setActiveClipId] = useState<number | null>(null);
   const [clipFilter, setClipFilter] = useState<ClipFilter>("All");
@@ -508,6 +509,7 @@ export default function ReviewPage() {
     setClipInProgress(currentVideoTime());
     setPendingEndTime(null);
     setClipLabelDraft("");
+    setClipCommentDraft("");
     setClipCategoryDraft("");
   }
 
@@ -521,13 +523,62 @@ export default function ReviewPage() {
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.code !== "Space" || isTypingTarget(event.target)) return;
-      event.preventDefault();
-      if (!videoRef.current) return;
-      if (clipInProgress === null) {
-        markStart();
-      } else if (pendingEndTime === null) {
-        markEnd();
+      if (isTypingTarget(event.target)) return;
+      const video = videoRef.current;
+
+      if (event.code === "Space") {
+        event.preventDefault();
+        if (!video) return;
+        if (clipInProgress === null) {
+          markStart();
+        } else if (pendingEndTime === null) {
+          markEnd();
+        }
+        return;
+      }
+
+      if (!video) return;
+
+      if (event.code === "ArrowLeft" || event.code === "ArrowRight") {
+        if (!video.paused) return;
+        event.preventDefault();
+        const delta = event.code === "ArrowRight" ? 1 / 30 : -1 / 30;
+        const duration = Number.isFinite(video.duration) ? video.duration : 0;
+        const next = Math.max(0, Math.min(video.currentTime + delta, duration || video.currentTime + delta));
+        video.currentTime = next;
+        setCurrentTime(next);
+        return;
+      }
+
+      if (event.code === "KeyJ") {
+        event.preventDefault();
+        const delta = video.paused ? -2 : -5;
+        const next = Math.max(0, video.currentTime + delta);
+        video.currentTime = next;
+        setCurrentTime(next);
+        return;
+      }
+
+      if (event.code === "KeyK") {
+        event.preventDefault();
+        if (video.paused) {
+          void video.play();
+        } else {
+          video.pause();
+        }
+        return;
+      }
+
+      if (event.code === "KeyL") {
+        event.preventDefault();
+        if (video.paused) {
+          void video.play();
+          return;
+        }
+        const nextRate = Math.min(4, video.playbackRate * 2);
+        video.playbackRate = nextRate;
+        setPlaybackRate(nextRate);
+        return;
       }
     }
 
@@ -544,6 +595,7 @@ export default function ReviewPage() {
       endTime: range.endTime,
       label: clipLabelDraft.trim() || "Clip",
       category: clipCategoryDraft || undefined,
+      comment: clipCommentDraft.trim() || undefined,
       annotations: [],
     };
     const next = [...clips, nextClip].sort((a, b) => a.startTime - b.startTime);
@@ -552,6 +604,7 @@ export default function ReviewPage() {
     setClipInProgress(null);
     setPendingEndTime(null);
     setClipLabelDraft("");
+    setClipCommentDraft("");
     setClipCategoryDraft("");
     persistReviewState({ clips: next });
   };
@@ -560,6 +613,7 @@ export default function ReviewPage() {
     setClipInProgress(null);
     setPendingEndTime(null);
     setClipLabelDraft("");
+    setClipCommentDraft("");
     setClipCategoryDraft("");
   };
 
@@ -787,6 +841,27 @@ export default function ReviewPage() {
                       onPointerMove={handleCanvasPointerMove}
                       onPointerUp={handleCanvasPointerUp}
                     />
+                    <button
+                      type="button"
+                      title="Fullscreen"
+                      onClick={async () => {
+                        const container = videoRef.current?.parentElement;
+                        if (!container) return;
+                        try {
+                          await container.requestFullscreen();
+                        } catch (error) {
+                          console.error("Failed to enter fullscreen", error);
+                        }
+                      }}
+                      className="absolute right-3 top-3 z-10 rounded-lg border border-border bg-panel/90 backdrop-blur px-2 py-1.5 text-foreground hover:bg-panel"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M2 5V2h3" />
+                        <path d="M12 5V2H9" />
+                        <path d="M2 9v3h3" />
+                        <path d="M12 9v3H9" />
+                      </svg>
+                    </button>
                   </div>
 
                   <div className="mt-4 rounded-2xl border border-border bg-panel-2 p-4">
@@ -800,7 +875,7 @@ export default function ReviewPage() {
 
                       <div className="ml-0 h-6 w-px bg-border md:ml-1" />
 
-                      {[0.5, 0.75, 1, 2].map((rate) => (
+                      {[0.25, 0.5, 0.75, 1, 2].map((rate) => (
                         <button
                           type="button"
                           key={rate}
@@ -890,6 +965,13 @@ export default function ReviewPage() {
                           Cancel
                         </button>
                       </div>
+                      <textarea
+                        value={clipCommentDraft}
+                        onChange={(event) => setClipCommentDraft(event.target.value)}
+                        placeholder="Coach comment for this clip…"
+                        rows={2}
+                        className="mt-2 w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm text-foreground resize-none"
+                      />
                     </div>
                   )}
                 </>
@@ -1017,6 +1099,14 @@ export default function ReviewPage() {
                             </button>
                           ))}
                         </div>
+
+                        <textarea
+                          value={clip.comment ?? ""}
+                          onChange={(event) => updateClip(clip.id, { comment: event.target.value || undefined })}
+                          placeholder="Coach comment for this clip…"
+                          rows={2}
+                          className="mt-2 w-full rounded-lg border border-border bg-panel px-2 py-1.5 text-sm text-foreground resize-none"
+                        />
 
                         {(clip.annotations ?? []).length > 0 && (
                           <div className="mt-3 space-y-1.5 border-t border-border pt-2">

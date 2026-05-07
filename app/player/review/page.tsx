@@ -381,9 +381,14 @@ export default function ReviewPage() {
                           <span className="shrink-0 mt-0.5 text-[11px] font-mono tabular-nums text-muted-2 bg-panel-2 border border-border rounded px-1.5 py-0.5 whitespace-nowrap">
                             {formatTime(clip.startTime)} → {formatTime(clip.endTime)}
                           </span>
-                          <span className={`flex-1 text-sm ${isActive ? "text-foreground-strong" : "text-foreground"}`}>
-                            {clip.label}
-                          </span>
+                          <div className="flex-1 flex flex-col">
+                            <span className={`text-sm ${isActive ? "text-foreground-strong" : "text-foreground"}`}>
+                              {clip.label}
+                            </span>
+                            {clip.comment && (
+                              <span className="mt-1 text-xs text-muted">{clip.comment}</span>
+                            )}
+                          </div>
                           {clip.category && (
                             <span className={`shrink-0 mt-0.5 text-[11px] font-medium border rounded px-1.5 py-0.5 ${categoryClass(clip.category)}`}>
                               {clip.category}

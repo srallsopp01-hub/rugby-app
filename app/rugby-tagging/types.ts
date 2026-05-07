@@ -128,6 +128,7 @@ export type ClipAnnotation = {
   endTime: number;
   label: string;
   category?: string;
+  comment?: string;
   annotations?: VideoAnnotation[];
 };
 
