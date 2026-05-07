@@ -1,27 +1,27 @@
 @import "tailwindcss";
 
 :root {
-  --background: #090b0e;
-  --background-elevated: #0f1218;
-  --panel: #141820;
-  --panel-2: #1b2029;
-  --panel-3: #222a35;
+  --background: #060709;
+  --background-elevated: #0b0d13;
+  --panel: #11141d;
+  --panel-2: #181d27;
+  --panel-3: #232a37;
 
-  --foreground: #d7dbe2;
+  --foreground: #e4e7ec;
   --foreground-strong: #ffffff;
-  --muted: #98a0ab;
-  --muted-2: #7e8793;
+  --muted: #9aa3b2;
+  --muted-2: #6b7484;
 
-  --border: #2c3340;
-  --border-light: #3d4a5c;
+  --border: #262d3a;
+  --border-light: #3a4557;
   --accent: #3b8ef0;
 
-  --success: #4ade80;
-  --warning: #fbbf24;
-  --danger: #f87171;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
 
-  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.45);
-  --shadow-panel: 0 6px 18px rgba(0, 0, 0, 0.35);
+  --shadow-soft: 0 18px 44px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.35);
+  --shadow-panel: 0 10px 28px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 [data-theme-scheme="bright"] {
@@ -84,8 +84,8 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at top, rgba(59, 142, 240, 0.05), transparent 32%),
-    linear-gradient(to bottom, #0f1218 0%, #090b0e 100%);
+    radial-gradient(circle at top, rgba(59, 142, 240, 0.08), transparent 36%),
+    linear-gradient(to bottom, #0b0d13 0%, #060709 100%);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
@@ -206,4 +206,53 @@ button:active {
   .marketing-slide-enter {
     animation: none;
   }
+}
+
+[data-theme-scheme="dark"] .bg-panel,
+[data-theme-scheme="dark"] .bg-panel-2,
+[data-theme-scheme="dark"] .bg-panel-3 {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    var(--shadow-panel);
+}
+
+[data-theme-scheme="dark"] button.bg-accent {
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.12s ease,
+    opacity 0.18s ease,
+    box-shadow 0.18s ease;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 6px 20px -6px rgba(59, 142, 240, 0.45);
+}
+
+[data-theme-scheme="dark"] button.bg-accent:not(:disabled):hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 10px 28px -6px rgba(59, 142, 240, 0.55);
+}
+
+[data-theme-scheme="dark"] button.bg-accent:not(:disabled):active {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 4px 14px -6px rgba(59, 142, 240, 0.4);
+}
+
+[data-theme-scheme="dark"] button.bg-accent:disabled {
+  box-shadow: none;
+}
+
+[data-theme-scheme="dark"] button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 142, 240, 0.4);
+}
+
+[data-theme-scheme="dark"] input:focus,
+[data-theme-scheme="dark"] select:focus,
+[data-theme-scheme="dark"] textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(59, 142, 240, 0.28);
 }

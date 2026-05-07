@@ -350,22 +350,29 @@ Theme CSS variables available as Tailwind classes. Default is the dark scheme; a
 
 | Token | Value | Usage |
 |---|---|---|
-| `bg-background` | #0b0c0f | Base page background |
-| `bg-background-elevated` | #111317 | Elevated surfaces |
-| `bg-panel` | #17191d | Cards and panels |
-| `bg-panel-2` | #1d2025 | Inset / secondary panels |
-| `bg-panel-3` | #23272d | Active sidebar items |
-| `text-foreground` | #d7dbe2 | Primary text |
-| `text-foreground-strong` | #f1f4f8 | Headings / strong text |
-| `text-muted` | #98a0ab | Secondary text |
-| `text-muted-2` | #7e8793 | Tertiary / labels |
-| `border-border` | #373c44 | Default borders |
-| `border-border-light` | #505762 | Hover/active borders |
-| `text-success` | #7ea37e | Muted green |
-| `text-warning` | #b79a63 | Muted gold |
-| `text-danger` | #b16e6e | Muted red |
+| `bg-background` | #060709 | Base page background (deep near-black) |
+| `bg-background-elevated` | #0b0d13 | Elevated surfaces |
+| `bg-panel` | #11141d | Cards and panels |
+| `bg-panel-2` | #181d27 | Inset / secondary panels |
+| `bg-panel-3` | #232a37 | Active sidebar items, focused inputs |
+| `text-foreground` | #e4e7ec | Primary text |
+| `text-foreground-strong` | #ffffff | Headings / strong text |
+| `text-muted` | #9aa3b2 | Secondary text |
+| `text-muted-2` | #6b7484 | Tertiary / labels |
+| `border-border` | #262d3a | Default borders |
+| `border-border-light` | #3a4557 | Hover/active borders |
+| `bg-accent` / `text-accent` | #3b8ef0 | Primary CTAs, focus rings, brand glow |
+| `text-success` | #22c55e | Success / positive |
+| `text-warning` | #f59e0b | Warning / amber |
+| `text-danger` | #ef4444 | Danger / destructive |
 
-Body has a radial + linear gradient applied. Buttons get `translateY(-1px)` on hover. Inputs have 0.18s transitions.
+Body has a radial + linear gradient applied (faint accent-blue glow at top). Buttons get `translateY(-1px)` on hover. Inputs have 0.18s transitions. Shadow tokens are layered (ambient + contact) for visible card depth.
+
+Dark-only rules at the bottom of `globals.css` (scoped under `[data-theme-scheme="dark"]`):
+- `.bg-panel` / `.bg-panel-2` / `.bg-panel-3` get a 1px inset top highlight + `var(--shadow-panel)` so panels read as carved out of the background.
+- `button.bg-accent` carries an inset highlight and a coloured `rgba(59, 142, 240, 0.45)` glow; hover deepens it, active softens it, `:disabled` removes it.
+- `button:focus-visible` shows a 3px accent-coloured focus ring (keyboard only).
+- Input/select/textarea focus tints the border to accent and shows a 3px ring at 0.28 opacity.
 
 Bright scheme:
 - Uses white / off-white surfaces with black text and orange accent (`--accent: #ed6a1f`).
@@ -1417,6 +1424,37 @@ Two-way coaching loop. Players can react to and comment on coach clips, and coac
 **Deferred to a future batch:**
 - Coach-reply mechanism for player questions (badge currently surfaces "N questions" with no resolution state)
 - Server-side notification beyond localStorage tracking (clearing the browser resets unseen-clip counts — acceptable for v1)
+
+---
+
+### Batch BL (May 2026) — Dark mode premium refresh v2
+
+Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Stripe — deeper near-black base, cleaner panel scale, layered shadows, primary buttons that visibly glow. Supersedes the partial Batch AK refresh. Bright scheme untouched. No component files modified.
+
+**`app/globals.css` only:**
+- ✅ Backgrounds deepened and re-spaced for clearer panel hierarchy: `--background` `#060709`, `--background-elevated` `#0b0d13`, `--panel` `#11141d`, `--panel-2` `#181d27`, `--panel-3` `#232a37`
+- ✅ Body text lifted to `--foreground: #e4e7ec`; `--foreground-strong` stays pure white; muted shades cooled (`#9aa3b2` / `#6b7484`)
+- ✅ Borders shifted cooler and slightly tighter (`--border: #262d3a`, `--border-light: #3a4557`)
+- ✅ Status colours moved from pastel to Tailwind 500-range for legibility against the deeper base: `--success: #22c55e`, `--warning: #f59e0b`, `--danger: #ef4444`
+- ✅ Shadow tokens layered (ambient + contact): `--shadow-soft` and `--shadow-panel` now have two-shadow values for visible card depth
+- ✅ Body gradient hardcodes updated to track the new background tokens; accent radial glow strengthened from `0.05` → `0.08`
+- ✅ Accent unchanged at `#3b8ef0` (already the right value, just needed to actually pop)
+
+**New dark-scoped rules (appended, scoped under `[data-theme-scheme="dark"]`):**
+- ✅ Panel inset top highlight on `.bg-panel` / `.bg-panel-2` / `.bg-panel-3` (1px white at 4% opacity) + `var(--shadow-panel)` underneath — Linear/Vercel-style "carved out of the background" effect
+- ✅ `button.bg-accent` glow: inset top highlight + `rgba(59, 142, 240, 0.45)` blue glow, animated; `:not(:disabled):hover` deepens it; `:not(:disabled):active` softens it; `:disabled` kills the glow entirely (component opacity utilities still drive the dim state)
+- ✅ `button:focus-visible` ring (3px accent at 0.4 opacity) — buttons previously had no focus ring at all
+- ✅ Input/select/textarea focus override tints the border to accent and lifts the ring opacity from 0.18 → 0.28
+
+**Implementation notes:**
+- Selectors use `button.bg-accent` because every primary CTA in the app already carries the `bg-accent` Tailwind class — token-only path with zero component edits
+- Full transition list duplicated inside the dark `button.bg-accent` rule so `box-shadow` animates smoothly without modifying the global `button` transition (which would touch bright mode)
+- `:not(:disabled)` guards on hover/active prevent disabled CTAs from "flashing to life" on mouseover
+
+**Verification:**
+- ✅ Pages walked in dark: `/coach`, `/coach/capture`, `/coach/insights`, `/coach/review`, `/pricing` — panels lift, primary CTAs glow, focus rings visible
+- ✅ Bright mode toggle confirms zero visual change (every dark-only rule is `[data-theme-scheme="dark"]`-scoped)
+- ✅ Spot-checked `/player`, `/coach/team-setup`, `/coach/settings` for text contrast against the new backgrounds
 
 ---
 
