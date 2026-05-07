@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** May 2026 — Stripe webhook batch fully shipped (Batches BE, BF, BG): signature verification, idempotency, checkout.session.completed org creation, and all five subscription lifecycle handlers. Pending Move 3 (`/coach/organisation` + team switcher).
+**Last updated:** May 2026 — Coach Review Phases 1–3 shipped (Batches BI, BJ, BK): per-clip comments + J/K/L + frame-step + slow-mo + fullscreen + autosave badge; presentation mode + per-player auto-clip generation; player reactions + per-clip player notes + "new clips" badge + coach-side surfacing of player feedback. Pending Move 3 (`/coach/organisation` + team switcher).
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -82,7 +82,7 @@ The app is split into four clearly separated layers with independent layouts and
 | `/player/compare` | Live | Read-only match and player comparison inside the player app — shared stats only except own-player coaching plan |
 | `/player/games` | Live | Match history |
 | `/player/games/[gameId]` | Live | Game detail: full-screen two-column layout — video player + stats + coaching plan (left, scrollable), involvement playlist sidebar (right, scrollable); Previous/Next clip navigation, current-clip card, active-clip highlight, set piece section |
-| `/player/review` | Live | Shared coach clips from film review; unscoped text notes are hidden until notes can be assigned to a player |
+| `/player/review` | Live | Shared coach clips from film review with per-clip 👍 "Got it" / 🤔 "Question" reactions, optional question text, and a per-player free-text "Your note" field (debounced); marks all clips as seen on open |
 | `/player/settings` | Live | Profile, identity switch, theme, local data snapshot, quick nav links |
 
 ### Admin panel (internal only)
@@ -290,7 +290,9 @@ app/
     compare/page.tsx                  ← Read-only match/player comparison for players
     games/page.tsx                    ← All matches player appeared in, sorted newest first
     games/[gameId]/page.tsx           ← Game detail: full-screen two-column layout (video+stats left, playlist right)
-    review/page.tsx                   ← Playlist of all tagged moments grouped by match
+    review/page.tsx                   ← Coach clip playlist with per-clip 👍/🤔 reactions + per-player notes (debounced 600 ms); marks page as seen on mount
+    lib/reviewSeen.ts                 ← Per-player last-seen timestamp helpers (`fynlwhistle-player-review-last-seen-{id}`)
+    lib/unseenClips.ts                ← `countUnseenClips(matches, player, lastSeenAt)` — drives "new clips" badges
     settings/page.tsx                 ← Profile card, identity switch, theme, local data snapshot, quick nav links
 
   admin/
@@ -479,6 +481,12 @@ All previous CSV downloads have been removed. One polished report.
 **SquadProfile** (lib/squadProfile.ts — cross-match, persistent): `id`, `teamName`, `coachName`, `primaryColour`, `secondaryColour`, `logoUrl`, `players[]`, `actionSamples[]`, `correctionMemory[]`, `fixtures?[]`, `trainingSessions?[]`, `availabilityResponses?[]`, `sessionLogs?[]`, `leaguePosition?`
 
 **SavedMatchRecord** (lib/savedMatches.ts — local-first, cloud synced): `id`, `createdAt`, `updatedAt`, `matchTitle`, `opponent`, `matchDate`, `activeMode`, `rosterRows[]`, `selectedPlayer`, `events[]`, `reviewQueue[]`, `coachNotes[]`, `clips?`, `showRawTranscript`, `videoStoragePath?`
+
+**ClipAnnotation** (types.ts): `id`, `startTime`, `endTime`, `label`, `category?`, `comment?`, `annotations?` (telestration), `reactions?` (player 👍/🤔), `playerNotes?` (per-player free-text), `createdAt?` (used for "new clips" detection)
+
+**ClipReaction**: `playerId`, `type` (`"got_it"` | `"question"`), `note?` (optional question text), `createdAt`
+
+**ClipPlayerNote**: `playerId`, `text`, `createdAt`, `updatedAt`
 
 **SquadPlayer**: `id`, `fullName`, `preferredName`, `nicknames[]`, `primaryPosition`, `secondaryPositions[]`, `jerseyNumber`, `voiceSamples[]`, `status`, `email?`, `linkedUserId?`
 
@@ -1350,6 +1358,68 @@ Two related bugs fixed:
 
 ---
 
+### Batch BI (May 2026) — Coach Review Phase 1: meeting-room polish
+
+Per-clip coaching depth and pro-grade keyboard control on `/coach/review`. No schema changes — everything piggybacks on existing `clips`/`comment`/`annotations` fields.
+
+- ✅ **Per-clip comment field** — every clip card on the right-side playlist now has a coach-comment textarea persisted via the shared review autosave path; comments round-trip through `STORAGE_KEY` and the saved match record
+- ✅ **Frame-step** — Arrow Left / Right step the video by 1/30 s when paused (typing-field guard prevents firing inside text inputs)
+- ✅ **J / K / L shortcuts** — J rewinds (−2 s paused, −5 s playing); K toggles play/pause; L plays at 1× then doubles playback rate up to 4× on each press
+- ✅ **Slow-mo / fast playback toolbar** — playback rate buttons (0.5× / 0.75× / 1× / 2×) on the video controls; current rate persisted in component state and re-applied on play
+- ✅ **Fullscreen** — fullscreen toggle on the video container with graceful error logging if the browser denies the request
+- ✅ **Autosave badge** — `autosaveStatus` pill in the page header surfaces "Saved locally" / "Saving…" so coaches can see persistence state at a glance
+- ✅ **Spacebar scoping** — spacebar starts/ends clips on `/coach/review` only; never triggers when typing or when presentation mode is active
+
+---
+
+### Batch BJ (May 2026) — Coach Review Phase 2: presentation mode + per-player auto-clips
+
+Two team-meeting workflows on top of Phase 1.
+
+- ✅ **Presentation mode** — full-screen meeting playback that walks through `filteredClips` in order; ArrowDown/N goes to next clip, ArrowUp/P goes to previous, Escape exits; auto-advance based on `currentTime` reaching the clip endpoint with `presentationPaused` guard; presentation overlay shows `"Clip N of M"`, label, and comment
+- ✅ **Per-player view + auto-clip generation** — selecting a roster player surfaces all their tagged involvements (`playerInvolvements` filtered to their tackles/missed tackles/carries/turnovers); each event has a "Save as clip" button that builds a 10 s window (−3 s before, +7 s after the event) via `buildClipFromEvent`; "Save all" bulk-creates clips for every remaining involvement at once
+- ✅ **Per-player clip metadata** — generated clips inherit category from the action (`tackle`/`missed tackle` → Defence; `carry`/`turnover` → Attack) and use `"{Player name} — {Action}"` as the label; `savedFromEventIds` set tracks already-saved events so the "Save as clip" button disables after a save
+- ✅ **Clip-filter chips** — All / Attack / Defence / Set Piece / Lineout filter pills above the playlist; presentation mode and per-player view both honour the active filter
+
+---
+
+### Batch BK (May 2026) — Coach Review Phase 3: player reactions, notes, and "new clips" badge
+
+Two-way coaching loop. Players can react to and comment on coach clips, and coaches see all player feedback at a glance. Privacy rule preserved: a player only sees their own reactions/notes; coaches see everyone's.
+
+**Type changes** (`app/rugby-tagging/types.ts`):
+- ✅ `ClipReaction` — `playerId`, `type` (`"got_it" | "question"`), `note?`, `createdAt`
+- ✅ `ClipPlayerNote` — `playerId`, `text`, `createdAt`, `updatedAt`
+- ✅ `ClipAnnotation` extended with `reactions?`, `playerNotes?`, `createdAt?` (used for unseen-clip detection; missing `createdAt` treated as legacy "old" clip)
+
+**Coach side** (`app/coach/review/page.tsx`):
+- ✅ `confirmClip` and `buildClipFromEvent` set `createdAt: new Date().toISOString()` on every new clip
+- ✅ Clip cards on the right-side playlist now render a player-feedback section: 👍 / 🤔 pills tagged with player name (resolved via `lookupPlayerName(rosterRows, playerId)` with team fallback); question pills show their note text below in muted styling; player notes render as `"Name: text"` lines
+- ✅ Header shows an amber `"N questions"` badge with tooltip `title="Players have asked questions on these clips"` — counts clips where at least one reaction has `type === "question"`
+
+**Player side** (`app/player/review/page.tsx`):
+- ✅ Clip rows refactored from a single `<button>` to a `<div>` with a clickable header (still seeks the video) and an interactive footer (reactions + notes); footer uses `e.stopPropagation()` so seeks don't fire when clicking pills or typing
+- ✅ Two reaction pills per clip: "Got it 👍" (green border when active, `border-success bg-success/10`) and "Question 🤔" (amber, `border-warning bg-warning/10`); clicking the active pill toggles it off; "Question" reveals a small textarea for the optional question text; switching to "Got it" clears any pending question
+- ✅ Per-player note textarea ("Your note") at the right of the footer, debounced 600 ms before persisting; empty text removes the note for this player only; notes are scoped per-`playerId` so each player only ever sees their own
+- ✅ Persistence helper `updateClipInSavedMatch(matchId, clipId, mutate)` reads via `getSavedMatchById`, applies the mutation, writes via `upsertSavedMatch` so localStorage + cloud sync round-trip in one call
+- ✅ `markReviewAsSeen(currentPlayer.id)` fires on `/player/review` mount so unseen-clip badges clear
+
+**"New clips" badge** (new helpers in `app/player/lib/`):
+- ✅ `reviewSeen.ts` — `getLastSeenAt(playerId)` / `markReviewAsSeen(playerId)` / `subscribeReviewSeenChanged(cb)` over localStorage key `fynlwhistle-player-review-last-seen-{playerId}`
+- ✅ `unseenClips.ts` — `countUnseenClips(matches, currentPlayer, lastSeenAt)` filters matches by roster ID-first / name-fallback (mirrors `/player/games/page.tsx` pattern), counts clips whose `createdAt` is after `lastSeenAt` (or any clip when `lastSeenAt` is null AND `createdAt` is missing)
+- ✅ `app/player/page.tsx` — header shows "X new clips from your coach" pill linking to `/player/review` next to the existing unanswered-availability badge
+- ✅ `app/player/PlayerSidebar.tsx` — Review nav link gets a numeric warning-coloured badge (`bg-warning text-background-elevated text-[10px] font-semibold rounded-full`); collapses to a small dot when the sidebar is collapsed
+
+**Verification:**
+- ✅ Lint clean for all touched files (one pre-existing `react-hooks/set-state-in-effect` error in `app/coach/team/page.tsx` left alone — file untouched in this batch)
+- ✅ `npm run build` compiled and TypeScript-checked successfully (no type errors)
+
+**Deferred to a future batch:**
+- Coach-reply mechanism for player questions (badge currently surfaces "N questions" with no resolution state)
+- Server-side notification beyond localStorage tracking (clearing the browser resets unseen-clip counts — acceptable for v1)
+
+---
+
 ## Next — what's left to do
 
 ### Move 3 — Read-only `/coach/organisation` display + team switcher
@@ -1360,10 +1430,11 @@ Two related bugs fixed:
 
 ### Near-term
 
-1. **Batch AX — Coach Review improvements**
-   - Per-clip notes/comments field
+1. **Coach Review Phase 4 — close the question loop**
+   - Coach-reply textarea on each player question; mark question as answered
+   - "N questions" header badge becomes "N unanswered questions" (filters out resolved)
+   - Notify the player that their question has a reply (in-app first, server-side push later)
    - Quick-jump visual scrubber timeline with event markers
-   - Fullscreen video mode
    - Export clip list as PDF for team presentations
 
 2. **Complete email delivery** — manual Resend/Vercel/Supabase task

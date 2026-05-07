@@ -11,6 +11,7 @@ import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfid
 import { DEFAULT_ROSTER_ROWS, STORAGE_KEY } from "@/app/rugby-tagging/constants";
 import { formatTime, hydrateRosterRows } from "@/app/rugby-tagging/helpers";
 import { getCurrentMatchId, getSavedMatchById, upsertSavedMatch } from "@/app/rugby-tagging/lib/savedMatches";
+import { getTeam } from "@/app/rugby-tagging/lib/team";
 import {
   buildSetPieceReviewMoments,
   filterSetPieceReviewMoments,
@@ -61,6 +62,15 @@ function createLocalReviewId(existingIds: number[]) {
   const nextId = nextLocalReviewId;
   nextLocalReviewId += 1;
   return nextId;
+}
+
+function lookupPlayerName(rosterRows: RosterRow[], playerId: string): string {
+  if (!playerId) return "Player";
+  const rosterMatch = rosterRows.find((r) => r.playerId === playerId);
+  if (rosterMatch?.name) return rosterMatch.name;
+  const teamMatch = getTeam()?.players.find((p) => p.id === playerId);
+  if (teamMatch) return teamMatch.preferredName || teamMatch.fullName;
+  return "Player";
 }
 
 function safeClips(clips: unknown): ClipAnnotation[] {
@@ -307,6 +317,16 @@ export default function ReviewPage() {
         .sort((a, b) => a.startTime - b.startTime)
         .filter((clip) => clipFilter === "All" || clip.category === clipFilter),
     [clipFilter, clips]
+  );
+
+  const playerQuestionCount = useMemo(
+    () =>
+      clips.reduce(
+        (count, clip) =>
+          count + ((clip.reactions ?? []).some((r) => r.type === "question") ? 1 : 0),
+        0
+      ),
+    [clips]
   );
   const setPieceMoments = useMemo(() => buildSetPieceReviewMoments(events), [events]);
   const filteredSetPieceMoments = useMemo(
@@ -684,6 +704,7 @@ export default function ReviewPage() {
       category: clipCategoryDraft || undefined,
       comment: clipCommentDraft.trim() || undefined,
       annotations: [],
+      createdAt: new Date().toISOString(),
     };
     const next = [...clips, nextClip].sort((a, b) => a.startTime - b.startTime);
     setClips(next);
@@ -783,6 +804,7 @@ export default function ReviewPage() {
       category: categoryForAction(event.playerAction),
       comment: undefined,
       annotations: [],
+      createdAt: new Date().toISOString(),
     };
   };
 
@@ -993,6 +1015,14 @@ export default function ReviewPage() {
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">Coach Review</h1>
                 <PageHelp {...COACH_PAGE_HELP["/coach/review"]} />
+                {playerQuestionCount > 0 && (
+                  <span
+                    title="Players have asked questions on these clips"
+                    className="rounded-full border border-warning/40 bg-warning/10 px-2.5 py-1 text-xs font-semibold text-warning"
+                  >
+                    {playerQuestionCount} question{playerQuestionCount !== 1 ? "s" : ""}
+                  </span>
+                )}
               </div>
               <p className="mt-2 text-sm text-muted">
                 Team meeting film room with flexible clips, coaching notes, and lightweight telestration.
@@ -1503,6 +1533,46 @@ export default function ReviewPage() {
                           rows={2}
                           className="mt-2 w-full rounded-lg border border-border bg-panel px-2 py-1.5 text-sm text-foreground resize-none"
                         />
+
+                        {((clip.reactions?.length ?? 0) > 0 || (clip.playerNotes?.length ?? 0) > 0) && (
+                          <div className="mt-3 space-y-2 border-t border-border pt-2">
+                            {(clip.reactions ?? []).length > 0 && (
+                              <div className="flex flex-col gap-1.5">
+                                {(clip.reactions ?? []).map((reaction) => {
+                                  const name = lookupPlayerName(rosterRows, reaction.playerId);
+                                  const isQuestion = reaction.type === "question";
+                                  return (
+                                    <div key={`${reaction.playerId}-${reaction.createdAt}`} className="flex flex-col gap-0.5">
+                                      <span
+                                        className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                                          isQuestion
+                                            ? "border-warning/40 bg-warning/10 text-warning"
+                                            : "border-success/40 bg-success/10 text-success"
+                                        }`}
+                                      >
+                                        <span>{isQuestion ? "🤔" : "👍"}</span>
+                                        <span>{name}</span>
+                                      </span>
+                                      {isQuestion && reaction.note && (
+                                        <span className="ml-1 text-[11px] text-muted">{reaction.note}</span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            {(clip.playerNotes ?? []).length > 0 && (
+                              <div className="space-y-0.5">
+                                {(clip.playerNotes ?? []).map((note) => (
+                                  <div key={`${note.playerId}-${note.updatedAt}`} className="text-[11px] text-muted">
+                                    <span className="font-medium text-muted-2">{lookupPlayerName(rosterRows, note.playerId)}:</span>{" "}
+                                    {note.text}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         {(clip.annotations ?? []).length > 0 && (
                           <div className="mt-3 space-y-1.5 border-t border-border pt-2">

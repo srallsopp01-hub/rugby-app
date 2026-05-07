@@ -1,10 +1,14 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
 import { usePlayer } from "./PlayerContext";
+import { SAVED_MATCHES_KEY, subscribeSavedMatchesChanged } from "@/app/rugby-tagging/lib/savedMatches";
+import { countUnseenClips } from "./lib/unseenClips";
+import { getLastSeenAt, subscribeReviewSeenChanged } from "./lib/reviewSeen";
+import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 
 const navItems = [
   {
@@ -111,6 +115,25 @@ export default function PlayerSidebar() {
     () => false
   );
 
+  const matchesRaw = useSyncExternalStore(
+    subscribeSavedMatchesChanged,
+    () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
+    () => "[]"
+  );
+
+  const lastSeenAt = useSyncExternalStore(
+    subscribeReviewSeenChanged,
+    () => (currentPlayer ? getLastSeenAt(currentPlayer.id) : null),
+    () => null
+  );
+
+  const unseenClipCount = useMemo(() => {
+    if (!currentPlayer) return 0;
+    let all: SavedMatchRecord[];
+    try { all = JSON.parse(matchesRaw); } catch { return 0; }
+    return countUnseenClips(all, currentPlayer, lastSeenAt);
+  }, [matchesRaw, currentPlayer, lastSeenAt]);
+
   const toggle = () => {
     localStorage.setItem("player-sidebar-collapsed", String(!collapsed));
     window.dispatchEvent(new Event(PLAYER_SIDEBAR_EVENT));
@@ -145,6 +168,7 @@ export default function PlayerSidebar() {
       <nav className="flex flex-col gap-0.5 p-3 flex-1">
         {navItems.map((item) => {
           const active = isActive(item.href, item.exact);
+          const showBadge = item.href === "/player/review" && unseenClipCount > 0;
           return (
             <Link
               key={item.href}
@@ -161,10 +185,22 @@ export default function PlayerSidebar() {
               {active && (
                 <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[18px] rounded-r-full bg-foreground-strong" />
               )}
-              <span className={`transition-colors duration-150 shrink-0 ${active ? "text-foreground-strong" : "text-muted"}`}>
+              <span className={`relative transition-colors duration-150 shrink-0 ${active ? "text-foreground-strong" : "text-muted"}`}>
                 {item.icon}
+                {showBadge && collapsed && (
+                  <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-warning" />
+                )}
               </span>
-              {!collapsed && item.label}
+              {!collapsed && (
+                <>
+                  <span>{item.label}</span>
+                  {showBadge && (
+                    <span className="ml-auto rounded-full bg-warning text-background-elevated text-[10px] font-semibold px-1.5 py-0.5 leading-none">
+                      {unseenClipCount}
+                    </span>
+                  )}
+                </>
+              )}
             </Link>
           );
         })}
