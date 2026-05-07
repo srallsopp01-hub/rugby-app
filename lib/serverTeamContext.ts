@@ -30,12 +30,20 @@ export async function getServerTeamContext(): Promise<MyTeamContext | null> {
       .maybeSingle();
 
     if (!membershipError && membership) {
-      // Fetch ownerUserId from the team (needed for R2 video paths).
-      const { data: team } = await supabase
-        .from("teams")
-        .select("created_by_user_id")
-        .eq("id", teamId)
-        .single();
+      // Fetch ownerUserId from the team and check if this user is also a club_admin.
+      const [{ data: team }, { data: orgRow }] = await Promise.all([
+        supabase
+          .from("teams")
+          .select("created_by_user_id")
+          .eq("id", teamId)
+          .single(),
+        supabase
+          .from("organisation_members")
+          .select("organisation_id")
+          .eq("user_id", user.id)
+          .eq("role", "club_admin")
+          .maybeSingle(),
+      ]);
 
       return {
         role: membership.role as TeamRole,
@@ -45,6 +53,8 @@ export async function getServerTeamContext(): Promise<MyTeamContext | null> {
         ownerUserId: (team?.created_by_user_id as string) ?? user.id,
         canManageTeam: membership.role === "head_coach",
         isOrgAdminOnly: false,
+        isClubAdmin: !!orgRow,
+        orgId: orgRow?.organisation_id ?? null,
       };
     }
   }
@@ -101,5 +111,7 @@ export async function getServerTeamContext(): Promise<MyTeamContext | null> {
     ownerUserId: (orgTeam?.created_by_user_id as string) ?? user.id,
     canManageTeam: true,
     isOrgAdminOnly: true,
+    isClubAdmin: true,
+    orgId: orgMember.organisation_id,
   };
 }

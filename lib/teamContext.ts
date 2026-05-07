@@ -13,6 +13,10 @@ export type MyTeamContext = {
   ownerUserId: string;
   canManageTeam: boolean;
   isOrgAdminOnly: boolean;
+  /** True when the user has a club_admin row in organisation_members (may also have a team role). */
+  isClubAdmin: boolean;
+  /** The organisation ID the user administers, or null if not a club_admin. */
+  orgId: string | null;
 };
 
 export const ACTIVE_TEAM_CHANGED_EVENT = "fynlwhistle-active-team-changed";
@@ -120,6 +124,8 @@ export async function getMyTeamContext(): Promise<MyTeamContext | null> {
       ownerUserId: (team?.created_by_user_id as string) ?? user.id,
       canManageTeam: membership.role === "head_coach",
       isOrgAdminOnly: false,
+      isClubAdmin: false,
+      orgId: null,
       _v: CACHE_VERSION,
       _userId: user.id,
     };

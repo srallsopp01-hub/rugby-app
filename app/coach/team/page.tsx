@@ -45,6 +45,11 @@ export default function TeamPage() {
   const [sendingSlotInvite, setSendingSlotInvite] = useState(false);
   const [copiedSlotId, setCopiedSlotId] = useState<string | null>(null);
 
+  const [linkingSlot, setLinkingSlot] = useState<string | null>(null);
+  const [linkEmail, setLinkEmail] = useState("");
+  const [linkingInProgress, setLinkingInProgress] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+
   const [coachName, setCoachName] = useState("");
   const [coachTitle, setCoachTitle] = useState("");
   const [coachEmail, setCoachEmail] = useState("");
@@ -80,6 +85,42 @@ export default function TeamPage() {
 
   const squadPlayers = (profile?.players ?? []).filter((p) => p.status !== "unavailable");
   const unclaimedSlots = squadPlayers.filter((p) => !p.linkedUserId);
+
+  async function handleLinkAccount(playerSquadId: string) {
+    if (!profile || !linkEmail.trim()) return;
+    setLinkingInProgress(true);
+    setLinkError(null);
+    try {
+      const res = await fetch("/api/invite/link-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teamId: profile.id,
+          playerSquadId,
+          email: linkEmail.trim(),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed to link account");
+      // Optimistically mark the slot as claimed in local state
+      setProfile((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          players: prev.players.map((p) =>
+            p.id === playerSquadId ? { ...p, linkedUserId: "__linked__" } : p
+          ),
+        };
+      });
+      setLinkingSlot(null);
+      setLinkEmail("");
+      setStatusMessage(`Account linked to ${squadPlayers.find((p) => p.id === playerSquadId)?.fullName ?? "player"}`);
+    } catch (e) {
+      setLinkError(e instanceof Error ? e.message : "Link failed");
+    } finally {
+      setLinkingInProgress(false);
+    }
+  }
 
   async function handleGenerateReusableLink() {
     setGeneratingLink(true);
@@ -476,10 +517,24 @@ export default function TeamPage() {
                     onOpen={() => {
                       setActiveInviteSlot(player.id);
                       setSlotInviteEmail("");
+                      setLinkingSlot(null);
                     }}
                     onClose={() => setActiveInviteSlot(null)}
                     onEmailChange={setSlotInviteEmail}
                     onSubmit={(e) => void handleSendSlotInvite(e, player.id)}
+                    isLinking={linkingSlot === player.id}
+                    linkEmail={linkingSlot === player.id ? linkEmail : ""}
+                    linkError={linkingSlot === player.id ? linkError : null}
+                    linkingInProgress={linkingInProgress}
+                    onOpenLink={() => {
+                      setLinkingSlot(player.id);
+                      setLinkEmail("");
+                      setLinkError(null);
+                      setActiveInviteSlot(null);
+                    }}
+                    onCloseLink={() => { setLinkingSlot(null); setLinkError(null); }}
+                    onLinkEmailChange={setLinkEmail}
+                    onLinkSubmit={(e) => { e.preventDefault(); void handleLinkAccount(player.id); }}
                   />
                 ))}
               </div>
@@ -582,6 +637,14 @@ function SlotRow({
   onClose,
   onEmailChange,
   onSubmit,
+  isLinking,
+  linkEmail,
+  linkError,
+  linkingInProgress,
+  onOpenLink,
+  onCloseLink,
+  onLinkEmailChange,
+  onLinkSubmit,
 }: {
   player: SquadPlayer;
   isActive: boolean;
@@ -592,7 +655,17 @@ function SlotRow({
   onClose: () => void;
   onEmailChange: (email: string) => void;
   onSubmit: (e: React.FormEvent) => void;
+  isLinking: boolean;
+  linkEmail: string;
+  linkError: string | null;
+  linkingInProgress: boolean;
+  onOpenLink: () => void;
+  onCloseLink: () => void;
+  onLinkEmailChange: (email: string) => void;
+  onLinkSubmit: (e: React.FormEvent) => void;
 }) {
+  const isIdle = !isActive && !isLinking;
+
   return (
     <div className="rounded-xl border border-border bg-panel-2 px-4 py-3">
       <div className="flex items-center justify-between gap-3">
@@ -604,14 +677,23 @@ function SlotRow({
         </div>
         {isCopied ? (
           <span className="text-xs font-semibold text-success">Link copied!</span>
-        ) : !isActive ? (
-          <button
-            type="button"
-            onClick={onOpen}
-            className="shrink-0 rounded-lg border border-border bg-panel px-3 py-1.5 text-xs font-semibold text-foreground-strong transition hover:border-border-light"
-          >
-            Send invite to…
-          </button>
+        ) : isIdle ? (
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={onOpen}
+              className="rounded-lg border border-border bg-panel px-3 py-1.5 text-xs font-semibold text-foreground-strong transition hover:border-border-light"
+            >
+              Send invite
+            </button>
+            <button
+              type="button"
+              onClick={onOpenLink}
+              className="rounded-lg border border-border bg-panel px-3 py-1.5 text-xs font-semibold text-muted transition hover:border-border-light hover:text-foreground"
+            >
+              Link account
+            </button>
+          </div>
         ) : null}
       </div>
 
@@ -643,6 +725,42 @@ function SlotRow({
             </button>
           </div>
         </form>
+      )}
+
+      {isLinking && (
+        <div className="mt-3">
+          <p className="mb-2 text-xs text-muted">
+            Player already has an account? Enter their email to link it directly.
+          </p>
+          <form onSubmit={onLinkSubmit} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              type="email"
+              required
+              autoFocus
+              value={linkEmail}
+              onChange={(e) => onLinkEmailChange(e.target.value)}
+              placeholder="player@example.com"
+              className="min-w-0 flex-1 rounded-lg border border-border bg-panel px-3 py-2 text-sm text-foreground-strong outline-none transition focus:border-border-light"
+            />
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={linkingInProgress || !linkEmail.trim()}
+                className="rounded-lg border border-border bg-foreground-strong px-3 py-2 text-xs font-semibold text-background transition hover:opacity-90 disabled:opacity-50"
+              >
+                {linkingInProgress ? "Linking…" : "Link account"}
+              </button>
+              <button
+                type="button"
+                onClick={onCloseLink}
+                className="rounded-lg border border-border bg-panel px-3 py-2 text-xs font-semibold text-muted transition hover:border-border-light"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+          {linkError && <p className="mt-2 text-xs text-red-400">{linkError}</p>}
+        </div>
       )}
     </div>
   );

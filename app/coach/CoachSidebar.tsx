@@ -246,8 +246,10 @@ function TeamSwitcherDropdown({
 
 export default function CoachSidebar({
   isOrgAdminOnly = false,
+  isClubAdmin = false,
 }: {
   isOrgAdminOnly?: boolean;
+  isClubAdmin?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -384,7 +386,7 @@ export default function CoachSidebar({
       </div>
 
       <nav className="flex flex-col gap-0.5 p-2 flex-1 overflow-y-auto">
-        {navItems.map((item) => {
+        {navItems.filter((item) => item.href !== "/coach/organisation" || isClubAdmin).map((item) => {
           const active = isActive(item.href, item.exact);
           return (
             <Link

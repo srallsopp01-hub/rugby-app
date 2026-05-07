@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import CreateTeamButton from "./CreateTeamButton";
 
 const PLAN_LABELS: Record<string, string> = {
   solo: "Solo",
@@ -32,12 +34,16 @@ export default async function OrganisationPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: orgMember } = await supabase
-    .from("organisation_members")
-    .select("organisation_id")
-    .eq("user_id", user.id)
-    .eq("role", "club_admin")
-    .maybeSingle();
+  // Use admin client here to bypass any RLS/cookie edge-cases on the deployed app.
+  const adminClient = createAdminClient();
+  const { data: orgMember } = adminClient
+    ? await adminClient
+        .from("organisation_members")
+        .select("organisation_id")
+        .eq("user_id", user.id)
+        .eq("role", "club_admin")
+        .maybeSingle()
+    : { data: null };
   if (!orgMember) redirect("/coach");
 
   const orgId = orgMember.organisation_id;
@@ -125,10 +131,13 @@ export default async function OrganisationPage() {
         </div>
       </section>
 
-      {/* Teams list */}
-      {teams && teams.length > 0 && (
-        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <h2 className="text-sm font-semibold text-foreground-strong mb-3">Teams</h2>
+      {/* Teams list + create */}
+      <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-foreground-strong">Teams</h2>
+          <CreateTeamButton organisationId={orgId} />
+        </div>
+        {teams && teams.length > 0 ? (
           <ul className="flex flex-col gap-1.5">
             {teams.map((t) => (
               <li
@@ -140,8 +149,10 @@ export default async function OrganisationPage() {
               </li>
             ))}
           </ul>
-        </section>
-      )}
+        ) : (
+          <p className="text-sm text-muted">No active teams yet.</p>
+        )}
+      </section>
     </div>
   );
 }

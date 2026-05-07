@@ -26,12 +26,13 @@ export default async function CoachLayout({
   }
 
   const isOrgAdminOnly = ctx.isOrgAdminOnly;
+  const isClubAdmin = ctx.isClubAdmin;
 
   return (
     <div className="flex h-screen overflow-hidden">
       <SyncTeam />
       <SyncSavedMatches />
-      <CoachSidebar isOrgAdminOnly={isOrgAdminOnly} />
+      <CoachSidebar isOrgAdminOnly={isOrgAdminOnly} isClubAdmin={isClubAdmin} />
       <div className="flex-1 flex flex-col overflow-hidden">
         {isOrgAdminOnly && (
           <div className="shrink-0 bg-amber-500/10 border-b border-amber-500/30 px-5 py-2 text-sm font-medium text-amber-300">

@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** May 2026 — Email delivery complete: Resend verified, Supabase SMTP live, all 4 email flows working. Pre-launch checklist items 1–4 all done.
+**Last updated:** 8 May 2026 — Admin panel live (6 pages + API routes). Organisation page redirect fixed; club_admin can now create new teams. Player account-linking added to coach Team page.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -86,17 +86,19 @@ The app is split into four clearly separated layers with independent layouts and
 | `/player/review` | Live | Shared coach clips from film review with per-clip 👍 "Got it" / 🤔 "Question" reactions, optional question text, and a per-player free-text "Your note" field (debounced); marks all clips as seen on open |
 | `/player/settings` | Live | Profile, identity switch, theme, local data snapshot, quick nav links |
 
-### Admin panel (internal only)
+### Admin panel (internal only — gated by `ADMIN_EMAILS` env var)
 | Route | Status | Purpose |
 |---|---|---|
-| `/admin` | Stub | Admin home |
-| `/admin/accounts` | Stub | User account management |
-| `/admin/organisations` | Stub | Organisation management |
-| `/admin/teams` | Stub | Team management |
-| `/admin/billing` | Stub | Billing and subscriptions |
-| `/admin/usage` | Stub | Platform usage metrics |
-| `/admin/issues` | Stub | Internal issue tracking |
-| `/admin/settings` | Stub | Admin settings |
+| `/admin` | Live | Platform overview: orgs by status, active teams, coach seats, new orgs (30 days) |
+| `/admin/accounts` | Live | All registered users — email, org, role, joined date (via Supabase auth admin API) |
+| `/admin/organisations` | Live | All orgs table — plan, status, team/seat counts, billing date; click to expand teams; Edit to change plan or override limits |
+| `/admin/teams` | Live | All teams — org name, status, member count, created date |
+| `/admin/billing` | Live | Orgs by plan, trialing orgs (soonest-expiry first, urgent ≤3 days in red), past-due list |
+| `/admin/usage` | Live | Total orgs/teams/members/matches; monthly bar charts for new orgs and saved matches (6 months) |
+| `/admin/issues` | Stub | Internal issue tracking (no backing data yet) |
+| `/admin/settings` | Stub | Admin settings (no backing data yet) |
+
+Admin login redirects straight to `/admin` (not `/coach`). Non-admin emails are redirected to `/coach` by the layout guard.
 
 ---
 
@@ -277,7 +279,8 @@ app/
     saved-matches/page.tsx            ← Saved match management
     compare/page.tsx                  ← Saved match + player comparison
     settings/page.tsx                 ← Coach settings: local storage status, shortcuts, JSON export, guarded resets
-    organisation/page.tsx             ← Club admin only: org name, plan, status, billing date, team count, seat count
+    organisation/page.tsx             ← Club admin only: org name, plan, status, billing date, team count, seat count; + "New team" button (creates team + head_coach membership)
+    organisation/CreateTeamButton.tsx ← Client component for inline team creation form
 
   player/
     layout.tsx                        ← Player layout: h-screen, sidebar + scrollable main (wraps PlayerProvider)
@@ -298,12 +301,23 @@ app/
     settings/page.tsx                 ← Profile card, identity switch, theme, local data snapshot, quick nav links
 
   admin/
-    layout.tsx                        ← Admin layout: h-screen, sidebar + scrollable main
+    layout.tsx                        ← Admin layout: guards via ADMIN_EMAILS env var
     AdminSidebar.tsx                  ← Admin left sidebar (text-only, accent bar)
-    page.tsx + all sub-pages          ← Internal stubs
+    page.tsx                          ← Platform overview stats
+    accounts/page.tsx                 ← All users (auth admin API + org/team membership join)
+    organisations/page.tsx            ← Org list server component
+    organisations/OrgTable.tsx        ← Client table with expand + Edit modal
+    organisations/OrgEditModal.tsx    ← Plan + limit override modal
+    teams/page.tsx                    ← All teams table
+    billing/page.tsx                  ← Subscription overview
+    usage/page.tsx                    ← Platform metrics + monthly bar charts
 
   api/
     stripe/checkout/route.ts          ← Stripe Checkout session endpoint for Team Launch and Club 5 subscriptions
+    admin/org/update/route.ts         ← POST: change org plan / override limits (admin only)
+    auth/redirect/route.ts            ← GET: returns /admin or /coach based on ADMIN_EMAILS after login
+    invite/link-account/route.ts      ← POST: directly link an existing auth account to a squad player slot
+    team/create/route.ts              ← POST: create a new team + add creator as head_coach (club_admin only)
 
   rugby-tagging/
     components/
