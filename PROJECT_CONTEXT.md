@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** May 2026 — Coach Review Phases 1–3 shipped (Batches BI, BJ, BK): per-clip comments + J/K/L + frame-step + slow-mo + fullscreen + autosave badge; presentation mode + per-player auto-clip generation; player reactions + per-clip player notes + "new clips" badge + coach-side surfacing of player feedback. Dark mode token refresh + unified orange brand (Batch BL). Move 3 shipped: `/coach/organisation` + team switcher + club_admin access. Terms of Service + Privacy Policy live. Pre-launch checklist: items 1 (Stripe live prices), 2 (Sentry), 3 (email/DNS) remain.
+**Last updated:** May 2026 — Live Stripe prices + webhook confirmed in production (Batch BM). Coach Review Phases 1–3 (BI–BK), dark mode refresh (BL), Move 3 org page + team switcher (BI), ToS/Privacy live. Pre-launch checklist: items 2 (Sentry), 3 (email/DNS) remain.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -1479,6 +1479,20 @@ Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Str
 
 ---
 
+### Batch BM (May 2026) — Live Stripe prices + webhook production
+
+- ✅ Live-mode prices created in Stripe for Team Launch and Club 5 (monthly + yearly, multi-currency)
+- ✅ `pricingConfig.ts` updated with live price IDs
+- ✅ Live webhook endpoint registered: `https://www.fynlwhistle.com/api/stripe/webhook` (note: must use `www` — bare domain returns 307)
+- ✅ `STRIPE_SECRET_KEY=sk_live_...` and `STRIPE_WEBHOOK_SECRET=whsec_live_...` set in Vercel Production
+- ✅ End-to-end smoke test passed: checkout → org created (`plan=team_launch`, `status=trialing`, `trial_ends_at` 14 days out, live `stripe_customer_id`)
+- ✅ Stripe delivery log shows 200s on live endpoint
+- ✅ Test data cleaned up; `has_used_trial` reset
+
+**Key gotcha:** Stripe webhook endpoint must be `https://www.fynlwhistle.com/...` not `https://fynlwhistle.com/...` — the bare domain redirects (307) and Stripe does not follow redirects.
+
+---
+
 ### Terms of Service + Privacy Policy (May 2026)
 
 - `/terms` and `/privacy` routes live — UK GDPR-compliant, covers all sub-processors
@@ -1498,11 +1512,8 @@ Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Str
 
 ### Pre-launch checklist — do these before sharing with any club
 
-**1. Live Stripe prices** (~1 hr) ← hard blocker
-- Create live-mode prices in Stripe dashboard (monthly + annual for each plan)
-- Update price IDs in `app/(marketing)/pricing/pricingConfig.ts`
-- Create a second webhook endpoint in Stripe live mode with its own signing secret
-- Set `STRIPE_SECRET_KEY=sk_live_...` and `STRIPE_WEBHOOK_SECRET=whsec_live_...` in Vercel
+**1. Live Stripe prices** ✅ Done (Batch BM, May 2026)
+- Live prices, webhook endpoint (`www.fynlwhistle.com`), `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` in Vercel — all confirmed working end-to-end
 
 **2. Sentry error monitoring** (~20 min) ← bundle with #1, same sitting
 - Install `@sentry/nextjs`, run `npx @sentry/wizard@latest -i nextjs`
