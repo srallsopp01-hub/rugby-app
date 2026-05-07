@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { MyTeamContext, TeamRole } from "@/lib/teamContext";
 
 export async function getServerTeamContext(): Promise<MyTeamContext | null> {
@@ -31,19 +32,24 @@ export async function getServerTeamContext(): Promise<MyTeamContext | null> {
 
     if (!membershipError && membership) {
       // Fetch ownerUserId from the team and check if this user is also a club_admin.
-      const [{ data: team }, { data: orgRow }] = await Promise.all([
+      // Use admin client for the org check to bypass any RLS edge-cases on deployed infra.
+      const adminClient = createAdminClient();
+      const [{ data: team }, orgCheckResult] = await Promise.all([
         supabase
           .from("teams")
           .select("created_by_user_id")
           .eq("id", teamId)
           .single(),
-        supabase
-          .from("organisation_members")
-          .select("organisation_id")
-          .eq("user_id", user.id)
-          .eq("role", "club_admin")
-          .maybeSingle(),
+        adminClient
+          ? adminClient
+              .from("organisation_members")
+              .select("organisation_id")
+              .eq("user_id", user.id)
+              .eq("role", "club_admin")
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
       ]);
+      const orgRow = orgCheckResult.data;
 
       return {
         role: membership.role as TeamRole,
@@ -60,13 +66,16 @@ export async function getServerTeamContext(): Promise<MyTeamContext | null> {
   }
 
   // club_admin fallback: no team_members row — check organisation_members.
-  const { data: orgMember } = await supabase
-    .from("organisation_members")
-    .select("organisation_id")
-    .eq("user_id", user.id)
-    .eq("role", "club_admin")
-    .limit(1)
-    .maybeSingle();
+  const adminClient2 = createAdminClient();
+  const { data: orgMember } = adminClient2
+    ? await adminClient2
+        .from("organisation_members")
+        .select("organisation_id")
+        .eq("user_id", user.id)
+        .eq("role", "club_admin")
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
 
   if (!orgMember) return null;
 
