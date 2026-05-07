@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** May 2026 — Live Stripe prices + webhook confirmed in production (Batch BM). Coach Review Phases 1–3 (BI–BK), dark mode refresh (BL), Move 3 org page + team switcher (BI), ToS/Privacy live. Pre-launch checklist: items 2 (Sentry), 3 (email/DNS) remain.
+**Last updated:** May 2026 — Sentry live (EU, @sentry/nextjs v10, logging + OpenAI AI monitoring). Pre-launch checklist: item 3 (email/DNS) remains.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -1515,11 +1515,14 @@ Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Str
 **1. Live Stripe prices** ✅ Done (Batch BM, May 2026)
 - Live prices, webhook endpoint (`www.fynlwhistle.com`), `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` in Vercel — all confirmed working end-to-end
 
-**2. Sentry error monitoring** (~20 min) ← bundle with #1, same sitting
-- Install `@sentry/nextjs`, run `npx @sentry/wizard@latest -i nextjs`
-- Free tier is fine for this stage
-- Gives immediate email alerts with stack traces when anything crashes in production
-- Without this you are blind to errors real users hit
+**2. Sentry error monitoring** ✅ Done (May 2026)
+- `@sentry/nextjs` v10 installed; EU data region (Frankfurt) — `fynl-whistle.sentry.io`
+- `instrumentation-client.ts` (browser), `sentry.server.config.ts` (Node), `sentry.edge.config.ts` (edge), `instrumentation.ts` (server startup + `onRequestError`), `app/global-error.tsx` (unhandled layout errors)
+- `next.config.ts` wrapped with `withSentryConfig` — sourcemaps upload on every production build
+- Structured logging enabled (`enableLogs: true`); server auto-captures `console.error`/`console.warn` as structured logs
+- OpenAI client instrumented with `instrumentOpenAiClient` in both `/api/transcribe` and `/api/help-chat` — Whisper + GPT-4o-mini calls traced in Sentry AI Monitoring
+- All 5 env vars set in Vercel Production: `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG=fynl-whistle`, `SENTRY_PROJECT=fynl-whistle`
+- Deployed and live
 
 **3. Email delivery** (~1 hr) ← needed for signup confirmation to arrive reliably
 - Resend: verify `fynlwhistle.com` domain status is `verified`
