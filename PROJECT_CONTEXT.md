@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** May 2026 — Sentry live (EU, @sentry/nextjs v10, logging + OpenAI AI monitoring). Pre-launch checklist: item 3 (email/DNS) remains.
+**Last updated:** May 2026 — Email delivery complete: Resend verified, Supabase SMTP live, all 4 email flows working. Pre-launch checklist items 1–4 all done.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -1524,10 +1524,12 @@ Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Str
 - All 5 env vars set in Vercel Production: `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG=fynl-whistle`, `SENTRY_PROJECT=fynl-whistle`
 - Deployed and live
 
-**3. Email delivery** (~1 hr) ← needed for signup confirmation to arrive reliably
-- Resend: verify `fynlwhistle.com` domain status is `verified`
-- Vercel DNS: add missing `_dmarc` TXT record `v=DMARC1; p=none;`
-- Supabase Auth SMTP: route signup/reset emails through Resend with sender `FYNL Whistle <noreply@fynlwhistle.com>`
+**3. Email delivery** ✅ Done (May 2026)
+- ✅ DNS: SPF (`send.fynlwhistle.com`), DKIM (`resend._domainkey.fynlwhistle.com`), DMARC (`_dmarc.fynlwhistle.com` → `v=DMARC1; p=none;`)
+- ✅ `RESEND_API_KEY` active in `.env.local` and Vercel Production
+- ✅ `fynlwhistle.com` verified in Resend dashboard
+- ✅ Supabase Custom SMTP: `smtp.resend.com:465`, sender `FYNL Whistle <noreply@fynlwhistle.com>`
+- All email flows live: signup confirmation, password reset, invite resend, availability reminders
 
 **4. Terms of Service + Privacy Policy** ✅ Done (May 2026)
 - `/terms` and `/privacy` live — UK GDPR-compliant, covers all sub-processors
