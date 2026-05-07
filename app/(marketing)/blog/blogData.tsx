@@ -276,7 +276,7 @@ const post3Content = (
     <h2 className={h2}>Why penalty count is overrated</h2>
 
     <p className={p}>
-      Penalties are visible. They stop the game, they get whistled, they often get talked about by the referee. So they&apos;re easy to remember and easy to count. That&apos;s why coaches default to them &mdash; not because they&apos;re the most important stat, but because they&apos;re the most available one.
+      Penalties are visible. They stop the game, they get whistled, they often get talked about by the referee. So they&apos;re easy to remember and easy to count. That&apos;s why coaches default to them. Not because they&apos;re the most important stat, but because they&apos;re the most available one.
     </p>
 
     <p className={p}>
@@ -284,17 +284,17 @@ const post3Content = (
     </p>
 
     <p className={p}>
-      Worse, leading with penalty count tends to push players towards a specific kind of dressing-room reaction &mdash; defensive, individual, slightly sulky. The flanker who got pinged twice for not rolling away will hear &ldquo;14 penalties&rdquo; and think the coach is talking about him. The hooker who threw a not-straight will check out for the rest of the meeting. You haven&apos;t taught anyone anything; you&apos;ve just made a few players feel singled out.
+      Worse, leading with penalty count tends to push players towards a specific kind of dressing-room reaction: defensive, individual, slightly sulky. The flanker who got pinged twice for not rolling away will hear &ldquo;14 penalties&rdquo; and think the coach is talking about him. The loosehead who got done for boring in will check out for the rest of the meeting. You haven&apos;t taught anyone anything; you&apos;ve just made a few players feel singled out.
     </p>
 
     <h2 className={h2}>The stat almost no one tracks</h2>
 
     <p className={p}>
-      Now ask the same coach how many turnovers their side won. Or &mdash; harder question &mdash; how many turnovers their side conceded.
+      Now ask the same coach how many turnovers their side won. Or, harder question, how many turnovers their side conceded.
     </p>
 
     <p className={p}>
-      Most coaches can&apos;t tell you. They might remember the obvious ones: the ball lost over the top in midfield, the intercepted pass that led to a try. But the steady drip of turnovers across 80 minutes &mdash; at the breakdown, in the tackle, on the deck after a poor offload &mdash; is almost never tracked at club level.
+      Most coaches can&apos;t tell you. They might remember the obvious ones: the ball lost over the top in midfield, the intercepted pass that led to a try. But the steady drip of turnovers across 80 minutes is almost never tracked at club level. The breakdown, the tackle, the deck after a poor offload.
     </p>
 
     <p className={p}>
@@ -312,7 +312,7 @@ const post3Content = (
     </ul>
 
     <p className={p}>
-      A penalty against you costs you possession too &mdash; but at least the opposition has to do something with it. A turnover often gives them a free run at unstructured space.
+      A penalty against you costs you possession too, but at least the opposition has to do something with it. A turnover often gives them a free run at unstructured space.
     </p>
 
     <p className={p}>
@@ -330,17 +330,17 @@ const post3Content = (
     </p>
 
     <p className={p}>
-      Second, turnovers don&apos;t fit cleanly into a spreadsheet column. A penalty is a binary thing &mdash; given away, or not. A turnover has more shape to it. Was it a poor offload? A failed jackal? A held-up over the line? A knock-on under pressure? Most coaches don&apos;t have a structure for capturing that, so they don&apos;t capture any of it.
+      Second, turnovers don&apos;t fit cleanly into a spreadsheet column. A penalty is a binary thing: given away, or not. A turnover has more shape to it. Was it a poor offload? A failed jackal? A held-up over the line? A knock-on under pressure? Most coaches don&apos;t have a structure for capturing that, so they don&apos;t capture any of it.
     </p>
 
     <p className={p}>
-      Third &mdash; and this is the one that matters &mdash; most match analysis tools are built around tagging events that get a whistle. Penalties, scores, set pieces. Turnovers fall through the cracks.
+      Third, and this is the one that matters: most match analysis tools are built around tagging events that get a whistle. Penalties, scores, set pieces. Turnovers fall through the cracks.
     </p>
 
     <h2 className={h2}>Starting without adding another spreadsheet</h2>
 
     <p className={p}>
-      Here&apos;s the test. Watch the next match back &mdash; your own side or someone else&apos;s, doesn&apos;t matter. Every time possession changes hands without a whistle, mark it. Just a tick on a bit of paper. Don&apos;t worry about who or how, just count.
+      Here&apos;s the test. Watch the next match back, your own side or someone else&apos;s, doesn&apos;t matter. Every time possession changes hands without a whistle, mark it. Just a tick on a bit of paper. Don&apos;t worry about who or how, just count.
     </p>
 
     <p className={p}>
@@ -348,7 +348,7 @@ const post3Content = (
     </p>
 
     <p className={p}>
-      Once you&apos;ve got the count, the next step is to capture a small amount of context. Not 10 fields per turnover &mdash; just two:
+      Once you&apos;ve got the count, the next step is to capture a small amount of context. Not 10 fields per turnover, just two:
     </p>
 
     <ul className={ul}>
@@ -359,7 +359,7 @@ const post3Content = (
     </ul>
 
     <p className={p}>
-      Two fields. That&apos;s enough to start finding patterns. If half your turnovers are happening in your own 22 from breakdown contests you didn&apos;t need to take, that&apos;s a coaching message. If most of them are handling errors in their own 22 &mdash; that&apos;s a different message entirely.
+      Two fields. That&apos;s enough to start finding patterns. If half your turnovers are happening in your own 22 from breakdown contests you didn&apos;t need to take, that&apos;s a coaching message. If most of them are handling errors in their own 22, that&apos;s a different message entirely.
     </p>
 
     <p className={p}>
@@ -377,11 +377,11 @@ const post3Content = (
     </p>
 
     <p className={p}>
-      And the conversation gets more useful. Penalties are usually about discipline &mdash; a hard thing to coach in a 30-minute Tuesday session. Turnovers are usually about decisions and skills, both of which are very coachable. &ldquo;We&apos;re losing the ball at the breakdown when we have three forwards committed and the carrier hasn&apos;t presented&rdquo; is a problem you can run a session on. &ldquo;We gave away too many penalties&rdquo; is a problem you can only tell people to stop doing.
+      And the conversation gets more useful. Penalties are usually about discipline, a hard thing to coach in a 30-minute Tuesday session. Turnovers are usually about decisions and skills, both of which are very coachable. &ldquo;We&apos;re losing the ball at the breakdown when we have three forwards committed and the carrier hasn&apos;t presented&rdquo; is a problem you can run a session on. &ldquo;We gave away too many penalties&rdquo; is a problem you can only tell people to stop doing.
     </p>
 
     <p className={p}>
-      If you&apos;re a coach trying to spend less time chasing the symptoms of a bad performance and more time fixing the causes, change which number you lead with. We built FYNL Whistle so coaches can tag turnovers as easily as penalties &mdash; same voice command, same one-second log &mdash; but you don&apos;t need our tool to start. You just need a pen, a piece of paper, and a willingness to count something different.
+      If you&apos;re a coach trying to spend less time chasing the symptoms of a bad performance and more time fixing the causes, change which number you lead with. We built FYNL Whistle so coaches can tag turnovers as easily as penalties (same voice command, same one-second log), but you don&apos;t need our tool to start. You just need a pen, a piece of paper, and a willingness to count something different.
     </p>
   </>
 );
