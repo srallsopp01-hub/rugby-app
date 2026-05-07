@@ -27,14 +27,21 @@ export default async function CoachLayout({
 
   const isOrgAdminOnly = ctx.isOrgAdminOnly;
   const isClubAdmin = ctx.isClubAdmin;
+  const hasNoTeams = ctx.hasNoTeams ?? false;
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <SyncTeam />
-      <SyncSavedMatches />
+      {/* Skip team/match syncing when there are no teams yet — teamId would be empty */}
+      {!hasNoTeams && <SyncTeam />}
+      {!hasNoTeams && <SyncSavedMatches />}
       <CoachSidebar isOrgAdminOnly={isOrgAdminOnly} isClubAdmin={isClubAdmin} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        {isOrgAdminOnly && (
+        {hasNoTeams && (
+          <div className="shrink-0 bg-blue-500/10 border-b border-blue-500/30 px-5 py-2 text-sm font-medium text-blue-300">
+            Welcome! Create your first team in the Organisation page to get started.
+          </div>
+        )}
+        {!hasNoTeams && isOrgAdminOnly && (
           <div className="shrink-0 bg-amber-500/10 border-b border-amber-500/30 px-5 py-2 text-sm font-medium text-amber-300">
             You&apos;re viewing this team as club admin — editing is disabled.
           </div>

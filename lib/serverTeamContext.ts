@@ -102,7 +102,25 @@ export async function getServerTeamContext(): Promise<MyTeamContext | null> {
       .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle();
-    if (!firstTeam) return null;
+
+    if (!firstTeam) {
+      // Club admin exists but has no teams yet — return a valid context so the
+      // coach layout doesn't redirect them to /player. They'll land on the org
+      // page where they can create their first team.
+      return {
+        role: "club_admin" as TeamRole,
+        userId: user.id,
+        teamId: "",
+        currentTeamId: "",
+        ownerUserId: user.id,
+        canManageTeam: false,
+        isOrgAdminOnly: true,
+        isClubAdmin: true,
+        orgId: orgMember.organisation_id,
+        hasNoTeams: true,
+      };
+    }
+
     adminTeamId = firstTeam.id as string;
   }
 

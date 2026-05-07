@@ -17,6 +17,8 @@ export type MyTeamContext = {
   isClubAdmin: boolean;
   /** The organisation ID the user administers, or null if not a club_admin. */
   orgId: string | null;
+  /** True when user is a club_admin but has no teams yet — org page is the only useful destination. */
+  hasNoTeams?: boolean;
 };
 
 export const ACTIVE_TEAM_CHANGED_EVENT = "fynlwhistle-active-team-changed";
