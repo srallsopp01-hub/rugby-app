@@ -48,13 +48,16 @@ export default async function OrganisationPage() {
 
   const orgId = orgMember.organisation_id;
 
+  // Use admin client for all data fetches on this page — same RLS bypass as the membership check.
+  const db = adminClient ?? supabase;
+
   const [{ data: org }, { data: teams }] = await Promise.all([
-    supabase
+    db
       .from("organisations")
       .select("name, plan, status, trial_ends_at, current_period_end")
       .eq("id", orgId)
       .single(),
-    supabase
+    db
       .from("teams")
       .select("id, name")
       .eq("organisation_id", orgId)
@@ -64,13 +67,13 @@ export default async function OrganisationPage() {
   const teamIds = (teams ?? []).map((t) => t.id);
 
   const [{ count: coachMemberCount }, { count: adminCount }] = await Promise.all([
-    supabase
+    db
       .from("team_members")
       .select("id", { count: "exact", head: true })
       .in("team_id", teamIds.length ? teamIds : ["00000000-0000-0000-0000-000000000000"])
       .in("role", ["head_coach", "assistant_coach"])
       .eq("status", "active"),
-    supabase
+    db
       .from("organisation_members")
       .select("id", { count: "exact", head: true })
       .eq("organisation_id", orgId),
