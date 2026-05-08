@@ -5,6 +5,7 @@ import CoachSidebar from "./CoachSidebar";
 import { SyncSavedMatches } from "./SyncSavedMatches";
 import { SyncTeam } from "./SyncTeam";
 import { FloatingHelpChat } from "@/app/components/FloatingHelpChat";
+import CreateStarterTeamButton from "./CreateStarterTeamButton";
 
 export default async function CoachLayout({
   children,
@@ -36,9 +37,17 @@ export default async function CoachLayout({
       {!hasNoTeams && <SyncSavedMatches />}
       <CoachSidebar isOrgAdminOnly={isOrgAdminOnly} isClubAdmin={isClubAdmin} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        {hasNoTeams && (
+        {hasNoTeams && isClubAdmin && (
           <div className="shrink-0 bg-blue-500/10 border-b border-blue-500/30 px-5 py-2 text-sm font-medium text-blue-300">
             Welcome! Create your first team in the Organisation page to get started.
+          </div>
+        )}
+        {hasNoTeams && !isClubAdmin && (
+          <div className="shrink-0 bg-blue-500/10 border-b border-blue-500/30 px-5 py-3 flex items-center gap-4">
+            <span className="text-sm font-medium text-blue-300">
+              Welcome! Set up your coaching team to get started.
+            </span>
+            <CreateStarterTeamButton />
           </div>
         )}
         {!hasNoTeams && isOrgAdminOnly && (

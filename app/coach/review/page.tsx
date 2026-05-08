@@ -492,6 +492,23 @@ export default function ReviewPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Proactively refresh the signed URL 5 minutes before it expires (at 55 min)
+  // so coaches reviewing long matches never hit a 403.
+  useEffect(() => {
+    if (!videoSrc || videoSrc.startsWith("blob:")) return;
+    const matchId = getCurrentMatchId();
+    const match = matchId ? getSavedMatchById(matchId) : null;
+    if (!match?.videoStoragePath) return;
+    const storagePath = match.videoStoragePath;
+    const timer = setTimeout(() => {
+      void refreshVideoSignedUrl(storagePath).then((url) => {
+        if (url) setVideoSrc(url);
+      });
+    }, 55 * 60 * 1000);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoSrc]);
+
   useEffect(() => {
     redrawAnnotations();
     window.addEventListener("resize", redrawAnnotations);

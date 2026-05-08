@@ -114,8 +114,19 @@ export function upsertSavedMatch(record: SavedMatchRecord) {
 
   replaceSavedMatches(existing);
   import("@/lib/savedMatchesCloud")
-    .then(({ upsertCloudSavedMatch }) => void upsertCloudSavedMatch(record))
-    .catch(() => {});
+    .then(({ upsertCloudSavedMatch }) => upsertCloudSavedMatch(record))
+    .then((result) => {
+      if (result && !result.ok) {
+        window.dispatchEvent(
+          new CustomEvent("fynlwhistle-cloud-sync-error", { detail: [result.error ?? "Cloud sync failed"] })
+        );
+      }
+    })
+    .catch((err: unknown) => {
+      window.dispatchEvent(
+        new CustomEvent("fynlwhistle-cloud-sync-error", { detail: [String(err)] })
+      );
+    });
 }
 
 export function deleteSavedMatch(matchId: string) {

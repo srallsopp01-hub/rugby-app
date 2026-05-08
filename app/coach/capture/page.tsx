@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
+import { CLOUD_SYNC_ERROR_EVENT } from "@/app/coach/SyncSavedMatches";
 import { useRouter } from "next/navigation";
 import TeamSheetModal from "@/app/rugby-tagging/components/TeamSheetModal";
 import MatchdayRosterPanel from "@/app/rugby-tagging/components/MatchdayRosterPanel";
@@ -212,6 +213,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
   const [matchSubmitStatus, setMatchSubmitStatus] =
     useState<"idle" | "submitting" | "submitted" | "error">("idle");
   const [matchSubmitError, setMatchSubmitError] = useState("");
+  const [cloudSyncError, setCloudSyncError] = useState("");
   const videoUploadLabel =
     videoUploadPercent >= 100
       ? "Finalising cloud save..."
@@ -883,6 +885,24 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
         window.clearTimeout(stopTimeoutRef.current);
       }
     };
+  }, []);
+
+  // Warn the coach before navigating away while a video upload is in progress.
+  useEffect(() => {
+    if (videoUploadStatus !== "uploading") return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [videoUploadStatus]);
+
+  // Surface cloud sync failures so the coach knows the match didn't reach the cloud.
+  useEffect(() => {
+    const handler = () => setCloudSyncError("Match saved locally but not synced to cloud. Check your connection.");
+    window.addEventListener(CLOUD_SYNC_ERROR_EVENT, handler);
+    return () => window.removeEventListener(CLOUD_SYNC_ERROR_EVENT, handler);
   }, []);
 
   useLayoutEffect(() => {
@@ -3513,6 +3533,13 @@ Ellie missed tackle"
                   submitMatchStatus={matchSubmitStatus}
                   submitMatchError={matchSubmitError}
                 />
+
+                {cloudSyncError && (
+                  <div className="mx-4 mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 flex items-center justify-between gap-3">
+                    <span className="text-xs text-amber-300">{cloudSyncError}</span>
+                    <button type="button" onClick={() => setCloudSyncError("")} className="text-xs text-amber-400 hover:text-amber-200">Dismiss</button>
+                  </div>
+                )}
 
                 <TeamSnapshotPanel
                   teamName={squadProfile?.teamName ?? "Our Team"}

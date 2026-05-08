@@ -77,7 +77,23 @@ export async function getServerTeamContext(): Promise<MyTeamContext | null> {
         .maybeSingle()
     : { data: null };
 
-  if (!orgMember) return null;
+  if (!orgMember) {
+    // Authenticated user with no team and no org — standard coach who just signed up.
+    // Return a valid context so the coach layout can guide them to create their first team
+    // instead of trapping them in an infinite redirect to /player.
+    return {
+      role: "head_coach" as TeamRole,
+      userId: user.id,
+      teamId: "",
+      currentTeamId: "",
+      ownerUserId: user.id,
+      canManageTeam: false,
+      isOrgAdminOnly: false,
+      isClubAdmin: false,
+      orgId: null,
+      hasNoTeams: true,
+    };
+  }
 
   // Prefer the RPC-resolved team if it belongs to this org; otherwise pick the first active team.
   let adminTeamId: string | null = null;
