@@ -51,10 +51,19 @@ export default function CoachSavedMatchesPage() {
   };
 
   const sortedMatches = useMemo(() => {
+    const toMs = (dateStr: string): number => {
+      if (!dateStr) return 0;
+      // DD/MM/YYYY (free-text input format used by the app)
+      const m = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (m) return new Date(+m[3], +m[2] - 1, +m[1]).getTime();
+      // ISO or any other format
+      const d = new Date(dateStr);
+      return isNaN(d.getTime()) ? 0 : d.getTime();
+    };
     return [...savedMatches].sort((a, b) => {
-      const aDate = a.matchDate || a.updatedAt;
-      const bDate = b.matchDate || b.updatedAt;
-      return bDate.localeCompare(aDate);
+      const aMs = toMs(a.matchDate || "") || toMs(a.updatedAt);
+      const bMs = toMs(b.matchDate || "") || toMs(b.updatedAt);
+      return bMs - aMs;
     });
   }, [savedMatches]);
   const latestMatch = sortedMatches[0] || null;
