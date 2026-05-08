@@ -7,14 +7,13 @@ import {
   createFixtureId,
   createPlayerId,
   createTrainingSessionId,
-  getSquadProfile,
   removeSquadPlayer,
   saveSquadProfile,
   upsertSquadPlayer,
-  TEAM_CHANGED_EVENT,
   type SquadPlayer,
   type SquadProfile,
 } from "@/app/rugby-tagging/lib/team";
+import { useTeam } from "@/app/providers/TeamContext";
 import type { Fixture, TrainingSession, TrainingSessionDayOfWeek } from "@/app/rugby-tagging/types";
 import { KpiTargetsSection } from "./KpiTargetsSection";
 import { PageHelp } from "@/app/components/PageHelp";
@@ -155,23 +154,15 @@ function formatSessionLabel(session: TrainingSession): string {
 }
 
 export default function TeamSetupPage() {
-  const [profile, setProfile] = useState<SquadProfile | null>(() => {
-    const loaded = getSquadProfile();
-    return loaded ?? createDefaultSquadProfile();
-  });
+  const { team: liveTeam, isLoading } = useTeam();
+  const [profile, setProfile] = useState<SquadProfile | null>(liveTeam ?? createDefaultSquadProfile());
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Re-sync when TeamContext finishes its async fetch and populates the cache.
+  // Keep local profile in sync with TeamContext (handles async initial fetch).
   useEffect(() => {
-    const sync = () => {
-      const loaded = getSquadProfile();
-      if (loaded) setProfile(loaded);
-    };
-    window.addEventListener(TEAM_CHANGED_EVENT, sync);
-    // Also sync immediately in case the cache was already populated before mount.
-    sync();
-    return () => window.removeEventListener(TEAM_CHANGED_EVENT, sync);
-  }, []);
+    if (liveTeam) setProfile(liveTeam);
+  }, [liveTeam]);
+
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(BLANK_FORM);
 
