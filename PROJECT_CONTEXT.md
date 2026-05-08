@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 8 May 2026 — Removed localStorage as data store for team/match data. Supabase is now the sole source of truth. `TeamContext` + `MatchesContext` providers added; all pages migrated to `useTeam()` / `useMatches()` hooks. Bidirectional sync removed — this eliminates the root cause of repeated data corruption.
+**Last updated:** 8 May 2026 — Added final score input (Us / Them) to the TranscriptPanel above the Submit Match button. Scores stored as `ourScore` / `opponentScore` in the `SavedMatchRecord` payload (JSONB); no DB migration required. Also: `team-setup` page migrated to `useTeam()` hook (removes raw event-listener sync pattern).
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -437,6 +437,7 @@ Sidebar pattern:
 - Matchday roster panel with player minutes
 - Match milestone buttons (Kick Off, Half Time, Second Half KO, Full Time) — log at current timestamp
 - Bench bring-on flow — bench player selects position coming on at, logs substitution event, updates roster position
+- Final score input (Us / Them) above the Submit Match button — optional, persisted in match payload
 - Submit report flow → Save Match and Open Next Screen modal
 - Saved match flow (save/restore via localStorage)
 - First-load Help modal + Help button
@@ -1548,6 +1549,9 @@ Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Str
 - ✅ `fynlwhistle.com` verified in Resend dashboard
 - ✅ Supabase Custom SMTP: `smtp.resend.com:465`, sender `FYNL Whistle <noreply@fynlwhistle.com>`
 - All email flows live: signup confirmation, password reset, invite resend, availability reminders
+
+- ✅ **Final score input on match submission** (8 May 2026) — Two numeric inputs (Us / Them) in `TranscriptPanel` above the Submit Match button. `ourScore` / `opponentScore` optional fields added to `SavedMatchRecord`; stored in JSONB payload, no DB migration. Old matches restore with empty inputs.
+- ✅ **team-setup page migrated to `useTeam()` hook** (8 May 2026) — Removed manual `TEAM_CHANGED_EVENT` listener; `useTeam()` reactive state drives local profile sync.
 
 **4. Terms of Service + Privacy Policy** ✅ Done (May 2026)
 - `/terms` and `/privacy` live — UK GDPR-compliant, covers all sub-processors

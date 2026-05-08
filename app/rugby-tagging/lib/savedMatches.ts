@@ -40,6 +40,8 @@ export type SavedMatchRecord = {
   clips?: ClipAnnotation[];
   showRawTranscript: boolean;
   videoStoragePath?: string;
+  ourScore?: number;
+  opponentScore?: number;
 };
 
 // In-memory cache — populated by MatchesContext after fetching from Supabase.

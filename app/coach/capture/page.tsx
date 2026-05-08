@@ -214,6 +214,8 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     useState<"idle" | "submitting" | "submitted" | "error">("idle");
   const [matchSubmitError, setMatchSubmitError] = useState("");
   const [cloudSyncError, setCloudSyncError] = useState("");
+  const [ourScore, setOurScore] = useState<number | "">("");
+  const [opponentScore, setOpponentScore] = useState<number | "">("");
   const videoUploadLabel =
     videoUploadPercent >= 100
       ? "Finalising cloud save..."
@@ -708,6 +710,8 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
               : true
           );
           setVideoStoragePath(savedMatch.videoStoragePath || "");
+          setOurScore(typeof savedMatch.ourScore === "number" ? savedMatch.ourScore : "");
+          setOpponentScore(typeof savedMatch.opponentScore === "number" ? savedMatch.opponentScore : "");
 
           localStorage.setItem(
             getScopedStorageKey(),
@@ -764,6 +768,8 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
           : true
       );
       setVideoStoragePath(saved.videoStoragePath || "");
+      setOurScore(typeof saved.ourScore === "number" ? saved.ourScore : "");
+      setOpponentScore(typeof saved.opponentScore === "number" ? saved.opponentScore : "");
     } catch (error) {
       console.error("Failed to load saved session", error);
     }
@@ -1482,6 +1488,8 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
       coachNotes,
       showRawTranscript,
       videoStoragePath: nextVideoStoragePath || videoStoragePath || existing?.videoStoragePath,
+      ourScore: ourScore === "" ? undefined : ourScore,
+      opponentScore: opponentScore === "" ? undefined : opponentScore,
     };
   };
 
@@ -3532,6 +3540,10 @@ Ellie missed tackle"
                   submitMatchDisabled={matchSubmitStatus === "submitting"}
                   submitMatchStatus={matchSubmitStatus}
                   submitMatchError={matchSubmitError}
+                  ourScore={ourScore}
+                  opponentScore={opponentScore}
+                  onOurScoreChange={setOurScore}
+                  onOpponentScoreChange={setOpponentScore}
                 />
 
                 {cloudSyncError && (
