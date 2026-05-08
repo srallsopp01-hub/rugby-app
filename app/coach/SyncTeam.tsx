@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { createDefaultTeam, getTeam, saveTeam } from "@/app/rugby-tagging/lib/team";
+import { TEAM_KEY } from "@/app/rugby-tagging/constants";
 import { fetchCloudTeam, mergeTeams, upsertCloudTeam } from "@/lib/teamCloud";
 import {
   getMyTeamContext,
@@ -53,6 +54,9 @@ export function SyncTeam() {
         return;
       }
       saveTeam(cloud);
+      // Remove the old unscoped key so migration or direct reads can't pick up
+      // stale or corrupted cross-team data from a previous session.
+      try { localStorage.removeItem(TEAM_KEY); } catch { /* non-fatal */ }
       await sync();
     }
 

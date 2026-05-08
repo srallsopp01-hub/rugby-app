@@ -5,7 +5,7 @@ import {
   fetchCloudSavedMatches,
   syncAllLocalMatchesToCloud,
 } from "@/lib/savedMatchesCloud";
-import { replaceSavedMatches } from "@/app/rugby-tagging/lib/savedMatches";
+import { replaceSavedMatches, SAVED_MATCHES_KEY } from "@/app/rugby-tagging/lib/savedMatches";
 import {
   getMyTeamContext,
   ACTIVE_TEAM_CHANGED_EVENT,
@@ -40,6 +40,9 @@ export function SyncSavedMatches() {
       const { records: cloud } = await fetchCloudSavedMatches(ctx.teamId);
       if (cancelled) return;
       replaceSavedMatches(cloud);
+      // Remove the old unscoped key so direct localStorage reads in pages
+      // can't pick up stale cross-team data.
+      try { localStorage.removeItem(SAVED_MATCHES_KEY); } catch { /* non-fatal */ }
       await sync();
     }
 

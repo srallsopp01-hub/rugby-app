@@ -17,7 +17,7 @@ import {
 } from "recharts";
 import {
   CURRENT_MATCH_ID_KEY,
-  SAVED_MATCHES_KEY,
+  getScopedSavedMatchesKey,
 } from "@/app/rugby-tagging/lib/savedMatches";
 import { STORAGE_KEY, SQUAD_PROFILE_KEY } from "@/app/rugby-tagging/constants";
 import type { ManualKpi, BuiltinKpiTarget } from "@/app/rugby-tagging/lib/team";
@@ -128,7 +128,7 @@ export default function InsightsPage() {
 
   const savedMatchesSnapshot = useSyncExternalStore(
     subscribeToStorage,
-    () => getStorageSnapshot(SAVED_MATCHES_KEY, emptyArraySnapshot),
+    () => getStorageSnapshot(getScopedSavedMatchesKey(), emptyArraySnapshot),
     () => emptyArraySnapshot
   );
   const currentMatchId = useSyncExternalStore(

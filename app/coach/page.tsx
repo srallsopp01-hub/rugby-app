@@ -6,10 +6,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { shouldStartCoachOnboarding } from "@/app/rugby-tagging/lib/onboarding";
 import {
-  SAVED_MATCHES_KEY,
+  getScopedSavedMatchesKey,
   type SavedMatchRecord,
 } from "@/app/rugby-tagging/lib/savedMatches";
-import { TEAM_KEY } from "@/app/rugby-tagging/constants";
+import { getScopedTeamKey } from "@/app/rugby-tagging/lib/team";
 import {
   saveSquadProfile,
   createSessionLogId,
@@ -52,11 +52,11 @@ function subscribeToStorage(cb: () => void) {
 
 function getSavedMatchesSnapshot() {
   if (typeof window === "undefined") return emptyArray;
-  return localStorage.getItem(SAVED_MATCHES_KEY) || emptyArray;
+  return localStorage.getItem(getScopedSavedMatchesKey()) || emptyArray;
 }
 function getSquadProfileSnapshot() {
   if (typeof window === "undefined") return emptyObj;
-  return localStorage.getItem(TEAM_KEY) || emptyObj;
+  return localStorage.getItem(getScopedTeamKey()) || emptyObj;
 }
 
 function parseSavedMatches(snapshot: string): SavedMatchRecord[] {

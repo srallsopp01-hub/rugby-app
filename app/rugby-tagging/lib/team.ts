@@ -154,30 +154,16 @@ function migrateTeamLocalStorageKey(): void {
   }
 }
 
+/** Returns the localStorage key used for the active team's profile. */
+export function getScopedTeamKey(): string { return _scopedTeamKey(); }
+
 export function getTeam(): Team | null {
   if (typeof window === "undefined") return null;
 
   migrateTeamLocalStorageKey();
 
   try {
-    const key = _scopedTeamKey();
-    let raw = localStorage.getItem(key);
-
-    // One-time migration from the old unscoped key. Only migrate if the stored
-    // team's id matches the active team — never import another team's data.
-    if (!raw) {
-      const oldRaw = localStorage.getItem(TEAM_KEY);
-      if (oldRaw) {
-        try {
-          const parsed = JSON.parse(oldRaw) as Team;
-          if (parsed?.id && parsed.id === _getActiveTeamId()) {
-            localStorage.setItem(key, oldRaw);
-            raw = oldRaw;
-          }
-        } catch { /* ignore */ }
-      }
-    }
-
+    const raw = localStorage.getItem(_scopedTeamKey());
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return null;

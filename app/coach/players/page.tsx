@@ -11,7 +11,7 @@ import {
 } from "@/app/rugby-tagging/constants";
 import {
   CURRENT_MATCH_ID_KEY,
-  SAVED_MATCHES_KEY,
+  getScopedSavedMatchesKey,
   subscribeSavedMatchesChanged,
   type SavedMatchRecord,
 } from "@/app/rugby-tagging/lib/savedMatches";
@@ -127,7 +127,7 @@ function PlayersContent() {
 
   const savedMatchesSnapshot = useSyncExternalStore(
     subscribeSavedMatchesChanged,
-    () => getStorageSnapshot(SAVED_MATCHES_KEY, emptyArraySnapshot),
+    () => getStorageSnapshot(getScopedSavedMatchesKey(), emptyArraySnapshot),
     () => emptyArraySnapshot
   );
   const currentMatchId = useSyncExternalStore(

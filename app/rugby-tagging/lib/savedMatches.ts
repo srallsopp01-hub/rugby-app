@@ -18,6 +18,9 @@ function _scopedMatchesKey(): string {
   return t ? `${SAVED_MATCHES_KEY}-${t}` : SAVED_MATCHES_KEY;
 }
 
+/** Returns the localStorage key used for the active team's saved matches. */
+export function getScopedSavedMatchesKey(): string { return _scopedMatchesKey(); }
+
 export type SavedCoachReviewNote = {
   id: number;
   timestamp: number;
