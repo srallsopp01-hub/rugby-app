@@ -6,6 +6,7 @@ import { fetchCloudTeam, mergeTeams, upsertCloudTeam } from "@/lib/teamCloud";
 import {
   getMyTeamContext,
   ACTIVE_TEAM_CHANGED_EVENT,
+  ACTIVE_TEAM_ID_KEY,
 } from "@/lib/teamContext";
 
 export function SyncTeam() {
@@ -58,7 +59,16 @@ export function SyncTeam() {
     void pullThenSync();
 
     function handleVisibility() {
-      if (document.visibilityState === "visible") void sync();
+      if (document.visibilityState !== "visible") return;
+      // If local team data belongs to a different team than what's active,
+      // pull from cloud first so we never push stale cross-team data.
+      const local = getTeam();
+      const activeTeamId = localStorage.getItem(ACTIVE_TEAM_ID_KEY) ?? "";
+      if (local?.id && activeTeamId && local.id !== activeTeamId) {
+        void pullThenSync();
+      } else {
+        void sync();
+      }
     }
 
     document.addEventListener("visibilitychange", handleVisibility);

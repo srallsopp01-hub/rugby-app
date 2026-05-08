@@ -9,6 +9,13 @@ import TeamSnapshotPanel from "@/app/rugby-tagging/components/TeamSnapshotPanel"
 import { getMatchVideoUrl } from "@/app/rugby-tagging/lib/matchVideoSession";
 import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfidence";
 import { DEFAULT_ROSTER_ROWS, STORAGE_KEY } from "@/app/rugby-tagging/constants";
+import { ACTIVE_TEAM_ID_KEY } from "@/lib/teamContext";
+
+// Scope the capture session key per team so review never loads a different team's session.
+function getScopedStorageKey(): string {
+  try { const t = localStorage.getItem(ACTIVE_TEAM_ID_KEY) ?? ""; return t ? `${STORAGE_KEY}-${t}` : STORAGE_KEY; }
+  catch { return STORAGE_KEY; }
+}
 import { formatTime, hydrateRosterRows } from "@/app/rugby-tagging/helpers";
 import { getCurrentMatchId, getSavedMatchById, upsertSavedMatch } from "@/app/rugby-tagging/lib/savedMatches";
 import { getTeam } from "@/app/rugby-tagging/lib/team";
@@ -108,7 +115,7 @@ function loadSavedReviewSession(): SavedSession {
       };
     }
 
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(getScopedStorageKey());
     if (!raw) return {};
     const saved: SavedSession = JSON.parse(raw);
     return saved && typeof saved === "object"
@@ -246,7 +253,7 @@ export default function ReviewPage() {
         typeof next.showRawTranscript === "boolean" ? next.showRawTranscript : showRawTranscript;
 
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
+        const raw = localStorage.getItem(getScopedStorageKey());
         const existing = raw ? JSON.parse(raw) : {};
         const payload = {
           ...existing,
@@ -263,7 +270,7 @@ export default function ReviewPage() {
           showRawTranscript: nextShowRawTranscript,
           videoStoragePath: existing.videoStoragePath || savedSession.videoStoragePath,
         };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        localStorage.setItem(getScopedStorageKey(), JSON.stringify(payload));
       } catch (error) {
         console.error("Failed to save review session", error);
         setAutosaveStatus("Autosave failed");

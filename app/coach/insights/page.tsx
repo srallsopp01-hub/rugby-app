@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { syncAllLocalMatchesToCloud } from "@/lib/savedMatchesCloud";
+import { fetchCloudSavedMatches } from "@/lib/savedMatchesCloud";
+import { replaceSavedMatches } from "@/app/rugby-tagging/lib/savedMatches";
+import { getMyTeamContext } from "@/lib/teamContext";
 import { useRouter } from "next/navigation";
 import {
   BarChart,
@@ -54,6 +56,13 @@ type SavedSession = {
   coachNotes?: unknown[];
 };
 
+// Scope session/match-id keys per team so switching teams shows the correct session.
+const ACTIVE_TEAM_ID_KEY = "fynlwhistle-active-team-id";
+function scopedKey(base: string): string {
+  try { const t = localStorage.getItem(ACTIVE_TEAM_ID_KEY) ?? ""; return t ? `${base}-${t}` : base; }
+  catch { return base; }
+}
+
 const emptyArraySnapshot = "[]";
 const subscribeToStorage = (cb: () => void) => {
   window.addEventListener("rugby-saved-matches-changed", cb);
@@ -102,7 +111,18 @@ export default function InsightsPage() {
   const [expandedTrendPlayer, setExpandedTrendPlayer] = useState<string | null>(null);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [pdfExporting, setPdfExporting] = useState(false);
-  useEffect(() => { void syncAllLocalMatchesToCloud(); }, []);
+  // Pull-only on mount: replace local matches with this team's cloud matches.
+  // Using pull-only (not merge+push) prevents stale data from a previous team
+  // being pushed to the active team's cloud slot.
+  useEffect(() => {
+    async function pull() {
+      const ctx = await getMyTeamContext();
+      if (!ctx?.teamId) return;
+      const { records } = await fetchCloudSavedMatches(ctx.teamId);
+      replaceSavedMatches(records);
+    }
+    void pull();
+  }, []);
 
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
 
@@ -113,12 +133,12 @@ export default function InsightsPage() {
   );
   const currentMatchId = useSyncExternalStore(
     subscribeToStorage,
-    () => getStorageSnapshot(CURRENT_MATCH_ID_KEY, ""),
+    () => getStorageSnapshot(scopedKey(CURRENT_MATCH_ID_KEY), ""),
     () => ""
   );
   const sessionSnapshot = useSyncExternalStore(
     subscribeToStorage,
-    () => getStorageSnapshot(STORAGE_KEY, "{}"),
+    () => getStorageSnapshot(scopedKey(STORAGE_KEY), "{}"),
     () => "{}"
   );
 
