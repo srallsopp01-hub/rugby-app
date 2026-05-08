@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { createDefaultTeam, getTeam, saveTeam } from "@/app/rugby-tagging/lib/team";
 import { TEAM_KEY } from "@/app/rugby-tagging/constants";
+import { SAVED_MATCHES_KEY } from "@/app/rugby-tagging/lib/savedMatches";
 import { fetchCloudTeam, mergeTeams, upsertCloudTeam } from "@/lib/teamCloud";
 import {
   getMyTeamContext,
@@ -10,8 +11,33 @@ import {
   ACTIVE_TEAM_ID_KEY,
 } from "@/lib/teamContext";
 
+// One-time migration: clears all localStorage keys that may contain stale
+// cross-team data from before the per-team scoped key architecture was introduced.
+// Runs once per browser; cloud data repopulates via pullThenSync after clearing.
+const MIGRATION_FLAG = "fynlwhistle-storage-scoped-v1";
+function runOneTimeMigration() {
+  if (typeof window === "undefined") return;
+  if (localStorage.getItem(MIGRATION_FLAG) === "1") return;
+  try {
+    const prefixes = [
+      TEAM_KEY,
+      SAVED_MATCHES_KEY,
+      "rugby-voice-tagging-mvp-v2",
+      "rugby-tagging-current-match-id",
+      "rugby-voice-tagging-corrections-v2",
+    ];
+    Object.keys(localStorage).forEach((k) => {
+      if (prefixes.some((p) => k === p || k.startsWith(p + "-"))) {
+        localStorage.removeItem(k);
+      }
+    });
+    localStorage.setItem(MIGRATION_FLAG, "1");
+  } catch { /* non-fatal */ }
+}
+
 export function SyncTeam() {
   useEffect(() => {
+    runOneTimeMigration();
     let cancelled = false;
 
     async function sync() {
