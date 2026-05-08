@@ -19,18 +19,18 @@ import {
   type InviteLink,
 } from "@/lib/teamMembersCloud";
 import {
-  createDefaultSquadProfile,
-  getSquadProfile,
   saveSquadProfile,
   type SquadPlayer,
   type SquadProfile,
 } from "@/app/rugby-tagging/lib/team";
+import { useTeam } from "@/app/providers/TeamContext";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 
 export default function TeamPage() {
-  const [profile, setProfile] = useState<SquadProfile | null>(null);
-  const [teamNameDraft, setTeamNameDraft] = useState("");
+  const { team: liveTeam } = useTeam();
+  const [profile, setProfile] = useState<SquadProfile | null>(liveTeam ?? null);
+  const [teamNameDraft, setTeamNameDraft] = useState(liveTeam?.teamName ?? "");
   const [savingTeamName, setSavingTeamName] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Manage your team access");
   const [loading, setLoading] = useState(true);
@@ -61,13 +61,15 @@ export default function TeamPage() {
   const [acceptedMembers, setAcceptedMembers] = useState<TeamMember[]>([]);
   const [notifyRequests, setNotifyRequests] = useState<TeamMember[]>([]);
 
+  // Keep local profile in sync with TeamContext (handles async initial fetch).
   useEffect(() => {
-    const loadedProfile = getSquadProfile();
-    if (loadedProfile) {
-      setProfile(loadedProfile);
-      setTeamNameDraft(loadedProfile.teamName);
+    if (liveTeam) {
+      setProfile(liveTeam);
+      setTeamNameDraft((prev) => prev || liveTeam.teamName);
     }
+  }, [liveTeam]);
 
+  useEffect(() => {
     void Promise.all([
       fetchTeamMembers(),
       fetchNotifyRequests(),
@@ -225,9 +227,9 @@ export default function TeamPage() {
       return;
     }
     setSavingTeamName(true);
-    const currentProfile = profile ?? createDefaultSquadProfile();
+    if (!profile) return;
     const updatedProfile = {
-      ...currentProfile,
+      ...profile,
       teamName: nextName,
       updatedAt: new Date().toISOString(),
     };
