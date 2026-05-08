@@ -395,7 +395,11 @@ export default function CoachDashboardPage() {
     for (const m of savedMatches) {
       const evts = (m.events || []).filter((e: EventItem) => !e.isPending);
       const te = buildTeamEventSummary(evts);
-      if (te.triesScored > te.triesConceded) wins++;
+      if (typeof m.ourScore === "number" && typeof m.opponentScore === "number") {
+        if (m.ourScore > m.opponentScore) wins++;
+      } else {
+        if (te.triesScored > te.triesConceded) wins++;
+      }
       totalTriesFor += te.triesScored;
       totalTriesAgainst += te.triesConceded;
     }
@@ -568,6 +572,14 @@ export default function CoachDashboardPage() {
                 <div className="mt-0.5 text-[10px] text-muted-2">
                   {seasonStats ? `${seasonStats.played} match${seasonStats.played !== 1 ? "es" : ""}` : "no matches yet"}
                 </div>
+                {lastMatch && typeof lastMatch.ourScore === "number" && typeof lastMatch.opponentScore === "number" && (
+                  <div className={`mt-1 text-[10px] font-semibold tabular-nums ${
+                    lastMatch.ourScore > lastMatch.opponentScore ? "text-success" :
+                    lastMatch.ourScore < lastMatch.opponentScore ? "text-danger" : "text-muted"
+                  }`}>
+                    Last: {lastMatch.ourScore} – {lastMatch.opponentScore}
+                  </div>
+                )}
               </div>
               {/* Try difference */}
               <div className="rounded-xl border border-border bg-panel px-4 py-3 shadow-[var(--shadow-soft)]">

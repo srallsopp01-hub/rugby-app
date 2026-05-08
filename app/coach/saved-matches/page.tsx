@@ -258,6 +258,17 @@ export default function CoachSavedMatchesPage() {
                         <h2 className="text-lg font-semibold text-foreground-strong">
                           {confidence.title}
                         </h2>
+                        {typeof match.ourScore === "number" && typeof match.opponentScore === "number" && (
+                          <span className={`rounded-full border px-2.5 py-1 text-sm font-bold tabular-nums ${
+                            match.ourScore > match.opponentScore
+                              ? "border-success/40 bg-success/10 text-success"
+                              : match.ourScore < match.opponentScore
+                              ? "border-danger/40 bg-danger/10 text-danger"
+                              : "border-border bg-panel-2 text-foreground"
+                          }`}>
+                            {match.ourScore} – {match.opponentScore}
+                          </span>
+                        )}
                         <span
                           className={`rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] ${
                             confidence.readyTone === "ready"
