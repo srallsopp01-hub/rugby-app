@@ -4,7 +4,7 @@ import { useMemo, useSyncExternalStore } from "react";
 import { getSquadProfile } from "@/app/rugby-tagging/lib/team";
 import { SQUAD_PROFILE_KEY } from "@/app/rugby-tagging/constants";
 import {
-  SAVED_MATCHES_KEY,
+  getScopedSavedMatchesKey,
   subscribeSavedMatchesChanged,
 } from "@/app/rugby-tagging/lib/savedMatches";
 import { usePlayer } from "./PlayerContext";
@@ -29,7 +29,7 @@ export function PlayerPicker() {
   );
   const matchesRaw = useSyncExternalStore(
     subscribeSavedMatchesChanged,
-    () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
+    () => localStorage.getItem(getScopedSavedMatchesKey()) ?? "[]",
     () => "[]"
   );
 

@@ -6,7 +6,7 @@ import { PageHelp } from "@/app/components/PageHelp";
 import { PLAYER_PAGE_HELP } from "../help-content";
 import { PlayerPicker } from "../PlayerPicker";
 import {
-  SAVED_MATCHES_KEY,
+  getScopedSavedMatchesKey,
   subscribeSavedMatchesChanged,
   getSavedMatchById,
   upsertSavedMatch,
@@ -225,7 +225,7 @@ export default function ReviewPage() {
 
   const matchesRaw = useSyncExternalStore(
     subscribeSavedMatchesChanged,
-    () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
+    () => localStorage.getItem(getScopedSavedMatchesKey()) ?? "[]",
     () => "[]"
   );
 

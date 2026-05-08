@@ -4,8 +4,8 @@ import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePlayer } from "@/app/player/PlayerContext";
 import {
-  TEAM_KEY,
-} from "@/app/rugby-tagging/constants";
+  getScopedTeamKey,
+} from "@/app/rugby-tagging/lib/team";
 import {
   saveTeam,
   TEAM_CHANGED_EVENT,
@@ -24,7 +24,7 @@ function subscribeTeam(cb: () => void) {
 
 function getTeamSnapshot(): string {
   if (typeof window === "undefined") return "{}";
-  return localStorage.getItem(TEAM_KEY) || "{}";
+  return localStorage.getItem(getScopedTeamKey()) || "{}";
 }
 
 function parseProfile(snapshot: string): Team | null {

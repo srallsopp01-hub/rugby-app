@@ -18,7 +18,7 @@ import {
 import { PlayerPicker } from "../PlayerPicker";
 import { usePlayer } from "../PlayerContext";
 import {
-  SAVED_MATCHES_KEY,
+  getScopedSavedMatchesKey,
   subscribeSavedMatchesChanged,
   type SavedMatchRecord,
 } from "@/app/rugby-tagging/lib/savedMatches";
@@ -108,7 +108,7 @@ export default function PlayerTeamAnalyticsPage() {
 
   const matchesRaw = useSyncExternalStore(
     subscribeSavedMatchesChanged,
-    () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
+    () => localStorage.getItem(getScopedSavedMatchesKey()) ?? "[]",
     () => "[]"
   );
 

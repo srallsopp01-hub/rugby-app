@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePlayer } from "./PlayerContext";
 import { PlayerPicker } from "./PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
-import { SAVED_MATCHES_KEY, subscribeSavedMatchesChanged } from "@/app/rugby-tagging/lib/savedMatches";
+import { getScopedSavedMatchesKey, subscribeSavedMatchesChanged } from "@/app/rugby-tagging/lib/savedMatches";
 import { SQUAD_PROFILE_KEY } from "@/app/rugby-tagging/constants";
 import { saveSquadProfile, SQUAD_PROFILE_CHANGED_EVENT } from "@/app/rugby-tagging/lib/team";
 import { buildReportRowsFromMatch, gradeToScore } from "@/app/rugby-tagging/helpers";
@@ -352,7 +352,7 @@ export default function PlayerHomePage() {
 
   const matchesRaw = useSyncExternalStore(
     subscribeSavedMatchesChanged,
-    () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
+    () => localStorage.getItem(getScopedSavedMatchesKey()) ?? "[]",
     () => "[]"
   );
 

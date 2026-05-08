@@ -6,14 +6,13 @@ import { usePlayer } from "../PlayerContext";
 import { PlayerPicker } from "../PlayerPicker";
 import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
 import { PLAYER_IDENTITY_KEY, SQUAD_PROFILE_KEY } from "@/app/rugby-tagging/constants";
-import { SAVED_MATCHES_KEY } from "@/app/rugby-tagging/lib/savedMatches";
-
-const PLAYER_STORAGE_KEYS = [PLAYER_IDENTITY_KEY, SQUAD_PROFILE_KEY, SAVED_MATCHES_KEY];
+import { getScopedSavedMatchesKey } from "@/app/rugby-tagging/lib/savedMatches";
 
 function getStorageSnapshot(): string {
   if (typeof window === "undefined") return "{}";
+  const keys = [PLAYER_IDENTITY_KEY, SQUAD_PROFILE_KEY, getScopedSavedMatchesKey()];
   return JSON.stringify(
-    PLAYER_STORAGE_KEYS.reduce<Record<string, string | null>>((acc, key) => {
+    keys.reduce<Record<string, string | null>>((acc, key) => {
       acc[key] = localStorage.getItem(key);
       return acc;
     }, {})

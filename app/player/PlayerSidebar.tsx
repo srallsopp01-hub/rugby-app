@@ -11,7 +11,7 @@ import {
   setActiveTeam,
 } from "@/lib/teamContext";
 import { usePlayer } from "./PlayerContext";
-import { SAVED_MATCHES_KEY, subscribeSavedMatchesChanged } from "@/app/rugby-tagging/lib/savedMatches";
+import { getScopedSavedMatchesKey, subscribeSavedMatchesChanged } from "@/app/rugby-tagging/lib/savedMatches";
 import { countUnseenClips } from "./lib/unseenClips";
 import { getLastSeenAt, subscribeReviewSeenChanged } from "./lib/reviewSeen";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
@@ -265,7 +265,7 @@ export default function PlayerSidebar() {
 
   const matchesRaw = useSyncExternalStore(
     subscribeSavedMatchesChanged,
-    () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
+    () => localStorage.getItem(getScopedSavedMatchesKey()) ?? "[]",
     () => "[]"
   );
 

@@ -18,7 +18,7 @@ import Link from "next/link";
 import { usePlayer } from "../PlayerContext";
 import { PlayerPicker } from "../PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
-import { SAVED_MATCHES_KEY, subscribeSavedMatchesChanged } from "@/app/rugby-tagging/lib/savedMatches";
+import { getScopedSavedMatchesKey, subscribeSavedMatchesChanged } from "@/app/rugby-tagging/lib/savedMatches";
 import { buildReportRowsFromMatch } from "@/app/rugby-tagging/helpers";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { Grade, ReportRow } from "@/app/rugby-tagging/types";
@@ -137,7 +137,7 @@ export default function PerformancePage() {
 
   const matchesRaw = useSyncExternalStore(
     subscribeSavedMatchesChanged,
-    () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
+    () => localStorage.getItem(getScopedSavedMatchesKey()) ?? "[]",
     () => "[]"
   );
 
