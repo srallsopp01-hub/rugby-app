@@ -155,10 +155,11 @@ function formatSessionLabel(session: TrainingSession): string {
 
 export default function TeamSetupPage() {
   const { team: liveTeam, isLoading } = useTeam();
-  const [profile, setProfile] = useState<SquadProfile | null>(liveTeam ?? createDefaultSquadProfile());
+  const [profile, setProfile] = useState<SquadProfile | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Keep local profile in sync with TeamContext (handles async initial fetch).
+  // Initialise and keep local profile in sync with TeamContext.
+  // Start as null so we never persist a blank default before real data arrives.
   useEffect(() => {
     if (liveTeam) setProfile(liveTeam);
   }, [liveTeam]);
@@ -167,6 +168,7 @@ export default function TeamSetupPage() {
   const [form, setForm] = useState(BLANK_FORM);
 
   const persist = (updated: SquadProfile) => {
+    if (isLoading) return;
     saveSquadProfile(updated);
     setProfile(updated);
   };
@@ -373,7 +375,9 @@ export default function TeamSetupPage() {
     });
   };
 
-  if (!profile) return null;
+  if (!profile || isLoading) return (
+    <div className="flex min-h-full items-center justify-center text-muted text-sm">Loading…</div>
+  );
 
   const sortedPlayers = [...profile.players].sort((a, b) => {
     const ai = POSITION_OPTIONS.indexOf(a.primaryPosition);
