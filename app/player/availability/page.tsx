@@ -98,15 +98,16 @@ export default function PlayerAvailabilityPage() {
   const [syncState, setSyncState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Local responses state — initialised from TeamContext once, then owned locally.
+  // Local responses state — initialised from TeamContext on each profile update
+  // until the player first taps a button (hasInteracted). After that, the player's
+  // optimistic updates own the state and profile refetches are ignored.
   // No setTeamCache / TEAM_CHANGED_EVENT: the RPC is the sole cloud write.
   const [responses, setResponses] = useState<AvailabilityResponse[]>([]);
   const responsesRef = useRef<AvailabilityResponse[]>([]);
-  const responsesInitialized = useRef(false);
+  const hasInteracted = useRef(false);
 
   useEffect(() => {
-    if (!responsesInitialized.current && profile?.availabilityResponses != null) {
-      responsesInitialized.current = true;
+    if (!hasInteracted.current && profile?.availabilityResponses != null) {
       responsesRef.current = profile.availabilityResponses;
       setResponses(profile.availabilityResponses);
     }
@@ -137,6 +138,7 @@ export default function PlayerAvailabilityPage() {
 
   function upsertResponse(patch: Partial<AvailabilityResponse> & { response: AvailabilityResponse["response"] }) {
     if (!currentPlayer) return;
+    hasInteracted.current = true;
     // Read from ref to avoid stale closure when two buttons are clicked in quick succession.
     const currentResponses = responsesRef.current;
     const existing = currentResponses.findIndex(
