@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { fetchCloudSavedMatches } from "@/lib/savedMatchesCloud";
-import { replaceSavedMatches } from "@/app/rugby-tagging/lib/savedMatches";
-import { getMyTeamContext } from "@/lib/teamContext";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
+import { useMatches } from "@/app/providers/MatchesContext";
 import {
   BarChart,
   Bar,
@@ -15,10 +13,7 @@ import {
   CartesianGrid,
   Cell,
 } from "recharts";
-import {
-  CURRENT_MATCH_ID_KEY,
-  getScopedSavedMatchesKey,
-} from "@/app/rugby-tagging/lib/savedMatches";
+import { getCurrentMatchId } from "@/app/rugby-tagging/lib/savedMatches";
 import { STORAGE_KEY } from "@/app/rugby-tagging/constants";
 import type { ManualKpi, BuiltinKpiTarget } from "@/app/rugby-tagging/lib/team";
 import { DEFAULT_BUILTIN_TARGETS, getTeam } from "@/app/rugby-tagging/lib/team";
@@ -56,35 +51,10 @@ type SavedSession = {
   coachNotes?: unknown[];
 };
 
-// Scope session/match-id keys per team so switching teams shows the correct session.
 const ACTIVE_TEAM_ID_KEY = "fynlwhistle-active-team-id";
-function scopedKey(base: string): string {
-  try { const t = localStorage.getItem(ACTIVE_TEAM_ID_KEY) ?? ""; return t ? `${base}-${t}` : base; }
-  catch { return base; }
-}
-
-const emptyArraySnapshot = "[]";
-const subscribeToStorage = (cb: () => void) => {
-  window.addEventListener("rugby-saved-matches-changed", cb);
-  window.addEventListener("storage", cb);
-  return () => {
-    window.removeEventListener("rugby-saved-matches-changed", cb);
-    window.removeEventListener("storage", cb);
-  };
-};
-
-function getStorageSnapshot(key: string, fallback: string) {
-  if (typeof window === "undefined") return fallback;
-  return localStorage.getItem(key) || fallback;
-}
-
-function parseSavedMatches(snapshot: string): SavedMatchRecord[] {
-  try {
-    const parsed = JSON.parse(snapshot);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+function scopedSessionKey(): string {
+  try { const t = localStorage.getItem(ACTIVE_TEAM_ID_KEY) ?? ""; return t ? `${STORAGE_KEY}-${t}` : STORAGE_KEY; }
+  catch { return STORAGE_KEY; }
 }
 
 function parseSavedSession(snapshot: string): SavedSession | null {
@@ -111,45 +81,14 @@ export default function InsightsPage() {
   const [expandedTrendPlayer, setExpandedTrendPlayer] = useState<string | null>(null);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [pdfExporting, setPdfExporting] = useState(false);
-  // Pull-only on mount: replace local matches with this team's cloud matches.
-  // Using pull-only (not merge+push) prevents stale data from a previous team
-  // being pushed to the active team's cloud slot.
-  useEffect(() => {
-    async function pull() {
-      const ctx = await getMyTeamContext();
-      if (!ctx?.teamId) return;
-      const { records } = await fetchCloudSavedMatches(ctx.teamId);
-      replaceSavedMatches(records);
-    }
-    void pull();
-  }, []);
+  const { matches: allMatches } = useMatches();
+  const [currentMatchId] = useState(() => getCurrentMatchId());
+  const [sessionMatch] = useState<SavedSession | null>(() => {
+    if (typeof window === "undefined") return null;
+    return parseSavedSession(localStorage.getItem(scopedSessionKey()) ?? "{}");
+  });
 
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
-
-  const savedMatchesSnapshot = useSyncExternalStore(
-    subscribeToStorage,
-    () => getStorageSnapshot(getScopedSavedMatchesKey(), emptyArraySnapshot),
-    () => emptyArraySnapshot
-  );
-  const currentMatchId = useSyncExternalStore(
-    subscribeToStorage,
-    () => getStorageSnapshot(scopedKey(CURRENT_MATCH_ID_KEY), ""),
-    () => ""
-  );
-  const sessionSnapshot = useSyncExternalStore(
-    subscribeToStorage,
-    () => getStorageSnapshot(scopedKey(STORAGE_KEY), "{}"),
-    () => "{}"
-  );
-
-  const allMatches = useMemo(
-    () => parseSavedMatches(savedMatchesSnapshot),
-    [savedMatchesSnapshot]
-  );
-  const sessionMatch = useMemo(
-    () => parseSavedSession(sessionSnapshot),
-    [sessionSnapshot]
-  );
   const effectiveMatchId = selectedMatchId ?? currentMatchId;
   const activeMatch = useMemo(
     () => allMatches.find((m) => m.id === effectiveMatchId) || null,

@@ -11,10 +11,9 @@ import {
   setActiveTeam,
 } from "@/lib/teamContext";
 import { usePlayer } from "./PlayerContext";
-import { getScopedSavedMatchesKey, subscribeSavedMatchesChanged } from "@/app/rugby-tagging/lib/savedMatches";
+import { useMatches } from "@/app/providers/MatchesContext";
 import { countUnseenClips } from "./lib/unseenClips";
 import { getLastSeenAt, subscribeReviewSeenChanged } from "./lib/reviewSeen";
-import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 
 const navItems = [
   {
@@ -263,11 +262,7 @@ export default function PlayerSidebar() {
     router.refresh();
   }
 
-  const matchesRaw = useSyncExternalStore(
-    subscribeSavedMatchesChanged,
-    () => localStorage.getItem(getScopedSavedMatchesKey()) ?? "[]",
-    () => "[]"
-  );
+  const { matches } = useMatches();
 
   const lastSeenAt = useSyncExternalStore(
     subscribeReviewSeenChanged,
@@ -277,10 +272,8 @@ export default function PlayerSidebar() {
 
   const unseenClipCount = useMemo(() => {
     if (!currentPlayer) return 0;
-    let all: SavedMatchRecord[];
-    try { all = JSON.parse(matchesRaw); } catch { return 0; }
-    return countUnseenClips(all, currentPlayer, lastSeenAt);
-  }, [matchesRaw, currentPlayer, lastSeenAt]);
+    return countUnseenClips(matches, currentPlayer, lastSeenAt);
+  }, [matches, currentPlayer, lastSeenAt]);
 
   const toggle = () => {
     localStorage.setItem("player-sidebar-collapsed", String(!collapsed));

@@ -1,40 +1,13 @@
 "use client";
 
-import { useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePlayer } from "@/app/player/PlayerContext";
-import {
-  getScopedTeamKey,
-} from "@/app/rugby-tagging/lib/team";
+import { useTeam } from "@/app/providers/TeamContext";
 import {
   saveTeam,
-  TEAM_CHANGED_EVENT,
-  type Team,
 } from "@/app/rugby-tagging/lib/team";
 import type { AvailabilityResponse, Fixture, TrainingSession, TrainingSessionDayOfWeek } from "@/app/rugby-tagging/types";
-
-// ---------------------------------------------------------------------------
-// Storage subscription — reacts to saveTeam() calls
-// ---------------------------------------------------------------------------
-
-function subscribeTeam(cb: () => void) {
-  window.addEventListener(TEAM_CHANGED_EVENT, cb);
-  return () => window.removeEventListener(TEAM_CHANGED_EVENT, cb);
-}
-
-function getTeamSnapshot(): string {
-  if (typeof window === "undefined") return "{}";
-  return localStorage.getItem(getScopedTeamKey()) || "{}";
-}
-
-function parseProfile(snapshot: string): Team | null {
-  try {
-    const parsed = JSON.parse(snapshot);
-    return parsed && typeof parsed === "object" ? (parsed as Team) : null;
-  } catch {
-    return null;
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -124,16 +97,9 @@ function AvailabilityButtons({
 
 export default function PlayerAvailabilityPage() {
   const { currentPlayer, ready } = usePlayer();
+  const { team: profile } = useTeam();
   const [syncState, setSyncState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const profileSnapshot = useSyncExternalStore(
-    subscribeTeam,
-    getTeamSnapshot,
-    () => "{}"
-  );
-
-  const profile = useMemo(() => parseProfile(profileSnapshot), [profileSnapshot]);
 
   const today = todayIso();
 

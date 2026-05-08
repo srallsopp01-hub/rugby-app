@@ -1,13 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePlayer } from "../PlayerContext";
 import { PageHelp } from "@/app/components/PageHelp";
 import { PLAYER_PAGE_HELP } from "../help-content";
 import { PlayerPicker } from "../PlayerPicker";
+import { useMatches } from "@/app/providers/MatchesContext";
 import {
-  getScopedSavedMatchesKey,
-  subscribeSavedMatchesChanged,
   getSavedMatchById,
   upsertSavedMatch,
 } from "@/app/rugby-tagging/lib/savedMatches";
@@ -223,19 +222,13 @@ export default function ReviewPage() {
   // Track which match's video is currently in the video element
   const [activeVideoMatchId, setActiveVideoMatchId] = useState<string | null>(null);
 
-  const matchesRaw = useSyncExternalStore(
-    subscribeSavedMatchesChanged,
-    () => localStorage.getItem(getScopedSavedMatchesKey()) ?? "[]",
-    () => "[]"
-  );
+  const { matches } = useMatches();
 
   const { clipGroups, totalClips, totalSetPieces } = useMemo(() => {
-    let all: SavedMatchRecord[];
-    try { all = JSON.parse(matchesRaw); } catch { return { clipGroups: [], totalClips: 0, totalSetPieces: 0 }; }
     const clipResult: ClipGroup[] = [];
     let totalC = 0;
     let totalS = 0;
-    for (const match of all) {
+    for (const match of matches) {
       const clips = [...(match.clips ?? [])].sort((a, b) => a.startTime - b.startTime);
       const setPieceMoments = buildSetPieceReviewMoments(match.events ?? []);
       if (clips.length > 0 || setPieceMoments.length > 0) {
@@ -245,7 +238,7 @@ export default function ReviewPage() {
       }
     }
     return { clipGroups: clipResult, totalClips: totalC, totalSetPieces: totalS };
-  }, [matchesRaw]);
+  }, [matches]);
 
   // Revoke all blob URLs on unmount
   useEffect(() => {

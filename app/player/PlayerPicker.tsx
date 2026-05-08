@@ -1,49 +1,22 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
-import { getSquadProfile } from "@/app/rugby-tagging/lib/team";
-import { SQUAD_PROFILE_KEY } from "@/app/rugby-tagging/constants";
-import {
-  getScopedSavedMatchesKey,
-  subscribeSavedMatchesChanged,
-} from "@/app/rugby-tagging/lib/savedMatches";
+import { useMemo } from "react";
 import { usePlayer } from "./PlayerContext";
+import { useTeam } from "@/app/providers/TeamContext";
+import { useMatches } from "@/app/providers/MatchesContext";
 import type { SquadPlayer } from "@/app/rugby-tagging/lib/team";
-
-function subscribeSquadProfileChanged(cb: () => void) {
-  window.addEventListener("player-identity-changed", cb);
-  window.addEventListener("storage", cb);
-  return () => {
-    window.removeEventListener("player-identity-changed", cb);
-    window.removeEventListener("storage", cb);
-  };
-}
 
 export function PlayerPicker() {
   const { setCurrentPlayer } = usePlayer();
-
-  const squadRaw = useSyncExternalStore(
-    subscribeSquadProfileChanged,
-    () => localStorage.getItem(SQUAD_PROFILE_KEY) ?? "",
-    () => ""
-  );
-  const matchesRaw = useSyncExternalStore(
-    subscribeSavedMatchesChanged,
-    () => localStorage.getItem(getScopedSavedMatchesKey()) ?? "[]",
-    () => "[]"
-  );
+  const { team } = useTeam();
+  const { matches } = useMatches();
 
   const players = useMemo<SquadPlayer[]>(() => {
-    void squadRaw; // depend on snapshot so memo re-runs if store changes
-    const profile = getSquadProfile();
-    return profile?.players.filter((p) => p.status === "active") ?? [];
-  }, [squadRaw]);
+    return team?.players.filter((p) => p.status === "active") ?? [];
+  }, [team]);
 
   const lastGameDates = useMemo<Map<string, string>>(() => {
     const dateMap = new Map<string, string>();
-    let matches;
-    try { matches = JSON.parse(matchesRaw); } catch { return dateMap; }
-    if (!Array.isArray(matches)) return dateMap;
     for (const player of players) {
       for (const m of matches) {
         const inRoster = m.rosterRows?.some(
@@ -56,7 +29,7 @@ export function PlayerPicker() {
       }
     }
     return dateMap;
-  }, [players, matchesRaw]);
+  }, [players, matches]);
 
   return (
     <div className="min-h-full bg-background px-4 py-6 text-foreground sm:px-6 lg:px-8">

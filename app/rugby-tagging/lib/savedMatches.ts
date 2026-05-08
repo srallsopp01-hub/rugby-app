@@ -1,11 +1,14 @@
 import type { ClipAnnotation, EventItem, ReviewItem, RosterRow } from "../types";
 
-export const SAVED_MATCHES_KEY = "rugby-tagging-saved-matches-v1";
-export const CURRENT_MATCH_ID_KEY = "rugby-tagging-current-match-id";
 export const SAVED_MATCHES_CHANGED_EVENT = "rugby-saved-matches-changed";
+export const CLOUD_SYNC_ERROR_EVENT = "fynlwhistle-cloud-sync-error";
 
-// Reads the active team ID written by teamContext — no import needed (avoids circular deps).
+// In-progress capture session ID — scoped per team so switching teams never
+// carries over a stale match ID. This is the only localStorage usage kept here;
+// the session ID is ephemeral and not part of the persistent data model.
 const ACTIVE_TEAM_ID_KEY = "fynlwhistle-active-team-id";
+const CURRENT_MATCH_ID_KEY = "rugby-tagging-current-match-id";
+
 function getActiveTeamId(): string {
   try { return localStorage.getItem(ACTIVE_TEAM_ID_KEY) ?? ""; } catch { return ""; }
 }
@@ -13,13 +16,6 @@ function scopedMatchIdKey(): string {
   const t = getActiveTeamId();
   return t ? `${CURRENT_MATCH_ID_KEY}-${t}` : CURRENT_MATCH_ID_KEY;
 }
-function _scopedMatchesKey(): string {
-  const t = getActiveTeamId();
-  return t ? `${SAVED_MATCHES_KEY}-${t}` : SAVED_MATCHES_KEY;
-}
-
-/** Returns the localStorage key used for the active team's saved matches. */
-export function getScopedSavedMatchesKey(): string { return _scopedMatchesKey(); }
 
 export type SavedCoachReviewNote = {
   id: number;
@@ -46,6 +42,15 @@ export type SavedMatchRecord = {
   videoStoragePath?: string;
 };
 
+// In-memory cache — populated by MatchesContext after fetching from Supabase.
+let _matchesCache: SavedMatchRecord[] = [];
+
+export function getSavedMatches(): SavedMatchRecord[] { return [..._matchesCache]; }
+export function getSavedMatchById(matchId: string): SavedMatchRecord | null {
+  return _matchesCache.find((m) => m.id === matchId) ?? null;
+}
+export function setMatchesCache(matches: SavedMatchRecord[]): void { _matchesCache = matches; }
+
 export function createMatchId() {
   return `match_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -65,88 +70,45 @@ export function clearCurrentMatchId() {
   localStorage.removeItem(scopedMatchIdKey());
 }
 
-export function getSavedMatches(): SavedMatchRecord[] {
-  if (typeof window === "undefined") return [];
-
-  try {
-    const raw = localStorage.getItem(_scopedMatchesKey());
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-export function getSavedMatchById(matchId: string) {
-  return getSavedMatches().find((match) => match.id === matchId) || null;
-}
-
-function emitSavedMatchesChanged() {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(new Event(SAVED_MATCHES_CHANGED_EVENT));
-}
-
-export function subscribeSavedMatchesChanged(cb: () => void) {
-  if (typeof window === "undefined") return () => {};
-  window.addEventListener(SAVED_MATCHES_CHANGED_EVENT, cb);
-  window.addEventListener("storage", cb);
-  return () => {
-    window.removeEventListener(SAVED_MATCHES_CHANGED_EVENT, cb);
-    window.removeEventListener("storage", cb);
-  };
-}
-
-export function replaceSavedMatches(records: SavedMatchRecord[]) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(_scopedMatchesKey(), JSON.stringify(records));
-  emitSavedMatchesChanged();
-}
-
 export function upsertSavedMatch(record: SavedMatchRecord) {
-  if (typeof window === "undefined") return;
-
-  const existing = getSavedMatches();
-  const index = existing.findIndex((item) => item.id === record.id);
-
-  if (index >= 0) {
-    const previous = existing[index];
-    existing[index] = {
-      ...record,
-      createdAt: previous.createdAt,
-    };
-  } else {
-    existing.unshift(record);
+  // Optimistic cache update so pages re-render immediately.
+  const prev = [..._matchesCache];
+  const idx = prev.findIndex((m) => m.id === record.id);
+  if (idx >= 0) { prev[idx] = record; } else { prev.unshift(record); }
+  setMatchesCache(prev);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(SAVED_MATCHES_CHANGED_EVENT));
   }
-
-  replaceSavedMatches(existing);
+  // Persist to Supabase asynchronously.
   import("@/lib/savedMatchesCloud")
     .then(({ upsertCloudSavedMatch }) => upsertCloudSavedMatch(record))
     .then((result) => {
-      if (result && !result.ok) {
+      if (typeof window !== "undefined" && result && !result.ok) {
         window.dispatchEvent(
           new CustomEvent("fynlwhistle-cloud-sync-error", { detail: [result.error ?? "Cloud sync failed"] })
         );
       }
     })
     .catch((err: unknown) => {
-      window.dispatchEvent(
-        new CustomEvent("fynlwhistle-cloud-sync-error", { detail: [String(err)] })
-      );
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("fynlwhistle-cloud-sync-error", { detail: [String(err)] })
+        );
+      }
     });
 }
 
-export function deleteSavedMatch(matchId: string) {
-  if (typeof window === "undefined") return;
+export function deleteSavedMatch(matchId: string, videoStoragePath?: string) {
+  // Optimistic cache update.
+  setMatchesCache(_matchesCache.filter((m) => m.id !== matchId));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(SAVED_MATCHES_CHANGED_EVENT));
+  }
 
-  const matchToDelete = getSavedMatchById(matchId);
-  const nextMatches = getSavedMatches().filter((match) => match.id !== matchId);
-  replaceSavedMatches(nextMatches);
-
-  if (matchToDelete?.videoStoragePath) {
+  if (videoStoragePath) {
     import("@/lib/matchVideoCloud")
       .then(({ deleteMatchVideo }) =>
-        deleteMatchVideo(matchToDelete.videoStoragePath!).then((result) => {
+        deleteMatchVideo(videoStoragePath).then((result) => {
           if (!result.ok) console.error("Failed to delete match video", result.error);
         })
       )
@@ -154,6 +116,6 @@ export function deleteSavedMatch(matchId: string) {
   }
 
   import("@/lib/savedMatchesCloud")
-    .then(({ deleteCloudSavedMatch }) => void deleteCloudSavedMatch(matchId))
+    .then(({ deleteCloudSavedMatch }) => deleteCloudSavedMatch(matchId))
     .catch(() => {});
 }

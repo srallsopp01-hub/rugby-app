@@ -5,12 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "../help-content";
 import {
-  getSavedMatches,
   type SavedMatchRecord,
 } from "@/app/rugby-tagging/lib/savedMatches";
-import { fetchCloudSavedMatches } from "@/lib/savedMatchesCloud";
-import { replaceSavedMatches } from "@/app/rugby-tagging/lib/savedMatches";
-import { getMyTeamContext } from "@/lib/teamContext";
+import { useMatches } from "@/app/providers/MatchesContext";
 import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfidence";
 import {
   buildReportRowsFromMatch,
@@ -390,8 +387,9 @@ function PlayerCard({
 }
 
 export default function ComparePage() {
-  const [savedMatches, setSavedMatches] = useState<SavedMatchRecord[]>([]);
-  const [hasLoaded, setHasLoaded] = useState(false);
+  const { matches: rawMatches, isLoading } = useMatches();
+  const savedMatches = useMemo(() => sortMatches(rawMatches), [rawMatches]);
+  const hasLoaded = !isLoading;
   const [activeTab, setActiveTab] = useState<CompareTab>("match");
   const [leftMatchId, setLeftMatchId] = useState("");
   const [rightMatchId, setRightMatchId] = useState("");
@@ -399,30 +397,12 @@ export default function ComparePage() {
   const [rightPlayerName, setRightPlayerName] = useState("");
 
   useEffect(() => {
-    async function pull() {
-      const ctx = await getMyTeamContext();
-      if (!ctx?.teamId) return;
-      const { records } = await fetchCloudSavedMatches(ctx.teamId);
-      replaceSavedMatches(records);
-    }
-    void pull();
-  }, []);
-
-  useEffect(() => {
-    try {
-      const matches = sortMatches(getSavedMatches());
-      setSavedMatches(matches);
-      const latest = matches[matches.length - 1];
-      const previous = matches[matches.length - 2];
-
-      if (previous) setLeftMatchId(previous.id);
-      if (latest) setRightMatchId(latest.id);
-    } catch (error) {
-      console.error("Failed to load saved matches for comparison", error);
-    } finally {
-      setHasLoaded(true);
-    }
-  }, []);
+    if (!hasLoaded || savedMatches.length === 0) return;
+    const latest = savedMatches[savedMatches.length - 1];
+    const previous = savedMatches[savedMatches.length - 2];
+    if (previous && !leftMatchId) setLeftMatchId(previous.id);
+    if (latest && !rightMatchId) setRightMatchId(latest.id);
+  }, [hasLoaded, savedMatches, leftMatchId, rightMatchId]);
 
   const snapshots = useMemo(
     () => savedMatches.map((match, index) => snapshotForMatch(match, index)),

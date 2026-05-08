@@ -1,19 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { shouldStartCoachOnboarding } from "@/app/rugby-tagging/lib/onboarding";
-import {
-  getScopedSavedMatchesKey,
-  type SavedMatchRecord,
-} from "@/app/rugby-tagging/lib/savedMatches";
-import { getScopedTeamKey } from "@/app/rugby-tagging/lib/team";
+import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import {
   saveSquadProfile,
   createSessionLogId,
-  TEAM_CHANGED_EVENT,
   type SquadProfile,
 } from "@/app/rugby-tagging/lib/team";
 import {
@@ -28,53 +22,15 @@ import { GradeBadge } from "@/app/components/GradeBadge";
 import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "./help-content";
 import { DashboardChat } from "./DashboardChat";
-import { upsertCloudSquadProfile } from "@/lib/teamCloud";
 import { fetchNotifyRequests } from "@/lib/teamMembersCloud";
+import { useTeam } from "@/app/providers/TeamContext";
+import { useMatches } from "@/app/providers/MatchesContext";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const FOCUS_AREAS = ["Lineout", "Scrum", "Defence", "Attack", "Fitness", "Skills", "Set piece", "Other"];
-
-// ---------------------------------------------------------------------------
-// Storage helpers
-// ---------------------------------------------------------------------------
-
-const emptyArray = "[]";
-const emptyObj = "{}";
-
-function subscribeToStorage(cb: () => void) {
-  if (typeof window === "undefined") return () => {};
-  window.addEventListener(TEAM_CHANGED_EVENT, cb);
-  return () => window.removeEventListener(TEAM_CHANGED_EVENT, cb);
-}
-
-function getSavedMatchesSnapshot() {
-  if (typeof window === "undefined") return emptyArray;
-  return localStorage.getItem(getScopedSavedMatchesKey()) || emptyArray;
-}
-function getSquadProfileSnapshot() {
-  if (typeof window === "undefined") return emptyObj;
-  return localStorage.getItem(getScopedTeamKey()) || emptyObj;
-}
-
-function parseSavedMatches(snapshot: string): SavedMatchRecord[] {
-  try {
-    const parsed = JSON.parse(snapshot);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-function parseSquadProfile(snapshot: string): SquadProfile | null {
-  try {
-    const parsed = JSON.parse(snapshot);
-    return parsed && typeof parsed === "object" ? (parsed as SquadProfile) : null;
-  } catch {
-    return null;
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Utility helpers
@@ -340,12 +296,8 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 export default function CoachDashboardPage() {
   const router = useRouter();
-
-  const savedMatchesSnapshot = useSyncExternalStore(subscribeToStorage, getSavedMatchesSnapshot, () => emptyArray);
-  const squadProfileSnapshot = useSyncExternalStore(subscribeToStorage, getSquadProfileSnapshot, () => emptyObj);
-
-  const savedMatches = useMemo(() => parseSavedMatches(savedMatchesSnapshot), [savedMatchesSnapshot]);
-  const profile = useMemo(() => parseSquadProfile(squadProfileSnapshot), [squadProfileSnapshot]);
+  const { team: profile } = useTeam();
+  const { matches: savedMatches } = useMatches();
 
   const [checkoutSuccess, setCheckoutSuccess] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -507,9 +459,12 @@ export default function CoachDashboardPage() {
     return null;
   })();
 
-  const [leaguePositionDraft, setLeaguePositionDraft] = useState<string>(
-    profile?.leaguePosition !== undefined ? String(profile.leaguePosition) : ""
-  );
+  const [leaguePositionDraft, setLeaguePositionDraft] = useState<string>("");
+  useEffect(() => {
+    if (profile?.leaguePosition !== undefined) {
+      setLeaguePositionDraft(String(profile.leaguePosition));
+    }
+  }, [profile?.leaguePosition]);
 
   function scrollToChat() {
     document.getElementById("dashboard-chat")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1137,7 +1092,6 @@ export default function CoachDashboardPage() {
             if (!profile) return;
             const updated = { ...profile, aiChatHistory: history, updatedAt: new Date().toISOString() };
             saveSquadProfile(updated);
-            upsertCloudSquadProfile(updated);
           }}
         />
 

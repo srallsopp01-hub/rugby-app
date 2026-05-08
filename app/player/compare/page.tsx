@@ -1,15 +1,12 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState } from "react";
 import { PageHelp } from "@/app/components/PageHelp";
 import { PLAYER_PAGE_HELP } from "../help-content";
 import { PlayerPicker } from "../PlayerPicker";
 import { usePlayer } from "../PlayerContext";
-import {
-  getScopedSavedMatchesKey,
-  subscribeSavedMatchesChanged,
-  type SavedMatchRecord,
-} from "@/app/rugby-tagging/lib/savedMatches";
+import { useMatches } from "@/app/providers/MatchesContext";
+import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import {
   buildReportRowsFromMatch,
   buildSetPieceSummary,
@@ -46,15 +43,6 @@ type Metric = {
   format: "number" | "percent" | "rate";
   lowerIsBetter?: boolean;
 };
-
-function parseMatches(snapshot: string): SavedMatchRecord[] {
-  try {
-    const parsed = JSON.parse(snapshot);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
 
 function sortMatches(matches: SavedMatchRecord[]) {
   return [...matches].sort((a, b) => {
@@ -298,16 +286,11 @@ export default function PlayerComparePage() {
   const [leftPlayerChoice, setLeftPlayerChoice] = useState("");
   const [rightPlayerChoice, setRightPlayerChoice] = useState("");
 
-  const matchesRaw = useSyncExternalStore(
-    subscribeSavedMatchesChanged,
-    () => localStorage.getItem(getScopedSavedMatchesKey()) ?? "[]",
-    () => "[]"
-  );
+  const { matches } = useMatches();
 
   const snapshots = useMemo(() => {
-    const matches = sortMatches(parseMatches(matchesRaw));
-    return matches.map((match, index) => buildSnapshot(match, index));
-  }, [matchesRaw]);
+    return sortMatches(matches).map((match, index) => buildSnapshot(match, index));
+  }, [matches]);
 
   if (!ready) return null;
   if (!currentPlayer) return <PlayerPicker />;

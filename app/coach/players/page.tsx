@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "../help-content";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -11,11 +11,10 @@ import {
 } from "@/app/rugby-tagging/constants";
 import { ACTIVE_TEAM_ID_KEY } from "@/lib/teamContext";
 import {
-  CURRENT_MATCH_ID_KEY,
-  getScopedSavedMatchesKey,
-  subscribeSavedMatchesChanged,
+  getCurrentMatchId,
   type SavedMatchRecord,
 } from "@/app/rugby-tagging/lib/savedMatches";
+import { useMatches } from "@/app/providers/MatchesContext";
 import {
   getMatchVideoSignedUrl,
   getMatchVideoSignedUrlWithResult,
@@ -86,22 +85,6 @@ function loadPlayersVideoSrc() {
   }
 }
 
-const emptyArraySnapshot = "[]";
-const subscribeToStorage = () => () => {};
-
-function getStorageSnapshot(key: string, fallback: string) {
-  if (typeof window === "undefined") return fallback;
-  return localStorage.getItem(key) || fallback;
-}
-
-function parseSavedMatches(snapshot: string): SavedMatchRecord[] {
-  try {
-    const parsed = JSON.parse(snapshot);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
 
 export default function PlayersPage() {
   return (
@@ -132,18 +115,8 @@ function PlayersContent() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [savedSession] = useState(loadPlayersSession);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
-
-  const savedMatchesSnapshot = useSyncExternalStore(
-    subscribeSavedMatchesChanged,
-    () => getStorageSnapshot(getScopedSavedMatchesKey(), emptyArraySnapshot),
-    () => emptyArraySnapshot
-  );
-  const currentMatchId = useSyncExternalStore(
-    subscribeToStorage,
-    () => getStorageSnapshot(CURRENT_MATCH_ID_KEY, ""),
-    () => ""
-  );
-  const allMatches = useMemo(() => parseSavedMatches(savedMatchesSnapshot), [savedMatchesSnapshot]);
+  const { matches: allMatches } = useMatches();
+  const [currentMatchId] = useState(() => getCurrentMatchId());
   const effectiveMatchId = selectedMatchId || currentMatchId || allMatches[0]?.id || "";
   const selectedMatch = useMemo(
     () => allMatches.find((m) => m.id === effectiveMatchId) || null,

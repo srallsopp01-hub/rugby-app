@@ -11,19 +11,17 @@ import {
   CORRECTION_MEMORY_KEY,
   ONBOARDING_COMPLETE_KEY,
   PLAYER_IDENTITY_KEY,
-  TEAM_KEY,
   STORAGE_KEY,
 } from "@/app/rugby-tagging/constants";
 import {
-  CURRENT_MATCH_ID_KEY,
-  getSavedMatches,
-  SAVED_MATCHES_KEY,
+  getCurrentMatchId,
+  CLOUD_SYNC_ERROR_EVENT,
 } from "@/app/rugby-tagging/lib/savedMatches";
-import { syncAllLocalMatchesToCloud, fetchCloudSavedMatches } from "@/lib/savedMatchesCloud";
-import { syncLocalSquadProfileToCloud } from "@/lib/teamCloud";
+import { fetchCloudSavedMatches } from "@/lib/savedMatchesCloud";
 import { checkCloudSchema, type CloudSchemaHealth } from "@/lib/cloudHealth";
 import { clearTeamContextCache, getMyTeamContext } from "@/lib/teamContext";
-import { CLOUD_SYNC_ERROR_EVENT } from "@/app/coach/SyncSavedMatches";
+import { useTeam } from "@/app/providers/TeamContext";
+import { useMatches } from "@/app/providers/MatchesContext";
 
 const THEME_SCHEME_KEY = "fynlwhistle-theme-scheme";
 const COACH_SIDEBAR_KEY = "coach-sidebar-collapsed";
@@ -35,9 +33,6 @@ type SyncStatus = "idle" | "syncing" | "synced" | "error";
 
 const KNOWN_LOCAL_STORAGE_KEYS = [
   STORAGE_KEY,
-  SAVED_MATCHES_KEY,
-  CURRENT_MATCH_ID_KEY,
-  TEAM_KEY,
   CORRECTION_MEMORY_KEY,
   ONBOARDING_COMPLETE_KEY,
   PLAYER_IDENTITY_KEY,
@@ -107,6 +102,8 @@ function buildDownloadFilename() {
 
 export default function CoachSettingsPage() {
   const router = useRouter();
+  const { team } = useTeam();
+  const { matches } = useMatches();
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [syncedCount, setSyncedCount] = useState<number | null>(null);
   const [syncErrors, setSyncErrors] = useState<string[]>([]);
@@ -144,21 +141,12 @@ export default function CoachSettingsPage() {
     setSyncErrors([]);
     clearTeamContextCache();
     try {
-      const [matchResult, profileResult] = await Promise.all([
-        syncAllLocalMatchesToCloud(),
-        syncLocalSquadProfileToCloud(),
-      ]);
-      const allErrors: string[] = [
-        ...matchResult.errors,
-        ...(profileResult.ok ? [] : [profileResult.error ?? "Squad profile sync failed"]),
-      ].filter(Boolean) as string[];
-
       const now = new Date().toISOString();
       localStorage.setItem(CLOUD_SYNC_LAST_AT_KEY, now);
       setLastSyncedAt(now);
-      setSyncedCount(matchResult.count);
-      setSyncErrors(allErrors);
-      setSyncStatus(allErrors.length > 0 ? "error" : "synced");
+      setSyncedCount(matches.length);
+      setSyncErrors([]);
+      setSyncStatus("synced");
       emitStorageChanged();
     } catch (e) {
       setSyncErrors([String(e)]);
@@ -204,12 +192,11 @@ export default function CoachSettingsPage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       const ctx = await getMyTeamContext();
-      const { records, error } = await fetchCloudSavedMatches();
-      const local = getSavedMatches();
+      const { records, error } = await fetchCloudSavedMatches(ctx?.teamId ?? "");
       setCloudDiag({
         userId: user?.id ?? "not signed in",
         cloudMatchCount: records.length,
-        localMatchCount: local.length,
+        localMatchCount: matches.length,
         error: error ?? (ctx ? undefined : "Could not resolve team context — check Supabase connection"),
       });
     } finally {
@@ -222,22 +209,8 @@ export default function CoachSettingsPage() {
     [snapshotJson]
   );
 
-  const savedMatches = useMemo(
-    () => parseJson<unknown[]>(snapshot[SAVED_MATCHES_KEY], []),
-    [snapshot]
-  );
   const currentSession = useMemo(
     () => parseJson<Record<string, unknown> | null>(snapshot[STORAGE_KEY], null),
-    [snapshot]
-  );
-  const squadProfile = useMemo(
-    () =>
-      parseJson<{
-        teamName?: string;
-        coachName?: string;
-        players?: unknown[];
-        correctionMemory?: unknown[];
-      } | null>(snapshot[TEAM_KEY], null),
     [snapshot]
   );
   const correctionMemory = useMemo(
@@ -250,14 +223,12 @@ export default function CoachSettingsPage() {
     return total + (value ? new Blob([value]).size : 0);
   }, 0);
 
-  const savedMatchCount = Array.isArray(savedMatches) ? savedMatches.length : 0;
-  const squadPlayerCount = Array.isArray(squadProfile?.players)
-    ? squadProfile.players.length
-    : 0;
+  const savedMatchCount = matches.length;
+  const squadPlayerCount = team?.players?.length ?? 0;
   const correctionCount = Object.keys(correctionMemory).length;
-  const hasCurrentMatch = Boolean(snapshot[STORAGE_KEY] || snapshot[CURRENT_MATCH_ID_KEY]);
-  const activeMatchId = snapshot[CURRENT_MATCH_ID_KEY] || "";
-  const teamName = squadProfile?.teamName?.trim() || "No team profile";
+  const activeMatchId = getCurrentMatchId();
+  const hasCurrentMatch = Boolean(snapshot[STORAGE_KEY] || activeMatchId);
+  const teamName = team?.teamName?.trim() || "No team profile";
   const onboardingComplete =
     snapshot[ONBOARDING_COMPLETE_KEY] === "1" ? "Complete" : "Not complete";
   const playerIdentity = snapshot[PLAYER_IDENTITY_KEY] || "No player selected";
@@ -292,7 +263,6 @@ export default function CoachSettingsPage() {
     if (!confirmed) return;
 
     localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(CURRENT_MATCH_ID_KEY);
     emitStorageChanged();
     setStatusMessage("Current match session cleared");
   };
@@ -448,9 +418,9 @@ export default function CoachSettingsPage() {
                 detail="Used by the player platform picker"
               />
               <StorageRow
-                label="Saved matches JSON"
-                value={formatBytes(snapshot[SAVED_MATCHES_KEY])}
-                detail={`${savedMatchCount} saved match${savedMatchCount === 1 ? "" : "es"}`}
+                label="Saved matches (cloud)"
+                value={`${savedMatchCount} match${savedMatchCount === 1 ? "" : "es"}`}
+                detail="Stored in Supabase — no local copy"
               />
             </div>
           </div>

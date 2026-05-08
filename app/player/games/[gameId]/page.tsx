@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { usePlayer } from "../../PlayerContext";
 import { PlayerPicker } from "../../PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
-import { getScopedSavedMatchesKey, subscribeSavedMatchesChanged } from "@/app/rugby-tagging/lib/savedMatches";
+import { useMatches } from "@/app/providers/MatchesContext";
 import { buildReportRowsFromMatch, formatTime, findMatchingPlayer } from "@/app/rugby-tagging/helpers";
 import { buildPlayerCoachingPlan } from "../../playerCoachingPlan";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
@@ -61,17 +61,11 @@ export default function GameDetailPage() {
   const gameId = typeof params.gameId === "string" ? params.gameId : "";
   const { currentPlayer, ready } = usePlayer();
 
-  const matchesRaw = useSyncExternalStore(
-    subscribeSavedMatchesChanged,
-    () => localStorage.getItem(getScopedSavedMatchesKey()) ?? "[]",
-    () => "[]"
-  );
+  const { matches } = useMatches();
 
   const { match, row, events, notFound } = useMemo(() => {
     if (!currentPlayer || !gameId) return { match: null, row: null, events: [], notFound: false };
-    let all: SavedMatchRecord[];
-    try { all = JSON.parse(matchesRaw); } catch { return { match: null, row: null, events: [], notFound: true }; }
-    const m = all.find((s) => s.id === gameId) ?? null;
+    const m = matches.find((s) => s.id === gameId) ?? null;
     if (!m) return { match: null, row: null, events: [], notFound: true };
     const rows = buildReportRowsFromMatch(m.rosterRows, m.events);
     const names = playerNameSet(currentPlayer);
@@ -81,7 +75,7 @@ export default function GameDetailPage() {
       null;
     if (!playerRow) return { match: null, row: null, events: [], notFound: true };
     return { match: m, row: playerRow, events: playerEvents(m, currentPlayer, playerRow.name), notFound: false };
-  }, [matchesRaw, currentPlayer, gameId]);
+  }, [matches, currentPlayer, gameId]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoUrl, setVideoUrl] = useState("");

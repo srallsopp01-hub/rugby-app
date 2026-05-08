@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState } from "react";
 import { PageHelp } from "@/app/components/PageHelp";
 import { PLAYER_PAGE_HELP } from "../help-content";
 import {
@@ -17,11 +17,8 @@ import {
 } from "recharts";
 import { PlayerPicker } from "../PlayerPicker";
 import { usePlayer } from "../PlayerContext";
-import {
-  getScopedSavedMatchesKey,
-  subscribeSavedMatchesChanged,
-  type SavedMatchRecord,
-} from "@/app/rugby-tagging/lib/savedMatches";
+import { useMatches } from "@/app/providers/MatchesContext";
+import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import {
   buildReportRowsFromMatch,
   buildSetPieceSummary,
@@ -32,15 +29,6 @@ import {
 import type { EventItem, ReportRow } from "@/app/rugby-tagging/types";
 
 type Tab = "overview" | "players" | "trends";
-
-function parseMatches(snapshot: string): SavedMatchRecord[] {
-  try {
-    const parsed = JSON.parse(snapshot);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
 
 function sortNewest(matches: SavedMatchRecord[]) {
   return [...matches].sort((a, b) => {
@@ -106,13 +94,9 @@ export default function PlayerTeamAnalyticsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [selectedMatchId, setSelectedMatchId] = useState("");
 
-  const matchesRaw = useSyncExternalStore(
-    subscribeSavedMatchesChanged,
-    () => localStorage.getItem(getScopedSavedMatchesKey()) ?? "[]",
-    () => "[]"
-  );
+  const { matches: rawMatches } = useMatches();
 
-  const matches = useMemo(() => sortNewest(parseMatches(matchesRaw)), [matchesRaw]);
+  const matches = useMemo(() => sortNewest(rawMatches), [rawMatches]);
   const selectedMatch =
     matches.find((match) => match.id === selectedMatchId) || matches[0] || null;
   const resolvedEvents = useMemo<EventItem[]>(

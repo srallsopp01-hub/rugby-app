@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
+import { useMemo } from "react";
 import { PageHelp } from "@/app/components/PageHelp";
 import { PLAYER_PAGE_HELP } from "../help-content";
 import {
@@ -18,7 +18,7 @@ import Link from "next/link";
 import { usePlayer } from "../PlayerContext";
 import { PlayerPicker } from "../PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
-import { getScopedSavedMatchesKey, subscribeSavedMatchesChanged } from "@/app/rugby-tagging/lib/savedMatches";
+import { useMatches } from "@/app/providers/MatchesContext";
 import { buildReportRowsFromMatch } from "@/app/rugby-tagging/helpers";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { Grade, ReportRow } from "@/app/rugby-tagging/types";
@@ -134,18 +134,11 @@ function DeltaBadge({ value, suffix = "" }: { value: number; suffix?: string }) 
 
 export default function PerformancePage() {
   const { currentPlayer, ready } = usePlayer();
-
-  const matchesRaw = useSyncExternalStore(
-    subscribeSavedMatchesChanged,
-    () => localStorage.getItem(getScopedSavedMatchesKey()) ?? "[]",
-    () => "[]"
-  );
+  const { matches } = useMatches();
 
   const entries = useMemo<TrendEntry[]>(() => {
     if (!currentPlayer) return [];
-    let all: SavedMatchRecord[];
-    try { all = JSON.parse(matchesRaw); } catch { return []; }
-    const filtered = getPlayerMatches(all, currentPlayer);
+    const filtered = getPlayerMatches(matches, currentPlayer);
     const names = playerNameSet(currentPlayer);
     const pairs: TrendEntry[] = [];
     for (const m of filtered) {
@@ -163,7 +156,7 @@ export default function PerformancePage() {
       });
     }
     return pairs;
-  }, [matchesRaw, currentPlayer]);
+  }, [matches, currentPlayer]);
 
   if (!ready) return null;
   if (!currentPlayer) return <PlayerPicker />;

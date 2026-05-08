@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 8 May 2026 — Admin panel live (6 pages + API routes). Organisation page redirect fixed; club_admin can now create new teams. Player account-linking added to coach Team page.
+**Last updated:** 8 May 2026 — Removed localStorage as data store for team/match data. Supabase is now the sole source of truth. `TeamContext` + `MatchesContext` providers added; all pages migrated to `useTeam()` / `useMatches()` hooks. Bidirectional sync removed — this eliminates the root cause of repeated data corruption.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -25,7 +25,9 @@ It is currently a **coach-first MVP**, live at [fynlwhistle.com](https://fynlwhi
 - Next.js 16 (App Router, Turbopack)
 - React + TypeScript
 - Tailwind CSS v4 (custom design tokens via CSS variables in `globals.css`)
-- localStorage-first match persistence with Supabase cloud sync for saved match records and Cloudflare R2 video storage paths
+- **Supabase-first** match and team persistence — no localStorage for data; `TeamContext` and `MatchesContext` providers fetch on mount and keep an in-memory cache for synchronous reads
+- Cloudflare R2 for video storage paths
+- localStorage only for ephemeral/UI state: in-progress capture session (`STORAGE_KEY`), active match ID pointer, sidebar preferences, colour scheme
 - localStorage for browser-local colour scheme preference (`dark` / `bright`)
 - Anthropic API for voice transcription (`/api/transcribe`)
 - ExcelJS for `.xlsx` report generation

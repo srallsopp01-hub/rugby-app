@@ -1,52 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "../help-content";
 import {
   clearCurrentMatchId,
   deleteSavedMatch,
-  getSavedMatches,
-  SAVED_MATCHES_CHANGED_EVENT,
   setCurrentMatchId,
   type SavedMatchRecord,
 } from "@/app/rugby-tagging/lib/savedMatches";
-import { fetchCloudSavedMatches } from "@/lib/savedMatchesCloud";
-import { replaceSavedMatches } from "@/app/rugby-tagging/lib/savedMatches";
-import { getMyTeamContext } from "@/lib/teamContext";
 import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfidence";
 import { generateMultiMatchWorkbook } from "@/app/rugby-tagging/lib/exports/multiMatchExport";
 import { downloadWorkbook } from "@/app/rugby-tagging/lib/exports/downloadWorkbook";
+import { useMatches } from "@/app/providers/MatchesContext";
 
 export default function CoachSavedMatchesPage() {
   const router = useRouter();
-  const [savedMatches, setSavedMatches] = useState<SavedMatchRecord[]>([]);
+  const { matches: savedMatches } = useMatches();
   const [selectedMatchIds, setSelectedMatchIds] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-
-  useEffect(() => {
-    async function pull() {
-      const ctx = await getMyTeamContext();
-      if (!ctx?.teamId) return;
-      const { records } = await fetchCloudSavedMatches(ctx.teamId);
-      replaceSavedMatches(records);
-    }
-    void pull();
-  }, []);
-
-  useEffect(() => {
-    const refreshSavedMatches = () => setSavedMatches(getSavedMatches());
-
-    refreshSavedMatches();
-    window.addEventListener(SAVED_MATCHES_CHANGED_EVENT, refreshSavedMatches);
-    window.addEventListener("storage", refreshSavedMatches);
-
-    return () => {
-      window.removeEventListener(SAVED_MATCHES_CHANGED_EVENT, refreshSavedMatches);
-      window.removeEventListener("storage", refreshSavedMatches);
-    };
-  }, []);
 
   const toggleSelected = (matchId: string) => {
     setSelectedMatchIds((prev) =>
@@ -109,17 +82,13 @@ export default function CoachSavedMatchesPage() {
     if (!confirmed) return;
 
     try {
-      const currentMatchId =
-        typeof window !== "undefined"
-          ? localStorage.getItem("rugby-tagging-current-match-id") || ""
-          : "";
+      const currentId = typeof window !== "undefined"
+        ? localStorage.getItem("rugby-tagging-current-match-id") || ""
+        : "";
+      if (currentId === matchId) clearCurrentMatchId();
 
-      if (currentMatchId === matchId) {
-        clearCurrentMatchId();
-      }
-
-      deleteSavedMatch(matchId);
-      setSavedMatches(getSavedMatches());
+      const match = savedMatches.find((m) => m.id === matchId);
+      deleteSavedMatch(matchId, match?.videoStoragePath);
     } catch (error) {
       console.error("Failed to delete saved match", error);
     }

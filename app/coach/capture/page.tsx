@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
-import { CLOUD_SYNC_ERROR_EVENT } from "@/app/coach/SyncSavedMatches";
+import { CLOUD_SYNC_ERROR_EVENT } from "@/app/rugby-tagging/lib/savedMatches";
 import { useRouter } from "next/navigation";
 import TeamSheetModal from "@/app/rugby-tagging/components/TeamSheetModal";
 import MatchdayRosterPanel from "@/app/rugby-tagging/components/MatchdayRosterPanel";

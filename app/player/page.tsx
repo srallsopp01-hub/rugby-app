@@ -5,39 +5,16 @@ import Link from "next/link";
 import { usePlayer } from "./PlayerContext";
 import { PlayerPicker } from "./PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
-import { getScopedSavedMatchesKey, subscribeSavedMatchesChanged } from "@/app/rugby-tagging/lib/savedMatches";
-import { SQUAD_PROFILE_KEY } from "@/app/rugby-tagging/constants";
-import { saveSquadProfile, SQUAD_PROFILE_CHANGED_EVENT } from "@/app/rugby-tagging/lib/team";
+import { saveSquadProfile } from "@/app/rugby-tagging/lib/team";
 import { buildReportRowsFromMatch, gradeToScore } from "@/app/rugby-tagging/helpers";
 import { buildPlayerCoachingPlan } from "./playerCoachingPlan";
 import { countUnseenClips } from "./lib/unseenClips";
 import { getLastSeenAt, subscribeReviewSeenChanged } from "./lib/reviewSeen";
+import { useTeam } from "@/app/providers/TeamContext";
+import { useMatches } from "@/app/providers/MatchesContext";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { ReportRow, AvailabilityResponse, Fixture, TrainingSession, TrainingSessionDayOfWeek } from "@/app/rugby-tagging/types";
-import type { SquadPlayer, SquadProfile } from "@/app/rugby-tagging/lib/team";
-
-// ---------------------------------------------------------------------------
-// Storage helpers
-// ---------------------------------------------------------------------------
-
-function subscribeSquadProfile(cb: () => void) {
-  window.addEventListener(SQUAD_PROFILE_CHANGED_EVENT, cb);
-  return () => window.removeEventListener(SQUAD_PROFILE_CHANGED_EVENT, cb);
-}
-
-function getSquadProfileSnapshot(): string {
-  if (typeof window === "undefined") return "{}";
-  return localStorage.getItem(SQUAD_PROFILE_KEY) || "{}";
-}
-
-function parseProfile(snapshot: string): SquadProfile | null {
-  try {
-    const parsed = JSON.parse(snapshot);
-    return parsed && typeof parsed === "object" ? (parsed as SquadProfile) : null;
-  } catch {
-    return null;
-  }
-}
+import type { SquadPlayer } from "@/app/rugby-tagging/lib/team";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -349,29 +326,15 @@ function TrainingRow({
 
 export default function PlayerHomePage() {
   const { currentPlayer, ready } = usePlayer();
-
-  const matchesRaw = useSyncExternalStore(
-    subscribeSavedMatchesChanged,
-    () => localStorage.getItem(getScopedSavedMatchesKey()) ?? "[]",
-    () => "[]"
-  );
-
-  const profileSnapshot = useSyncExternalStore(
-    subscribeSquadProfile,
-    getSquadProfileSnapshot,
-    () => "{}"
-  );
-
-  const profile = useMemo(() => parseProfile(profileSnapshot), [profileSnapshot]);
+  const { team: profile } = useTeam();
+  const { matches: allMatches } = useMatches();
 
   const playerMatches = useMemo<SavedMatchRecord[]>(() => {
     if (!currentPlayer) return [];
-    let all: SavedMatchRecord[];
-    try { all = JSON.parse(matchesRaw); } catch { return []; }
-    return getPlayerMatches(all, currentPlayer).sort(
+    return getPlayerMatches(allMatches, currentPlayer).sort(
       (a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
     );
-  }, [matchesRaw, currentPlayer]);
+  }, [allMatches, currentPlayer]);
 
   const playerRows = useMemo<ReportRow[]>(() => {
     if (!currentPlayer) return [];
@@ -473,10 +436,8 @@ export default function PlayerHomePage() {
 
   const unseenClipCount = useMemo(() => {
     if (!currentPlayer) return 0;
-    let all: SavedMatchRecord[];
-    try { all = JSON.parse(matchesRaw); } catch { return 0; }
-    return countUnseenClips(all, currentPlayer, lastSeenAt);
-  }, [matchesRaw, currentPlayer, lastSeenAt]);
+    return countUnseenClips(allMatches, currentPlayer, lastSeenAt);
+  }, [allMatches, currentPlayer, lastSeenAt]);
 
   const unansweredCount = useMemo(() => {
     if (!currentPlayer) return 0;
