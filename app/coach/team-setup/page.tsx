@@ -11,6 +11,7 @@ import {
   removeSquadPlayer,
   saveSquadProfile,
   upsertSquadPlayer,
+  TEAM_CHANGED_EVENT,
   type SquadPlayer,
   type SquadProfile,
 } from "@/app/rugby-tagging/lib/team";
@@ -159,6 +160,18 @@ export default function TeamSetupPage() {
     return loaded ?? createDefaultSquadProfile();
   });
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Re-sync when TeamContext finishes its async fetch and populates the cache.
+  useEffect(() => {
+    const sync = () => {
+      const loaded = getSquadProfile();
+      if (loaded) setProfile(loaded);
+    };
+    window.addEventListener(TEAM_CHANGED_EVENT, sync);
+    // Also sync immediately in case the cache was already populated before mount.
+    sync();
+    return () => window.removeEventListener(TEAM_CHANGED_EVENT, sync);
+  }, []);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(BLANK_FORM);
 
