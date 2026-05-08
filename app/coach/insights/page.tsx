@@ -19,9 +19,9 @@ import {
   CURRENT_MATCH_ID_KEY,
   getScopedSavedMatchesKey,
 } from "@/app/rugby-tagging/lib/savedMatches";
-import { STORAGE_KEY, SQUAD_PROFILE_KEY } from "@/app/rugby-tagging/constants";
+import { STORAGE_KEY } from "@/app/rugby-tagging/constants";
 import type { ManualKpi, BuiltinKpiTarget } from "@/app/rugby-tagging/lib/team";
-import { DEFAULT_BUILTIN_TARGETS } from "@/app/rugby-tagging/lib/team";
+import { DEFAULT_BUILTIN_TARGETS, getTeam } from "@/app/rugby-tagging/lib/team";
 import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfidence";
 import { generateTeamAnalyticsWorkbook } from "@/app/rugby-tagging/lib/exports/teamAnalyticsExport";
 import { downloadWorkbook } from "@/app/rugby-tagging/lib/exports/downloadWorkbook";
@@ -353,11 +353,7 @@ export default function InsightsPage() {
 
   const squadProfile = useMemo(() => {
     if (!mounted) return null;
-    try {
-      const raw = localStorage.getItem(SQUAD_PROFILE_KEY);
-      if (!raw) return null;
-      return JSON.parse(raw) as { kpiTargets?: Array<BuiltinKpiTarget | ManualKpi> };
-    } catch { return null; }
+    return getTeam() as { kpiTargets?: Array<BuiltinKpiTarget | ManualKpi> } | null;
   }, [mounted]);
 
   const kpiTargets = squadProfile?.kpiTargets ?? [];

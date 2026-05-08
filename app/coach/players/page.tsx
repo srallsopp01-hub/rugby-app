@@ -9,6 +9,7 @@ import {
   STORAGE_KEY,
   DEFAULT_ROSTER_ROWS,
 } from "@/app/rugby-tagging/constants";
+import { ACTIVE_TEAM_ID_KEY } from "@/lib/teamContext";
 import {
   CURRENT_MATCH_ID_KEY,
   getScopedSavedMatchesKey,
@@ -49,11 +50,18 @@ type SavedSession = {
   events?: EventItem[];
 };
 
+function getScopedStorageKey(): string {
+  try {
+    const t = localStorage.getItem(ACTIVE_TEAM_ID_KEY) ?? "";
+    return t ? `${STORAGE_KEY}-${t}` : STORAGE_KEY;
+  } catch { return STORAGE_KEY; }
+}
+
 function loadPlayersSession(): SavedSession {
   if (typeof window === "undefined") return {};
 
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(getScopedStorageKey());
     if (!raw) return {};
     const saved: SavedSession = JSON.parse(raw);
     return saved && typeof saved === "object" ? saved : {};
