@@ -43,21 +43,33 @@ export default function Image() {
 
         {/* Centre: headline */}
         <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          <div
-            style={{
-              fontSize: "80px",
-              fontWeight: 900,
-              lineHeight: 0.92,
-              letterSpacing: "-0.02em",
-              textTransform: "uppercase",
-              color: "#ffffff",
-            }}
-          >
-            Match analysis
-            <br />
-            <span style={{ color: "#ed6a1f" }}>built for coaches.</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0px" }}>
+            <span
+              style={{
+                fontSize: "80px",
+                fontWeight: 900,
+                lineHeight: 0.92,
+                letterSpacing: "-0.02em",
+                textTransform: "uppercase",
+                color: "#ffffff",
+              }}
+            >
+              Match analysis
+            </span>
+            <span
+              style={{
+                fontSize: "80px",
+                fontWeight: 900,
+                lineHeight: 0.92,
+                letterSpacing: "-0.02em",
+                textTransform: "uppercase",
+                color: "#ed6a1f",
+              }}
+            >
+              built for coaches.
+            </span>
           </div>
-          <div
+          <span
             style={{
               fontSize: "24px",
               fontWeight: 500,
@@ -66,7 +78,7 @@ export default function Image() {
             }}
           >
             Tag, review, and share match footage — in one place.
-          </div>
+          </span>
         </div>
 
         {/* Bottom: domain */}
