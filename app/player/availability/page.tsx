@@ -1,14 +1,9 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePlayer } from "@/app/player/PlayerContext";
 import { useTeam } from "@/app/providers/TeamContext";
-import {
-  getTeam,
-  setTeamCache,
-  TEAM_CHANGED_EVENT,
-} from "@/app/rugby-tagging/lib/team";
 import type { AvailabilityResponse, Fixture, TrainingSession, TrainingSessionDayOfWeek } from "@/app/rugby-tagging/types";
 
 // ---------------------------------------------------------------------------
@@ -103,6 +98,20 @@ export default function PlayerAvailabilityPage() {
   const [syncState, setSyncState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Local responses state — initialised from TeamContext once, then owned locally.
+  // No setTeamCache / TEAM_CHANGED_EVENT: the RPC is the sole cloud write.
+  const [responses, setResponses] = useState<AvailabilityResponse[]>([]);
+  const responsesRef = useRef<AvailabilityResponse[]>([]);
+  const responsesInitialized = useRef(false);
+
+  useEffect(() => {
+    if (!responsesInitialized.current && profile?.availabilityResponses != null) {
+      responsesInitialized.current = true;
+      responsesRef.current = profile.availabilityResponses;
+      setResponses(profile.availabilityResponses);
+    }
+  }, [profile]);
+
   const today = todayIso();
 
   const upcomingFixtures = useMemo(
@@ -118,11 +127,6 @@ export default function PlayerAvailabilityPage() {
     [profile]
   );
 
-  const responses = useMemo(
-    () => profile?.availabilityResponses ?? [],
-    [profile]
-  );
-
   function getFixtureResponse(fixtureId: string): AvailabilityResponse["response"] | null {
     return responses.find((r) => r.fixtureId === fixtureId && r.playerId === currentPlayer?.id)?.response ?? null;
   }
@@ -133,10 +137,8 @@ export default function PlayerAvailabilityPage() {
 
   function upsertResponse(patch: Partial<AvailabilityResponse> & { response: AvailabilityResponse["response"] }) {
     if (!currentPlayer) return;
-    // Read from cache directly to avoid stale closure when two buttons are clicked in quick succession.
-    const currentTeam = getTeam();
-    if (!currentTeam) return;
-    const currentResponses = currentTeam.availabilityResponses ?? [];
+    // Read from ref to avoid stale closure when two buttons are clicked in quick succession.
+    const currentResponses = responsesRef.current;
     const existing = currentResponses.findIndex(
       (r) =>
         r.playerId === currentPlayer.id &&
@@ -152,10 +154,8 @@ export default function PlayerAvailabilityPage() {
       existing >= 0
         ? currentResponses.map((r, i) => (i === existing ? next : r))
         : [...currentResponses, next];
-    // Update local cache only — no full row update to avoid race conditions.
-    // The RPC below is the sole cloud write and is atomic (row-locked).
-    setTeamCache({ ...currentTeam, availabilityResponses: updated, updatedAt: new Date().toISOString() });
-    if (typeof window !== "undefined") window.dispatchEvent(new Event(TEAM_CHANGED_EVENT));
+    responsesRef.current = updated;
+    setResponses(updated);
 
     setSyncState("saving");
     if (syncTimer.current) clearTimeout(syncTimer.current);
