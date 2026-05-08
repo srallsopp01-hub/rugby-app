@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerTeamContext } from "@/lib/serverTeamContext";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   createR2PresignedUrl,
   getR2Config,
@@ -37,8 +38,32 @@ export async function POST(req: Request) {
   }
 
   const videoOwner = getR2ObjectOwner(storagePath);
+  // Allow if the requester uploaded the video directly.
+  // Also allow any active member of a team that owns a match stored at this path,
+  // so assistant coaches can watch videos uploaded by the head coach (and vice versa).
   if (videoOwner !== ctx.userId && videoOwner !== ctx.ownerUserId) {
-    return NextResponse.json({ error: "You do not have access to this match video" }, { status: 403 });
+    const admin = createAdminClient();
+    if (!admin) {
+      return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+    }
+    const { data: match } = await admin
+      .from("saved_matches")
+      .select("team_id")
+      .eq("video_storage_path", storagePath)
+      .maybeSingle();
+    if (!match) {
+      return NextResponse.json({ error: "You do not have access to this match video" }, { status: 403 });
+    }
+    const { data: membership } = await admin
+      .from("team_members")
+      .select("id")
+      .eq("team_id", match.team_id)
+      .eq("user_id", ctx.userId)
+      .eq("status", "active")
+      .maybeSingle();
+    if (!membership) {
+      return NextResponse.json({ error: "You do not have access to this match video" }, { status: 403 });
+    }
   }
 
   const requestedExpiry = body.expiresInSeconds ?? DEFAULT_EXPIRY_SECONDS;

@@ -12,6 +12,7 @@ import {
   setCurrentMatchId,
   type SavedMatchRecord,
 } from "@/app/rugby-tagging/lib/savedMatches";
+import { syncAllLocalMatchesToCloud } from "@/lib/savedMatchesCloud";
 import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfidence";
 import { generateMultiMatchWorkbook } from "@/app/rugby-tagging/lib/exports/multiMatchExport";
 import { downloadWorkbook } from "@/app/rugby-tagging/lib/exports/downloadWorkbook";
@@ -21,6 +22,8 @@ export default function CoachSavedMatchesPage() {
   const [savedMatches, setSavedMatches] = useState<SavedMatchRecord[]>([]);
   const [selectedMatchIds, setSelectedMatchIds] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  useEffect(() => { void syncAllLocalMatchesToCloud(); }, []);
 
   useEffect(() => {
     const refreshSavedMatches = () => setSavedMatches(getSavedMatches());

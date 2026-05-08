@@ -78,6 +78,7 @@ export default function OnboardingWizard() {
   };
 
   const skip = () => {
+    saveSquadProfile(profile);
     markOnboardingComplete();
     router.replace("/coach");
   };

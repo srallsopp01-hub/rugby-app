@@ -50,6 +50,7 @@ import {
   DEFAULT_ROSTER_ROWS,
   STORAGE_KEY,
 } from "@/app/rugby-tagging/constants";
+import { ACTIVE_TEAM_ID_KEY } from "@/lib/teamContext";
 import {
   blurActiveElement,
   buildBasicStats,
@@ -106,6 +107,21 @@ type CoachReviewNote = {
 };
 
 const HELP_DISMISSED_KEY = "rugby-tagging-help-dismissed";
+
+// Return team-scoped localStorage keys so capture sessions and correction
+// memory never bleed between teams when a coach switches team context.
+function getScopedStorageKey(): string {
+  try {
+    const t = localStorage.getItem(ACTIVE_TEAM_ID_KEY) ?? "";
+    return t ? `${STORAGE_KEY}-${t}` : STORAGE_KEY;
+  } catch { return STORAGE_KEY; }
+}
+function getScopedCorrectionKey(): string {
+  try {
+    const t = localStorage.getItem(ACTIVE_TEAM_ID_KEY) ?? "";
+    return t ? `${CORRECTION_MEMORY_KEY}-${t}` : CORRECTION_MEMORY_KEY;
+  } catch { return CORRECTION_MEMORY_KEY; }
+}
 
 export default function RugbyVoiceTaggingMVP() {
   const router = useRouter();
@@ -692,7 +708,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
           setVideoStoragePath(savedMatch.videoStoragePath || "");
 
           localStorage.setItem(
-            STORAGE_KEY,
+            getScopedStorageKey(),
             JSON.stringify({
               activeMode:
                 savedMatch.activeMode === "game-review" ? "game-review" : "stat",
@@ -721,7 +737,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
         }
       }
 
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(getScopedStorageKey());
       if (!raw) return;
 
       const saved = JSON.parse(raw);
@@ -753,7 +769,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(CORRECTION_MEMORY_KEY);
+      const raw = localStorage.getItem(getScopedCorrectionKey());
       if (!raw) {
         setLearnedCorrections({});
       } else {
@@ -779,7 +795,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
   useEffect(() => {
     try {
       localStorage.setItem(
-        CORRECTION_MEMORY_KEY,
+        getScopedCorrectionKey(),
         JSON.stringify(learnedCorrections)
       );
     } catch (error) {
@@ -790,11 +806,11 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
   useEffect(() => {
     try {
       const persistedEvents = events.filter((event) => !event.isPending);
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(getScopedStorageKey());
       const existingSession = raw ? JSON.parse(raw) : {};
 
       localStorage.setItem(
-        STORAGE_KEY,
+        getScopedStorageKey(),
         JSON.stringify({
           activeMode,
           matchTitle,
@@ -972,7 +988,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
       videoRef.current.load();
     }
 
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(getScopedStorageKey());
     sessionStorage.removeItem("rugby-tagging-video-src");
 
     setActiveMode("stat");

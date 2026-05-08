@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { syncAllLocalMatchesToCloud } from "@/lib/savedMatchesCloud";
 import { useRouter } from "next/navigation";
 import {
   BarChart,
@@ -54,7 +55,14 @@ type SavedSession = {
 };
 
 const emptyArraySnapshot = "[]";
-const subscribeToStorage = () => () => {};
+const subscribeToStorage = (cb: () => void) => {
+  window.addEventListener("rugby-saved-matches-changed", cb);
+  window.addEventListener("storage", cb);
+  return () => {
+    window.removeEventListener("rugby-saved-matches-changed", cb);
+    window.removeEventListener("storage", cb);
+  };
+};
 
 function getStorageSnapshot(key: string, fallback: string) {
   if (typeof window === "undefined") return fallback;
@@ -94,6 +102,8 @@ export default function InsightsPage() {
   const [expandedTrendPlayer, setExpandedTrendPlayer] = useState<string | null>(null);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [pdfExporting, setPdfExporting] = useState(false);
+  useEffect(() => { void syncAllLocalMatchesToCloud(); }, []);
+
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
 
   const savedMatchesSnapshot = useSyncExternalStore(

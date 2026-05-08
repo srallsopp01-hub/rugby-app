@@ -4,6 +4,16 @@ export const SAVED_MATCHES_KEY = "rugby-tagging-saved-matches-v1";
 export const CURRENT_MATCH_ID_KEY = "rugby-tagging-current-match-id";
 export const SAVED_MATCHES_CHANGED_EVENT = "rugby-saved-matches-changed";
 
+// Reads the active team ID written by teamContext — no import needed (avoids circular deps).
+const ACTIVE_TEAM_ID_KEY = "fynlwhistle-active-team-id";
+function getActiveTeamId(): string {
+  try { return localStorage.getItem(ACTIVE_TEAM_ID_KEY) ?? ""; } catch { return ""; }
+}
+function scopedMatchIdKey(): string {
+  const t = getActiveTeamId();
+  return t ? `${CURRENT_MATCH_ID_KEY}-${t}` : CURRENT_MATCH_ID_KEY;
+}
+
 export type SavedCoachReviewNote = {
   id: number;
   timestamp: number;
@@ -35,17 +45,17 @@ export function createMatchId() {
 
 export function getCurrentMatchId() {
   if (typeof window === "undefined") return "";
-  return localStorage.getItem(CURRENT_MATCH_ID_KEY) || "";
+  return localStorage.getItem(scopedMatchIdKey()) || "";
 }
 
 export function setCurrentMatchId(matchId: string) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(CURRENT_MATCH_ID_KEY, matchId);
+  localStorage.setItem(scopedMatchIdKey(), matchId);
 }
 
 export function clearCurrentMatchId() {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(CURRENT_MATCH_ID_KEY);
+  localStorage.removeItem(scopedMatchIdKey());
 }
 
 export function getSavedMatches(): SavedMatchRecord[] {

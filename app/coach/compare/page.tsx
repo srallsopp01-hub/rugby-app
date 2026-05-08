@@ -8,6 +8,7 @@ import {
   getSavedMatches,
   type SavedMatchRecord,
 } from "@/app/rugby-tagging/lib/savedMatches";
+import { syncAllLocalMatchesToCloud } from "@/lib/savedMatchesCloud";
 import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfidence";
 import {
   buildReportRowsFromMatch,
@@ -394,6 +395,8 @@ export default function ComparePage() {
   const [rightMatchId, setRightMatchId] = useState("");
   const [leftPlayerName, setLeftPlayerName] = useState("");
   const [rightPlayerName, setRightPlayerName] = useState("");
+
+  useEffect(() => { void syncAllLocalMatchesToCloud(); }, []);
 
   useEffect(() => {
     try {
