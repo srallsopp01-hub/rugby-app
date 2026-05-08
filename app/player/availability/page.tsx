@@ -5,8 +5,9 @@ import Link from "next/link";
 import { usePlayer } from "@/app/player/PlayerContext";
 import { useTeam } from "@/app/providers/TeamContext";
 import {
-  saveTeam,
   getTeam,
+  setTeamCache,
+  TEAM_CHANGED_EVENT,
 } from "@/app/rugby-tagging/lib/team";
 import type { AvailabilityResponse, Fixture, TrainingSession, TrainingSessionDayOfWeek } from "@/app/rugby-tagging/types";
 
@@ -151,11 +152,10 @@ export default function PlayerAvailabilityPage() {
       existing >= 0
         ? currentResponses.map((r, i) => (i === existing ? next : r))
         : [...currentResponses, next];
-    saveTeam({
-      ...currentTeam,
-      availabilityResponses: updated,
-      updatedAt: new Date().toISOString(),
-    });
+    // Update local cache only — no full row update to avoid race conditions.
+    // The RPC below is the sole cloud write and is atomic (row-locked).
+    setTeamCache({ ...currentTeam, availabilityResponses: updated, updatedAt: new Date().toISOString() });
+    if (typeof window !== "undefined") window.dispatchEvent(new Event(TEAM_CHANGED_EVENT));
 
     setSyncState("saving");
     if (syncTimer.current) clearTimeout(syncTimer.current);
