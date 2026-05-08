@@ -249,27 +249,14 @@ export function addVoiceSample(
 }
 
 // ---------------------------------------------------------------------------
-// Backwards-compatibility aliases — remove in Move 2.5
+// Backwards-compatibility aliases
 // ---------------------------------------------------------------------------
 
 /** @deprecated Use Team */
 export type SquadProfile = Team;
-/** @deprecated Use TEAM_CHANGED_EVENT */
-export const SQUAD_PROFILE_CHANGED_EVENT = TEAM_CHANGED_EVENT;
 /** @deprecated Use getTeam */
 export const getSquadProfile = getTeam;
 /** @deprecated Use saveTeam */
 export const saveSquadProfile = saveTeam;
-/** @deprecated Use clearTeam */
-export const clearSquadProfile = clearTeam;
 /** @deprecated Use createDefaultTeam */
 export const createDefaultSquadProfile = createDefaultTeam;
-/** @deprecated Use upsertSquadPlayer (signature unchanged) */
-// upsertSquadPlayer already works for both Team and SquadProfile since they're the same type.
-// @deprecated Use resolvePlayerName */
-// resolvePlayerName already works for both.
-
-/** @deprecated Generates a legacy squad_ id — prefer crypto.randomUUID() */
-export function createSquadProfileId(): string {
-  return `squad_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}

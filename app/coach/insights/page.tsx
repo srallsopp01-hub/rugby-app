@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useMatches } from "@/app/providers/MatchesContext";
 import {
@@ -83,6 +83,9 @@ export default function InsightsPage() {
   const [pdfExporting, setPdfExporting] = useState(false);
   const { matches: allMatches } = useMatches();
   const [currentMatchId] = useState(() => getCurrentMatchId());
+
+  // Reset manual match selection when the match list changes (e.g. team switch).
+  useEffect(() => { setSelectedMatchId(null); }, [allMatches]);
   const [sessionMatch] = useState<SavedSession | null>(() => {
     if (typeof window === "undefined") return null;
     return parseSavedSession(localStorage.getItem(scopedSessionKey()) ?? "{}");
