@@ -221,6 +221,7 @@ export default function ReviewPage() {
   });
   // Track which match's video is currently in the video element
   const [activeVideoMatchId, setActiveVideoMatchId] = useState<string | null>(null);
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
 
   const { matches } = useMatches();
 
@@ -237,6 +238,11 @@ export default function ReviewPage() {
         totalS += setPieceMoments.length;
       }
     }
+    clipResult.sort((a, b) => {
+      const aDate = a.match.matchDate || a.match.updatedAt;
+      const bDate = b.match.matchDate || b.match.updatedAt;
+      return bDate.localeCompare(aDate);
+    });
     return { clipGroups: clipResult, totalClips: totalC, totalSetPieces: totalS };
   }, [matches]);
 
@@ -247,6 +253,13 @@ export default function ReviewPage() {
       Object.values(urls).forEach((u) => URL.revokeObjectURL(u));
     };
   }, [videoUrls]);
+
+  // Auto-select the most recent game when clip groups first load or change
+  useEffect(() => {
+    if (clipGroups.length > 0 && (selectedMatchId === null || !clipGroups.find(g => g.match.id === selectedMatchId))) {
+      setSelectedMatchId(clipGroups[0].match.id);
+    }
+  }, [clipGroups, selectedMatchId]);
 
   // Mark review as seen on mount so unseen-clip badges clear.
   useEffect(() => {
@@ -359,40 +372,63 @@ export default function ReviewPage() {
   if (!ready) return null;
   if (!currentPlayer) return <PlayerPicker />;
 
+  const selectedGroup = clipGroups.find(g => g.match.id === selectedMatchId) ?? clipGroups[0] ?? null;
+
   return (
-    <div className="p-8 max-w-3xl space-y-10">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold text-foreground-strong">Review</h1>
-          <PageHelp {...PLAYER_PAGE_HELP["/player/review"]} />
-        </div>
-        <p className="mt-1 text-sm text-muted">
-          {totalClips > 0 || totalSetPieces > 0
-            ? `${totalClips} ${totalClips === 1 ? "clip" : "clips"} and ${totalSetPieces} set-piece ${totalSetPieces === 1 ? "tag" : "tags"} from review`
-            : "Coach clips from film review"}
-        </p>
-      </div>
+    <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[800px] space-y-5">
+        {/* Header */}
+        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">Review</h1>
+            <PageHelp {...PLAYER_PAGE_HELP["/player/review"]} />
+          </div>
+          <p className="mt-2 text-sm text-muted">
+            {totalClips > 0 || totalSetPieces > 0
+              ? `${totalClips} ${totalClips === 1 ? "clip" : "clips"} and ${totalSetPieces} set-piece ${totalSetPieces === 1 ? "tag" : "tags"} from review`
+              : "Coach clips from film review"}
+          </p>
+        </section>
 
-      {/* ── Clips section ── */}
-      {clipGroups.length > 0 && (
-        <section className="space-y-5">
-          <h2 className="text-sm font-semibold text-foreground-strong uppercase tracking-widest">
-            Review Moments
-          </h2>
+        {/* Game selector + match content */}
+        {clipGroups.length > 0 && selectedGroup && (() => {
+          const { match, clips, setPieceMoments } = selectedGroup;
+          const videoUrl = videoUrls[match.id];
+          const isActiveMatch = activeVideoMatchId === match.id;
+          const currentIdx = activeClipIdx[match.id] ?? null;
+          const filteredSetPieceMoments = filterSetPieceReviewMoments(
+            setPieceMoments,
+            setPieceTypeFilter,
+            setPieceSideFilters
+          );
 
-          {clipGroups.map(({ match, clips, setPieceMoments }) => {
-            const videoUrl = videoUrls[match.id];
-            const isActiveMatch = activeVideoMatchId === match.id;
-            const currentIdx = activeClipIdx[match.id] ?? null;
-            const filteredSetPieceMoments = filterSetPieceReviewMoments(
-              setPieceMoments,
-              setPieceTypeFilter,
-              setPieceSideFilters
-            );
-
-            return (
-              <div key={match.id} className="rounded-xl border border-border bg-panel overflow-hidden">
+          return (
+            <>
+              {clipGroups.length > 1 && (
+                <section className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-2">Select Game</p>
+                  <div className="flex flex-wrap gap-2">
+                    {clipGroups.map(({ match: m }) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setSelectedMatchId(m.id)}
+                        className={`rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
+                          selectedMatchId === m.id
+                            ? "border-border-light bg-panel-3 text-foreground-strong"
+                            : "border-border bg-panel-2 text-muted hover:border-border-light hover:text-foreground"
+                        }`}
+                      >
+                        vs {m.opponent || m.matchTitle || "Game"}
+                        {m.matchDate && (
+                          <span className="ml-1.5 text-xs font-normal text-muted-2">{m.matchDate}</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+              <div className="rounded-xl border border-border bg-panel overflow-hidden">
                 {/* Match header */}
                 <div className="flex items-center justify-between px-5 py-3.5 bg-panel-2 border-b border-border">
                   <div>
@@ -591,28 +627,28 @@ export default function ReviewPage() {
                   </div>
                 )}
               </div>
-            );
-          })}
-        </section>
-      )}
+            </>
+          );
+        })()}
 
-      {/* Empty state — nothing at all */}
-      {clipGroups.length === 0 && (
-        <div className="rounded-xl border border-dashed border-border p-12 text-center space-y-3">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-panel-3">
-            <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
-              <rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.25" className="text-muted-2" />
-              <path d="M6.5 6.5l4 2-4 2V6.5z" fill="currentColor" className="text-muted-2" />
-            </svg>
+        {/* Empty state — nothing at all */}
+        {clipGroups.length === 0 && (
+          <div className="rounded-xl border border-dashed border-border p-12 text-center space-y-3">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-panel-3">
+              <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
+                <rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.25" className="text-muted-2" />
+                <path d="M6.5 6.5l4 2-4 2V6.5z" fill="currentColor" className="text-muted-2" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">No review content yet</p>
+              <p className="mt-1 text-xs text-muted">
+                Your coach hasn&apos;t created shared clips yet.
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-medium text-foreground">No review content yet</p>
-            <p className="mt-1 text-xs text-muted">
-              Your coach hasn&apos;t created shared clips yet.
-            </p>
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </main>
   );
 }

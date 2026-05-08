@@ -52,9 +52,9 @@ export default function CoachSavedMatchesPage() {
 
   const sortedMatches = useMemo(() => {
     return [...savedMatches].sort((a, b) => {
-      const aTime = new Date(a.updatedAt).getTime();
-      const bTime = new Date(b.updatedAt).getTime();
-      return bTime - aTime;
+      const aDate = a.matchDate || a.updatedAt;
+      const bDate = b.matchDate || b.updatedAt;
+      return bDate.localeCompare(aDate);
     });
   }, [savedMatches]);
   const latestMatch = sortedMatches[0] || null;

@@ -6,6 +6,7 @@ import { usePlayer } from "@/app/player/PlayerContext";
 import { useTeam } from "@/app/providers/TeamContext";
 import {
   saveTeam,
+  getTeam,
 } from "@/app/rugby-tagging/lib/team";
 import type { AvailabilityResponse, Fixture, TrainingSession, TrainingSessionDayOfWeek } from "@/app/rugby-tagging/types";
 
@@ -130,24 +131,28 @@ export default function PlayerAvailabilityPage() {
   }
 
   function upsertResponse(patch: Partial<AvailabilityResponse> & { response: AvailabilityResponse["response"] }) {
-    if (!profile || !currentPlayer) return;
-    const existing = responses.findIndex(
+    if (!currentPlayer) return;
+    // Read from cache directly to avoid stale closure when two buttons are clicked in quick succession.
+    const currentTeam = getTeam();
+    if (!currentTeam) return;
+    const currentResponses = currentTeam.availabilityResponses ?? [];
+    const existing = currentResponses.findIndex(
       (r) =>
         r.playerId === currentPlayer.id &&
         (patch.fixtureId ? r.fixtureId === patch.fixtureId : r.trainingSessionId === patch.trainingSessionId)
     );
     const next: AvailabilityResponse = {
-      id: existing >= 0 ? responses[existing].id : crypto.randomUUID(),
+      id: existing >= 0 ? currentResponses[existing].id : crypto.randomUUID(),
       playerId: currentPlayer.id,
       ...patch,
       updatedAt: new Date().toISOString(),
     };
     const updated =
       existing >= 0
-        ? responses.map((r, i) => (i === existing ? next : r))
-        : [...responses, next];
+        ? currentResponses.map((r, i) => (i === existing ? next : r))
+        : [...currentResponses, next];
     saveTeam({
-      ...profile,
+      ...currentTeam,
       availabilityResponses: updated,
       updatedAt: new Date().toISOString(),
     });

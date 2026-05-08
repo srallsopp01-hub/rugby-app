@@ -27,6 +27,7 @@ import {
   createMatchId,
   getCurrentMatchId,
   getSavedMatchById,
+  getSavedMatches,
   setCurrentMatchId as persistCurrentMatchId,
   upsertSavedMatch,
   type SavedMatchRecord,
@@ -2599,6 +2600,9 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
         onApplyPastedTeamSheet={applyPastedTeamSheet}
         onSubmitTeamSheet={submitTeamSheet}
         onSkip={() => setShowTeamSheetModal(false)}
+        savedMatches={getSavedMatches()}
+        onLoadFromMatch={(rows) => setRosterRows(hydrateRosterRows(rows))}
+        squadPlayers={squadProfile?.players}
       />
 
       <MatchReportModal

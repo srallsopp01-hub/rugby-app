@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 8 May 2026 — Added final score input (Us / Them) to the TranscriptPanel above the Submit Match button. Scores stored as `ourScore` / `opponentScore` in the `SavedMatchRecord` payload (JSONB); no DB migration required. Also: `team-setup` page migrated to `useTeam()` hook (removes raw event-listener sync pattern).
+**Last updated:** 8 May 2026 — Four improvements: (1) Fixed availability race condition — `upsertResponse()` now reads from `getTeam()` cache instead of stale React memo so game + training availability both persist when tapped in quick succession. (2) Saved matches page now sorts by `matchDate` descending (most recent game first) instead of `updatedAt`. (3) Player review page reworked — game selector pills at top, only selected game shown at a time (most recent auto-selected), layout updated to match other player pages. (4) Team sheet modal: "Load from previous match" dropdown pre-fills the roster, and the Name column uses a datalist autocomplete sourced from the squad with players ordered by position affinity (primary → secondary → other). Previous: Added final score input to TranscriptPanel; `team-setup` page migrated to `useTeam()` hook.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -71,7 +71,7 @@ The app is split into four clearly separated layers with independent layouts and
 | `/coach/players` | Live | Player directory and coach-facing player analysis |
 | `/coach/players/[playerId]` | Live | Individual player drilldown |
 | `/coach/compare` | Live | Side-by-side saved match and player comparison with confidence cues |
-| `/coach/saved-matches` | Live | Reopen / delete saved matches, local storage context |
+| `/coach/saved-matches` | Live | Reopen / delete saved matches; sorted by `matchDate` descending (most recent game first) |
 | `/coach/settings` | Live | Browser-local coach settings, setup shortcuts, raw JSON export, guarded data management |
 | `/coach/organisation` | Live | Club admin only — org name, plan, status, billing date, active team count, coach seat count |
 
@@ -79,13 +79,13 @@ The app is split into four clearly separated layers with independent layouts and
 | Route | Status | Purpose |
 |---|---|---|
 | `/player` | Live | Player dashboard — greeting + unanswered-response badge, inline availability picker with reason input, season stats strip, next game + last grade cards, coach feedback, targets this week, last-game stats table |
-| `/player/availability` | Live | Standalone availability picker for upcoming fixtures and training sessions |
+| `/player/availability` | Live | Standalone availability picker for upcoming fixtures and training sessions; each button click reads from `getTeam()` cache (not stale React state) so game + training selections both persist |
 | `/player/performance` | Live | Season averages, grade profile cards, season bests, trend charts vs team avg |
 | `/player/team-analytics` | Live | Read-only team analytics for players — shared stats only, no other-player grades/coaching comments |
 | `/player/compare` | Live | Read-only match and player comparison inside the player app — shared stats only except own-player coaching plan |
 | `/player/games` | Live | Match history |
 | `/player/games/[gameId]` | Live | Game detail: full-screen two-column layout — video player + stats + coaching plan (left, scrollable), involvement playlist sidebar (right, scrollable); Previous/Next clip navigation, current-clip card, active-clip highlight, set piece section |
-| `/player/review` | Live | Shared coach clips from film review with per-clip 👍 "Got it" / 🤔 "Question" reactions, optional question text, and a per-player free-text "Your note" field (debounced); marks all clips as seen on open |
+| `/player/review` | Live | Shared coach clips from film review; game selector pills at top (most recent auto-selected, only selected game shown); per-clip 👍 "Got it" / 🤔 "Question" reactions, optional question text, per-player free-text "Your note" (debounced); marks all clips as seen on open |
 | `/player/settings` | Live | Profile, identity switch, theme, local data snapshot, quick nav links |
 
 ### Admin panel (internal only — gated by `ADMIN_EMAILS` env var)
