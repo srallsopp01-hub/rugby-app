@@ -89,13 +89,19 @@ export default function GameDetailPage() {
   const [videoError, setVideoError] = useState<string | null>(null);
   const [activeEventIdx, setActiveEventIdx] = useState<number | null>(null);
   const playlistRef = useRef<HTMLDivElement>(null);
+  const videoRetryCount = useRef(0);
+
+  useEffect(() => {
+    videoRetryCount.current = 0;
+    setVideoError(null);
+  }, [match?.videoStoragePath]);
 
   useEffect(() => {
     return () => { if (videoUrl.startsWith("blob:")) URL.revokeObjectURL(videoUrl); };
   }, [videoUrl]);
 
   useEffect(() => {
-    if (videoUrl || !match?.videoStoragePath) return;
+    if (videoUrl || videoError || !match?.videoStoragePath) return;
     let cancelled = false;
     queueMicrotask(() => {
       if (!cancelled) setVideoLoading(true);
@@ -201,11 +207,14 @@ export default function GameDetailPage() {
                 onError={() => {
                   if (!videoUrl || videoUrl.startsWith("blob:")) return;
                   if (!match?.videoStoragePath) return;
-                  setVideoUrl("");
-                  setVideoLoading(true);
+                  if (videoRetryCount.current >= 1) {
+                    setVideoError("Video could not be loaded from cloud");
+                    return;
+                  }
+                  videoRetryCount.current += 1;
                   void refreshVideoSignedUrl(match.videoStoragePath).then((url) => {
                     if (url) setVideoUrl(url);
-                    setVideoLoading(false);
+                    else setVideoError("Video could not be loaded from cloud");
                   });
                 }}
               />

@@ -213,6 +213,7 @@ export default function ReviewPage() {
   // Per-match video blob URLs and active clip indices
   const [videoUrls, setVideoUrls] = useState<Record<string, string>>({});
   const [videoLoading, setVideoLoading] = useState<Record<string, boolean>>({});
+  const videoRetryCounts = useRef<Record<string, number>>({});
   const [activeClipIdx, setActiveClipIdx] = useState<Record<string, number | null>>({});
   const [setPieceTypeFilter, setSetPieceTypeFilter] = useState<SetPieceTypeFilter>("All");
   const [setPieceSideFilters, setSetPieceSideFilters] = useState<SetPieceSideFilters>({
@@ -455,11 +456,11 @@ export default function ReviewPage() {
                         onError={() => {
                           if (!videoUrl || videoUrl.startsWith("blob:")) return;
                           if (!match.videoStoragePath) return;
-                          setVideoUrls((prev) => { const n = { ...prev }; delete n[match.id]; return n; });
-                          setVideoLoading((prev) => ({ ...prev, [match.id]: true }));
+                          const retries = videoRetryCounts.current[match.id] ?? 0;
+                          if (retries >= 1) return;
+                          videoRetryCounts.current[match.id] = retries + 1;
                           void refreshVideoSignedUrl(match.videoStoragePath).then((freshUrl) => {
                             if (freshUrl) setVideoUrls((prev) => ({ ...prev, [match.id]: freshUrl }));
-                            setVideoLoading((prev) => ({ ...prev, [match.id]: false }));
                           });
                         }}
                       />

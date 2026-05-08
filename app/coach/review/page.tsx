@@ -1088,12 +1088,7 @@ export default function ReviewPage() {
                         if (!matchId) return;
                         const m = getSavedMatchById(matchId);
                         if (!m?.videoStoragePath) return;
-                        setVideoSrc("");
-                        setVideoCloudStatus("loading");
-                        void refreshVideoSignedUrl(m.videoStoragePath).then((url) => {
-                          if (url) { setVideoSrc(url); setVideoCloudStatus("loaded"); }
-                          else setVideoCloudStatus("unavailable");
-                        });
+                        setVideoCloudStatus("unavailable");
                       }}
                       onLoadedData={() => {
                         if (videoRef.current) {
@@ -1688,6 +1683,7 @@ export default function ReviewPage() {
             />
 
             <TeamSnapshotPanel
+              teamName={matchTitle || "Team"}
               tackles={teamTotals.tackles}
               missed={teamTotals.missed}
               tacklePct={teamTacklePct}

@@ -7,7 +7,6 @@ import { markOnboardingComplete } from "@/app/rugby-tagging/lib/onboarding";
 import {
   createDefaultSquadProfile,
   createPlayerId,
-  getSquadProfile,
   saveSquadProfile,
   type SquadPlayer,
   type SquadProfile,
@@ -25,7 +24,7 @@ export default function OnboardingWizard() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [profile, setProfile] = useState<SquadProfile>(
-    () => getSquadProfile() ?? createDefaultSquadProfile()
+    () => createDefaultSquadProfile()
   );
   const [showPlayerForm, setShowPlayerForm] = useState(false);
   const [draft, setDraft] = useState<PlayerDraft>(BLANK_DRAFT);

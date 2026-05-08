@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { getTeam, saveTeam } from "@/app/rugby-tagging/lib/team";
+import { createDefaultTeam, getTeam, saveTeam } from "@/app/rugby-tagging/lib/team";
 import { fetchCloudTeam, mergeTeams, upsertCloudTeam } from "@/lib/teamCloud";
 import {
   getMyTeamContext,
@@ -38,22 +38,36 @@ export function SyncTeam() {
       }
     }
 
-    void sync();
+    // On team switch: pull cloud data for the new team first so stale local data
+    // from the previous team is never pushed up to the new team.
+    async function pullThenSync() {
+      if (cancelled) return;
+      const ctx = await getMyTeamContext();
+      if (!ctx || cancelled) return;
+      const { team: cloud } = await fetchCloudTeam(ctx.teamId);
+      if (cancelled) return;
+      if (!cloud) {
+        // New team with no cloud data — start blank locally, don't push anything yet.
+        saveTeam(createDefaultTeam());
+        return;
+      }
+      saveTeam(cloud);
+      await sync();
+    }
+
+    void pullThenSync();
 
     function handleVisibility() {
       if (document.visibilityState === "visible") void sync();
     }
-    function handleTeamChanged() {
-      void sync();
-    }
 
     document.addEventListener("visibilitychange", handleVisibility);
-    window.addEventListener(ACTIVE_TEAM_CHANGED_EVENT, handleTeamChanged);
+    window.addEventListener(ACTIVE_TEAM_CHANGED_EVENT, pullThenSync);
 
     return () => {
       cancelled = true;
       document.removeEventListener("visibilitychange", handleVisibility);
-      window.removeEventListener(ACTIVE_TEAM_CHANGED_EVENT, handleTeamChanged);
+      window.removeEventListener(ACTIVE_TEAM_CHANGED_EVENT, pullThenSync);
     };
   }, []);
 

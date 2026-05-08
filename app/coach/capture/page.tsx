@@ -512,7 +512,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
 
     if (setPieceSummary.eastsScrums.length > 0) {
       lines.push(
-        `Scrum: Easts success was ${setPieceSummary.eastsScrumSuccessPct.toFixed(
+        `Scrum: ${squadProfile?.teamName ?? "Own team"} success was ${setPieceSummary.eastsScrumSuccessPct.toFixed(
           0
         )}% from ${setPieceSummary.eastsScrums.length} logged scrums.`
       );
@@ -3140,15 +3140,7 @@ Ellie missed tackle"
                   onPause={() => setIsVideoPlaying(false)}
                   onError={() => {
                     if (!videoStoragePath || videoRef.current?.src?.startsWith("blob:")) return;
-                    void refreshVideoSignedUrl(videoStoragePath).then((url) => {
-                      if (!url || !videoRef.current) {
-                        setStatusMessage("Could not refresh match video from cloud");
-                        return;
-                      }
-                      videoRef.current.src = url;
-                      videoRef.current.load();
-                      setStatusMessage("Cloud video refreshed");
-                    });
+                    setStatusMessage("Could not load match video from cloud");
                   }}
                   onClick={toggleVideoPlayback}
                 />
@@ -3507,6 +3499,7 @@ Ellie missed tackle"
                 />
 
                 <TeamSnapshotPanel
+                  teamName={squadProfile?.teamName ?? "Our Team"}
                   tackles={teamTotals.tackles}
                   missed={teamTotals.missed}
                   tacklePct={teamTacklePct}
@@ -3537,6 +3530,7 @@ Ellie missed tackle"
                 />
 
                 <TeamSnapshotPanel
+                  teamName={squadProfile?.teamName ?? "Our Team"}
                   tackles={teamTotals.tackles}
                   missed={teamTotals.missed}
                   tacklePct={teamTacklePct}

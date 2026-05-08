@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { syncAllLocalMatchesToCloud } from "@/lib/savedMatchesCloud";
+import {
+  fetchCloudSavedMatches,
+  syncAllLocalMatchesToCloud,
+} from "@/lib/savedMatchesCloud";
+import { replaceSavedMatches } from "@/app/rugby-tagging/lib/savedMatches";
 import {
   getMyTeamContext,
   ACTIVE_TEAM_CHANGED_EVENT,
@@ -26,16 +30,26 @@ export function SyncSavedMatches() {
       }
     }
 
-    void sync();
-
-    function handleTeamChanged() {
-      void sync();
+    // On team switch: replace local matches with the new team's cloud matches
+    // before syncing, so stale matches from the previous team are never pushed
+    // up to the new team.
+    async function pullThenSync() {
+      if (cancelled) return;
+      const ctx = await getMyTeamContext();
+      if (!ctx || cancelled) return;
+      const { records: cloud } = await fetchCloudSavedMatches(ctx.teamId);
+      if (cancelled) return;
+      replaceSavedMatches(cloud);
+      await sync();
     }
-    window.addEventListener(ACTIVE_TEAM_CHANGED_EVENT, handleTeamChanged);
+
+    void pullThenSync();
+
+    window.addEventListener(ACTIVE_TEAM_CHANGED_EVENT, pullThenSync);
 
     return () => {
       cancelled = true;
-      window.removeEventListener(ACTIVE_TEAM_CHANGED_EVENT, handleTeamChanged);
+      window.removeEventListener(ACTIVE_TEAM_CHANGED_EVENT, pullThenSync);
     };
   }, []);
 
