@@ -76,7 +76,8 @@ export default function PlayerSettingsPage() {
 
       let matchCount = 0;
       try {
-        const matches = raw[SAVED_MATCHES_KEY] ? JSON.parse(raw[SAVED_MATCHES_KEY]!) : null;
+        const scopedKey = getScopedSavedMatchesKey();
+        const matches = raw[scopedKey] ? JSON.parse(raw[scopedKey]!) : null;
         if (Array.isArray(matches)) matchCount = (matches as unknown[]).length;
       } catch { /* ignore parse errors */ }
 
