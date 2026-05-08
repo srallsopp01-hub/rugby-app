@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 8 May 2026 — Fixed team-setup data-loss race condition: `profile` state now initialises as `null` instead of `createDefaultSquadProfile()`, the loading state is shown until real data arrives, and `persist()` bails out while `isLoading` is true — preventing a hard-refresh from wiping the squad by saving a blank default before the Supabase fetch completes. Previous: Four improvements: (1) Fixed availability race condition. (2) Saved matches sort by `matchDate` descending. (3) Player review page reworked with game selector pills. (4) Team sheet modal load-from-previous and datalist autocomplete.
+**Last updated:** 8 May 2026 — OG images + social metadata: added `app/opengraph-image.tsx` (branded 1200×630 `ImageResponse`), `openGraph`/`twitter`/`metadataBase` in root layout, and page-specific metadata on `/pricing`. Pricing page copy: removed false "No card required" claim (Stripe always collects a card for subscription trials), replaced with honest trial cancellation language; tightened early adopter banner subtitle for scarcity. Removed redundant "trial period" suggestion from pre-launch checklist (already implemented). Previous: Fixed team-setup data-loss race condition.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -1599,7 +1599,6 @@ These are low-effort, high-signal for early clubs:
 - **OG images** — add to `public/` so links shared in WhatsApp/Twitter show a branded preview card instead of a blank
 - **Status page** — Instatus free tier, ~10 min setup. Clubs can check themselves if the app is slow rather than messaging you. Link it in the footer.
 - **Early adopter framing on pricing page** — make sure the early adopter yearly offer messaging is current and compelling; first clubs respond to feeling like insiders
-- **Trial period in Stripe checkout** — consider adding a 14-day free trial to the checkout session to reduce signup friction for the first wave of clubs
 - **Simple welcome message** — even a plain-text email you send manually to the first 5–10 signups goes a long way; personal touch matters at this stage
 - **Changelog or "what's new"** — a simple Notion page (or a `/updates` route) linked from the sidebar so early users feel the product is moving; clubs that can see active development stay engaged
 

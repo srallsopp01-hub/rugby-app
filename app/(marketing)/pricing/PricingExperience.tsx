@@ -485,8 +485,8 @@ export default function PricingExperience() {
                 Early adopter offer: get 25% off your first yearly plan.
               </p>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Available for the first clubs joining during launch. Discount
-                applies to the first year only.
+                Founder spots are limited. First clubs in at launch lock in this
+                rate for their first year — after that, standard pricing applies.
               </p>
             </div>
             <div className="rounded-lg border border-success/35 bg-success/10 px-4 py-3 text-sm font-bold text-success">
@@ -499,13 +499,13 @@ export default function PricingExperience() {
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="font-mono text-xs font-bold uppercase text-muted-2">
-                Free trial
+                14-day free trial
               </p>
               <h2 className="mt-2 text-2xl font-black uppercase text-foreground-strong">
-                Try the full coaching workflow with one analysed match. No card required.
+                Try the full coaching workflow free for 14 days.
               </h2>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Includes access to the review workspace, AI summary, clips and sharing.
+                Includes the review workspace, AI summary, clips, and player sharing. Cancel before your trial ends and you won&apos;t be charged.
               </p>
             </div>
             <Link
