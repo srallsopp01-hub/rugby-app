@@ -956,6 +956,19 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     );
   };
 
+  const selectPlayer = useCallback(
+    (number: number, playerId: string, playerName: string) => {
+      setRosterRows((prev) =>
+        prev.map((row) =>
+          row.number === number
+            ? { ...row, name: playerName, playerId: playerId || undefined }
+            : row
+        )
+      );
+    },
+    []
+  );
+
   const applyPastedTeamSheet = () => {
     if (!teamSheetPaste.trim()) return;
     setRosterRows((prev) => parseTeamSheetText(teamSheetPaste, prev, squadProfile?.players));
@@ -2593,11 +2606,9 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     >
       <TeamSheetModal
         show={showTeamSheetModal}
-        teamSheetPaste={teamSheetPaste}
         rosterRows={rosterRows}
-        onTeamSheetPasteChange={setTeamSheetPaste}
         onUpdateRosterRow={updateRosterRow}
-        onApplyPastedTeamSheet={applyPastedTeamSheet}
+        onSelectPlayer={selectPlayer}
         onSubmitTeamSheet={submitTeamSheet}
         onSkip={() => setShowTeamSheetModal(false)}
         savedMatches={getSavedMatches()}
