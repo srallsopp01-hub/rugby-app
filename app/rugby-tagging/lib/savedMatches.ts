@@ -13,6 +13,10 @@ function scopedMatchIdKey(): string {
   const t = getActiveTeamId();
   return t ? `${CURRENT_MATCH_ID_KEY}-${t}` : CURRENT_MATCH_ID_KEY;
 }
+function _scopedMatchesKey(): string {
+  const t = getActiveTeamId();
+  return t ? `${SAVED_MATCHES_KEY}-${t}` : SAVED_MATCHES_KEY;
+}
 
 export type SavedCoachReviewNote = {
   id: number;
@@ -62,7 +66,7 @@ export function getSavedMatches(): SavedMatchRecord[] {
   if (typeof window === "undefined") return [];
 
   try {
-    const raw = localStorage.getItem(SAVED_MATCHES_KEY);
+    const raw = localStorage.getItem(_scopedMatchesKey());
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -92,7 +96,7 @@ export function subscribeSavedMatchesChanged(cb: () => void) {
 
 export function replaceSavedMatches(records: SavedMatchRecord[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(SAVED_MATCHES_KEY, JSON.stringify(records));
+  localStorage.setItem(_scopedMatchesKey(), JSON.stringify(records));
   emitSavedMatchesChanged();
 }
 

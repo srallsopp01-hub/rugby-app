@@ -4,6 +4,17 @@ import type { Fixture, TrainingSession, AvailabilityResponse, SessionLog } from 
 
 export const TEAM_CHANGED_EVENT = "fynlwhistle-team-changed";
 
+// Scope the team profile key per active team so that switching teams never
+// reads or writes another team's data. Each team gets its own localStorage slot.
+const _ACTIVE_TEAM_ID_LS = "fynlwhistle-active-team-id";
+function _getActiveTeamId(): string {
+  try { return localStorage.getItem(_ACTIVE_TEAM_ID_LS) ?? ""; } catch { return ""; }
+}
+function _scopedTeamKey(): string {
+  const t = _getActiveTeamId();
+  return t ? `${TEAM_KEY}-${t}` : TEAM_KEY;
+}
+
 export type SquadPlayerStatus = "active" | "injured" | "unavailable";
 
 export type BuiltinKpiId =
@@ -149,11 +160,27 @@ export function getTeam(): Team | null {
   migrateTeamLocalStorageKey();
 
   try {
-    const raw = localStorage.getItem(TEAM_KEY);
+    const key = _scopedTeamKey();
+    let raw = localStorage.getItem(key);
+
+    // One-time migration from the old unscoped key. Only migrate if the stored
+    // team's id matches the active team — never import another team's data.
+    if (!raw) {
+      const oldRaw = localStorage.getItem(TEAM_KEY);
+      if (oldRaw) {
+        try {
+          const parsed = JSON.parse(oldRaw) as Team;
+          if (parsed?.id && parsed.id === _getActiveTeamId()) {
+            localStorage.setItem(key, oldRaw);
+            raw = oldRaw;
+          }
+        } catch { /* ignore */ }
+      }
+    }
+
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return null;
-    // Ensure the profileId field exists on data migrated from the old format
     if (!parsed.profileId && parsed.id && typeof parsed.id === "string" && !parsed.id.match(/^[0-9a-f-]{36}$/)) {
       parsed.profileId = parsed.id;
     }
@@ -165,7 +192,7 @@ export function getTeam(): Team | null {
 
 export function saveTeam(team: Team): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(TEAM_KEY, JSON.stringify(team));
+  localStorage.setItem(_scopedTeamKey(), JSON.stringify(team));
   window.dispatchEvent(new Event(TEAM_CHANGED_EVENT));
   import("@/lib/teamCloud")
     .then(({ upsertCloudTeam }) => void upsertCloudTeam(team))
@@ -174,7 +201,7 @@ export function saveTeam(team: Team): void {
 
 export function clearTeam(): void {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(TEAM_KEY);
+  localStorage.removeItem(_scopedTeamKey());
 }
 
 export function upsertSquadPlayer(
