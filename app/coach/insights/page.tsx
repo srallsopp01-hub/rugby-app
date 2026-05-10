@@ -35,6 +35,7 @@ import {
 import type { EventItem, RosterRow } from "@/app/rugby-tagging/types";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import { GradeBadge } from "@/app/components/GradeBadge";
+import { StatusPill } from "@/app/components/StatusPill";
 import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "../help-content";
 
@@ -397,15 +398,12 @@ export default function InsightsPage() {
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <PageHelp {...COACH_PAGE_HELP["/coach/insights"]} />
-            <div
-              className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${
-                confidence.readyTone === "ready"
-                  ? "border-[#7ea37e]/40 bg-[#7ea37e]/10 text-[#7ea37e]"
-                  : "border-[#b79a63]/40 bg-[#b79a63]/10 text-[#b79a63]"
-              }`}
+            <StatusPill
+              variant={confidence.readyTone === "ready" ? "success" : "warning"}
+              size="md"
             >
               {confidence.readyLabel}
-            </div>
+            </StatusPill>
             <button
               type="button"
               onClick={async () => {

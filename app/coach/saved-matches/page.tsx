@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageHelp } from "@/app/components/PageHelp";
+import { StatusPill } from "@/app/components/StatusPill";
 import { COACH_PAGE_HELP } from "../help-content";
 import {
   clearCurrentMatchId,
@@ -278,15 +279,13 @@ export default function CoachSavedMatchesPage() {
                             {match.ourScore} – {match.opponentScore}
                           </span>
                         )}
-                        <span
-                          className={`rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] ${
-                            confidence.readyTone === "ready"
-                              ? "border-success/40 bg-success/10 text-success"
-                              : "border-warning/40 bg-warning/10 text-warning"
-                          }`}
+                        <StatusPill
+                          variant={confidence.readyTone === "ready" ? "success" : "warning"}
+                          size="md"
+                          uppercase
                         >
                           {confidence.readyLabel}
-                        </span>
+                        </StatusPill>
                       </div>
 
                       <p className="mt-1 text-sm text-muted">

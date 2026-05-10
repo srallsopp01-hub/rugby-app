@@ -2,6 +2,10 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import CreateTeamButton from "./CreateTeamButton";
+import { StatusPill } from "@/app/components/StatusPill";
+import type { ComponentProps } from "react";
+
+type StatusPillVariant = ComponentProps<typeof StatusPill>["variant"];
 
 const PLAN_LABELS: Record<string, string> = {
   solo: "Solo",
@@ -10,12 +14,12 @@ const PLAN_LABELS: Record<string, string> = {
   org_custom: "Custom",
 };
 
-const STATUS_STYLES: Record<string, { label: string; className: string }> = {
-  trialing: { label: "Trialing", className: "bg-amber-500/15 text-amber-300" },
-  active: { label: "Active", className: "bg-green-500/15 text-green-400" },
-  past_due: { label: "Past due", className: "bg-red-500/15 text-red-400" },
-  canceled: { label: "Canceled", className: "bg-muted-2/20 text-muted-2" },
-  archived: { label: "Archived", className: "bg-muted-2/20 text-muted-2" },
+const STATUS_INFO: Record<string, { label: string; variant: StatusPillVariant }> = {
+  trialing: { label: "Trialing", variant: "warning" },
+  active: { label: "Active", variant: "success" },
+  past_due: { label: "Past due", variant: "danger" },
+  canceled: { label: "Canceled", variant: "neutral" },
+  archived: { label: "Archived", variant: "neutral" },
 };
 
 function formatDate(iso: string | null | undefined): string {
@@ -82,7 +86,7 @@ export default async function OrganisationPage() {
   const totalSeats = (coachMemberCount ?? 0) + (adminCount ?? 0);
 
   const status = org?.status ?? "active";
-  const statusInfo = STATUS_STYLES[status] ?? STATUS_STYLES.active;
+  const statusInfo = STATUS_INFO[status] ?? STATUS_INFO.active;
   const billingDate =
     status === "trialing" ? org?.trial_ends_at : org?.current_period_end;
   const billingLabel = status === "trialing" ? "Trial ends" : "Renews";
@@ -99,11 +103,9 @@ export default async function OrganisationPage() {
             <p className="text-xs text-muted mb-1">Organisation name</p>
             <p className="text-lg font-semibold text-foreground-strong">{org?.name ?? "—"}</p>
           </div>
-          <span
-            className={`shrink-0 mt-0.5 px-2.5 py-1 rounded-full text-xs font-semibold ${statusInfo.className}`}
-          >
+          <StatusPill variant={statusInfo.variant} size="md" className="shrink-0 mt-0.5">
             {statusInfo.label}
-          </span>
+          </StatusPill>
         </div>
         <div className="mt-4 flex flex-wrap gap-6">
           <div>

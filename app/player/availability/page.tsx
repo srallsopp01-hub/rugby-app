@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { StatusPill } from "@/app/components/StatusPill";
 import Link from "next/link";
 import { usePlayer } from "@/app/player/PlayerContext";
 import { useTeam } from "@/app/providers/TeamContext";
@@ -231,13 +232,13 @@ export default function PlayerAvailabilityPage() {
                   <div className="mb-3">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-foreground-strong">vs {fixture.opponent}</span>
-                      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                        fixture.homeOrAway === "home"
-                          ? "border-success/30 bg-success/10 text-success"
-                          : "border-border bg-panel-3 text-muted"
-                      }`}>
+                      <StatusPill
+                        variant={fixture.homeOrAway === "home" ? "success" : "neutral"}
+                        size="sm"
+                        uppercase
+                      >
                         {fixture.homeOrAway}
-                      </span>
+                      </StatusPill>
                       {fixture.round && (
                         <span className="text-xs text-muted-2">Rd {fixture.round}</span>
                       )}

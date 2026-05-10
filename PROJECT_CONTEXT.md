@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 10 May 2026 — Standardised primary CTA buttons to orange (`bg-accent`) across 7 files: team, organisation, saved-matches, team-setup, insights, capture (post-submit modal), and pricing. One orange button per logical action context; secondary/destructive buttons unchanged. Previous: Custom VideoPlayer component.
+**Last updated:** 10 May 2026 — Standardised all status pills to a single `<StatusPill>` component (4 variants: success/warning/danger/neutral, 2 sizes: sm/md). `GradeBadge` refactored as a thin wrapper (Dominant→success, Competitive→warning, Below/Poor→danger). Migrated 14 files; delta chips, interactive filter buttons, position pills, and TranscriptPanel event-type pills excluded (separate follow-up). Audit at `docs/status-pill-audit.md`. Previous: Standardised primary CTA buttons to orange (`bg-accent`).
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---

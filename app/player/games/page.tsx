@@ -7,6 +7,7 @@ import { PageHelp } from "@/app/components/PageHelp";
 import { PLAYER_PAGE_HELP } from "../help-content";
 import { PlayerPicker } from "../PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
+import { StatusPill } from "@/app/components/StatusPill";
 import { useMatches } from "@/app/providers/MatchesContext";
 import { buildReportRowsFromMatch } from "@/app/rugby-tagging/helpers";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
@@ -74,9 +75,9 @@ export default function GamesPage() {
           <p className="mt-1 text-sm text-muted">Every match you&apos;ve been tagged in</p>
         </div>
         {entries.length > 0 && (
-          <span className="rounded-full border border-border bg-panel-2 px-3 py-1 text-xs font-semibold text-muted">
+          <StatusPill size="md">
             {entries.length} {entries.length === 1 ? "game" : "games"}
-          </span>
+          </StatusPill>
         )}
       </div>
 

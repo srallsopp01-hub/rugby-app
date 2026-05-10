@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { PageHelp } from "@/app/components/PageHelp";
+import { StatusPill } from "@/app/components/StatusPill";
 import { COACH_PAGE_HELP } from "../help-content";
 import GameReviewTimelinePanel from "@/app/rugby-tagging/components/GameReviewTimelinePanel";
 import CoachReviewPanel from "@/app/rugby-tagging/components/CoachReviewPanel";
@@ -982,12 +983,13 @@ export default function ReviewPage() {
                 <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">Coach Review</h1>
                 <PageHelp {...COACH_PAGE_HELP["/coach/review"]} />
                 {playerQuestionCount > 0 && (
-                  <span
+                  <StatusPill
+                    variant="warning"
+                    size="md"
                     title="Players have asked questions on these clips"
-                    className="rounded-full border border-warning/40 bg-warning/10 px-2.5 py-1 text-xs font-semibold text-warning"
                   >
                     {playerQuestionCount} question{playerQuestionCount !== 1 ? "s" : ""}
-                  </span>
+                  </StatusPill>
                 )}
               </div>
               <p className="mt-2 text-sm text-muted">
@@ -1478,16 +1480,14 @@ export default function ReviewPage() {
                                   const isQuestion = reaction.type === "question";
                                   return (
                                     <div key={`${reaction.playerId}-${reaction.createdAt}`} className="flex flex-col gap-0.5">
-                                      <span
-                                        className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
-                                          isQuestion
-                                            ? "border-warning/40 bg-warning/10 text-warning"
-                                            : "border-success/40 bg-success/10 text-success"
-                                        }`}
+                                      <StatusPill
+                                        variant={isQuestion ? "warning" : "success"}
+                                        size="sm"
+                                        className="gap-1.5"
                                       >
                                         <span>{isQuestion ? "🤔" : "👍"}</span>
                                         <span>{name}</span>
-                                      </span>
+                                      </StatusPill>
                                       {isQuestion && reaction.note && (
                                         <span className="ml-1 text-[11px] text-muted">{reaction.note}</span>
                                       )}

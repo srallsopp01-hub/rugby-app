@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { PageHelp } from "@/app/components/PageHelp";
+import { StatusPill } from "@/app/components/StatusPill";
 import { COACH_PAGE_HELP } from "../help-content";
 import {
   fetchTeamMembers,
@@ -793,13 +794,13 @@ function MemberRow({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-foreground-strong">{displayName}</span>
-          <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted">
+          <StatusPill size="sm">
             {member.role === "player" ? "Player" : "Coach"}
-          </span>
+          </StatusPill>
           {member.canManageTeam && (
-            <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success">
+            <StatusPill variant="success" size="sm">
               Head permissions
-            </span>
+            </StatusPill>
           )}
         </div>
         {member.coachLabel && (

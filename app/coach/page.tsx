@@ -19,12 +19,16 @@ import {
 } from "@/app/rugby-tagging/helpers";
 import type { EventItem, SessionLog, TrainingSession } from "@/app/rugby-tagging/types";
 import { GradeBadge } from "@/app/components/GradeBadge";
+import { StatusPill } from "@/app/components/StatusPill";
+import type { ComponentProps } from "react";
 import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "./help-content";
 import { DashboardChat } from "./DashboardChat";
 import { fetchNotifyRequests } from "@/lib/teamMembersCloud";
 import { useTeam } from "@/app/providers/TeamContext";
 import { useMatches } from "@/app/providers/MatchesContext";
+
+type StatusPillVariant = ComponentProps<typeof StatusPill>["variant"];
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -632,13 +636,14 @@ export default function CoachDashboardPage() {
                         <h2 className="text-base font-semibold text-foreground-strong">
                           {teamName || "Your team"} vs {nextFixture.opponent}
                         </h2>
-                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide shrink-0 ${
-                          nextFixture.homeOrAway === "home"
-                            ? "border-success/30 bg-success/10 text-success"
-                            : "border-border bg-panel-2 text-muted"
-                        }`}>
+                        <StatusPill
+                          variant={nextFixture.homeOrAway === "home" ? "success" : "neutral"}
+                          size="sm"
+                          uppercase
+                          className="shrink-0"
+                        >
                           {nextFixture.homeOrAway}
-                        </span>
+                        </StatusPill>
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted">
                         <span>{fixtureDayName(nextFixture.date)}</span>
@@ -654,9 +659,9 @@ export default function CoachDashboardPage() {
                       const notResponded = activePlayers.length - responses.length;
                       if (notResponded > 0 && activePlayers.length > 0) {
                         return (
-                          <span className="shrink-0 rounded-full border border-warning/30 bg-warning/10 px-2.5 py-1 text-[10px] font-semibold text-warning">
+                          <StatusPill variant="warning" size="md" className="shrink-0">
                             {notResponded} not yet responded
-                          </span>
+                          </StatusPill>
                         );
                       }
                       return null;
@@ -827,9 +832,9 @@ export default function CoachDashboardPage() {
                       const responses = availabilityResponses.filter((r) => r.trainingSessionId === session.id);
                       const activePlayers = profile?.players?.filter((p) => p.status === "active") ?? [];
                       const confirmed = responses.filter((r) => r.response === "available").length;
-                      const badgeColor = confirmed >= activePlayers.length * 0.7
-                        ? "border-success/30 bg-success/10 text-success"
-                        : "border-warning/30 bg-warning/10 text-warning";
+                      const badgeVariant: StatusPillVariant = confirmed >= activePlayers.length * 0.7
+                        ? "success"
+                        : "warning";
                       const sessionLabel = session.dayOfWeek
                         ? session.dayOfWeek.charAt(0).toUpperCase() + session.dayOfWeek.slice(1)
                         : session.oneOffDate ?? "One-off";
@@ -861,7 +866,7 @@ export default function CoachDashboardPage() {
                                   };
                                   saveSquadProfile(updated);
                                 }}
-                                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold transition ${
+                                className={`rounded-full border px-2 py-0.5 text-[11px] font-medium transition ${
                                   session.availabilityRequested
                                     ? "border-success/30 bg-success/10 text-success"
                                     : "border-border bg-panel-2 text-muted hover:text-foreground"
@@ -870,9 +875,9 @@ export default function CoachDashboardPage() {
                                 {session.availabilityRequested ? "Requested ✓" : "Request"}
                               </button>
                               {activePlayers.length > 0 && responses.length > 0 && (
-                                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${badgeColor}`}>
+                                <StatusPill variant={badgeVariant} size="sm">
                                   {confirmed}/{activePlayers.length}
-                                </span>
+                                </StatusPill>
                               )}
                               {responses.length > 0 && (
                                 <button
@@ -1013,15 +1018,15 @@ export default function CoachDashboardPage() {
                   const activePlayers = profile?.players?.filter((p) => p.status === "active") ?? [];
                   const isPast = fixture.date < today;
 
-                  let badge: { label: string; cls: string };
+                  let badge: { label: string; variant: StatusPillVariant };
                   if (!fixture.availabilityRequested) {
-                    badge = { label: "Not sent", cls: "border-border bg-panel-3 text-muted-2" };
+                    badge = { label: "Not sent", variant: "neutral" };
                   } else if (responses.length === 0) {
-                    badge = { label: "Pending", cls: "border-warning/30 bg-warning/10 text-warning" };
+                    badge = { label: "Pending", variant: "warning" };
                   } else if (available >= activePlayers.length * 0.7) {
-                    badge = { label: `${available}/${activePlayers.length} available`, cls: "border-success/30 bg-success/10 text-success" };
+                    badge = { label: `${available}/${activePlayers.length} available`, variant: "success" };
                   } else {
-                    badge = { label: `${available}/${activePlayers.length} available`, cls: "border-warning/30 bg-warning/10 text-warning" };
+                    badge = { label: `${available}/${activePlayers.length} available`, variant: "warning" };
                   }
 
                   const fixtureExpanded = expandedFixtureId === fixture.id;
@@ -1039,16 +1044,19 @@ export default function CoachDashboardPage() {
                             <span className="text-sm font-medium text-foreground-strong">vs {fixture.opponent}</span>
                             {fixture.round && <span className="ml-1.5 text-xs text-muted-2">Rd {fixture.round}</span>}
                           </div>
-                          <span className={`hidden shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase sm:inline-block ${
-                            fixture.homeOrAway === "home" ? "border-success/20 bg-success/10 text-success" : "border-border bg-panel-3 text-muted"
-                          }`}>
+                          <StatusPill
+                            variant={fixture.homeOrAway === "home" ? "success" : "neutral"}
+                            size="sm"
+                            uppercase
+                            className="hidden shrink-0 sm:inline-flex"
+                          >
                             {fixture.homeOrAway}
-                          </span>
+                          </StatusPill>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${badge.cls}`}>
+                          <StatusPill variant={badge.variant} size="sm">
                             {badge.label}
-                          </span>
+                          </StatusPill>
                           {responses.length > 0 && (
                             <button
                               type="button"
@@ -1183,9 +1191,9 @@ function CheckInCard({
             {" · Takes about 30 seconds"}
           </p>
         </div>
-        <span className="shrink-0 rounded-full border border-warning/30 bg-warning/10 px-2.5 py-1 text-[10px] font-semibold text-warning">
+        <StatusPill variant="warning" size="md" className="shrink-0">
           Not logged yet
-        </span>
+        </StatusPill>
       </div>
 
       <div className="px-5 py-4 space-y-5">

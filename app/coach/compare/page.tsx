@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { PageHelp } from "@/app/components/PageHelp";
+import { StatusPill } from "@/app/components/StatusPill";
 import { COACH_PAGE_HELP } from "../help-content";
 import {
   type SavedMatchRecord,
@@ -358,12 +359,12 @@ function PlayerCard({
         <h2 className="text-xl font-semibold text-foreground-strong">
           {row.name}
         </h2>
-        <span className="rounded-full border border-border bg-panel-2 px-2.5 py-1 text-xs text-muted">
+        <StatusPill size="md">
           #{row.number || "-"} - {row.position || "No position"}
-        </span>
-        <span className="rounded-full border border-border bg-panel-2 px-2.5 py-1 text-xs text-muted">
+        </StatusPill>
+        <StatusPill size="md">
           {row.unit}
-        </span>
+        </StatusPill>
       </div>
 
       <div className="mt-5 grid grid-cols-3 gap-3">

@@ -17,6 +17,7 @@ import { useTeam } from "@/app/providers/TeamContext";
 import type { Fixture, TrainingSession, TrainingSessionDayOfWeek } from "@/app/rugby-tagging/types";
 import { KpiTargetsSection } from "./KpiTargetsSection";
 import { PageHelp } from "@/app/components/PageHelp";
+import { StatusPill } from "@/app/components/StatusPill";
 import { COACH_PAGE_HELP } from "../help-content";
 
 function PositionMultiSelect({
@@ -517,17 +518,18 @@ export default function TeamSetupPage() {
                         )}
                       </td>
                       <td className="p-3">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[11px] ${
+                        <StatusPill
+                          variant={
                             player.status === "active"
-                              ? "bg-emerald-500/10 text-emerald-300"
+                              ? "success"
                               : player.status === "injured"
-                              ? "bg-rose-500/10 text-rose-300"
-                              : "bg-amber-500/10 text-amber-300"
-                          }`}
+                              ? "danger"
+                              : "warning"
+                          }
+                          size="sm"
                         >
                           {player.status}
-                        </span>
+                        </StatusPill>
                       </td>
                       <td className="p-3">
                         <div className="flex justify-end gap-3">
@@ -787,20 +789,20 @@ export default function TeamSetupPage() {
                       <td className="p-3 text-muted">{fixture.date}</td>
                       <td className="p-3 font-medium text-foreground">vs {fixture.opponent}</td>
                       <td className="p-3">
-                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                          fixture.homeOrAway === "home"
-                            ? "border-success/30 bg-success/10 text-success"
-                            : "border-border bg-panel-2 text-muted"
-                        }`}>
+                        <StatusPill
+                          variant={fixture.homeOrAway === "home" ? "success" : "neutral"}
+                          size="sm"
+                          uppercase
+                        >
                           {fixture.homeOrAway}
-                        </span>
+                        </StatusPill>
                       </td>
                       <td className="p-3 text-muted">{fixture.round ?? "—"}</td>
                       <td className="p-3">
                         <button
                           type="button"
                           onClick={(e) => { toggleAvailabilityRequested(fixture.id); e.currentTarget.blur(); }}
-                          className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold transition ${
+                          className={`rounded-full border px-2 py-0.5 text-[11px] font-medium transition ${
                             fixture.availabilityRequested
                               ? "border-success/30 bg-success/10 text-success"
                               : "border-border bg-panel-2 text-muted hover:text-foreground"
@@ -977,7 +979,7 @@ export default function TeamSetupPage() {
                           <button
                             type="button"
                             onClick={(e) => { toggleSessionAvailabilityRequested(session.id); e.currentTarget.blur(); }}
-                            className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold transition ${
+                            className={`rounded-full border px-2 py-0.5 text-[11px] font-medium transition ${
                               session.availabilityRequested
                                 ? "border-success/30 bg-success/10 text-success"
                                 : "border-border bg-panel-2 text-muted hover:text-foreground"

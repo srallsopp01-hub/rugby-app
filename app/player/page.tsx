@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePlayer } from "./PlayerContext";
 import { PlayerPicker } from "./PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
+import { StatusPill } from "@/app/components/StatusPill";
 import { saveSquadProfile } from "@/app/rugby-tagging/lib/team";
 import { buildReportRowsFromMatch, gradeToScore } from "@/app/rugby-tagging/helpers";
 import { buildPlayerCoachingPlan } from "./playerCoachingPlan";
@@ -136,13 +137,13 @@ function FixtureRow({
         <div>
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-foreground-strong">vs {fixture.opponent}</span>
-            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${
-              fixture.homeOrAway === "home"
-                ? "border-success/30 bg-success/10 text-success"
-                : "border-border bg-panel-3 text-muted"
-            }`}>
+            <StatusPill
+              variant={fixture.homeOrAway === "home" ? "success" : "neutral"}
+              size="sm"
+              uppercase
+            >
               {fixture.homeOrAway}
-            </span>
+            </StatusPill>
           </div>
           <div className="mt-0.5 text-xs text-muted">
             {formatDate(fixture.date)}
@@ -498,14 +499,14 @@ export default function PlayerHomePage() {
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1.5">
             {unansweredCount > 0 && (
-              <span className="rounded-full border border-warning/30 bg-warning/10 px-3 py-1.5 text-xs font-semibold text-warning">
+              <StatusPill variant="warning" size="md">
                 {unansweredCount} response{unansweredCount !== 1 ? "s" : ""} needed
-              </span>
+              </StatusPill>
             )}
             {unseenClipCount > 0 && (
               <Link
                 href="/player/review"
-                className="rounded-full border border-warning/30 bg-warning/10 px-3 py-1.5 text-xs font-semibold text-warning hover:border-warning/60 transition-colors"
+                className="inline-flex items-center rounded-full border border-warning/30 bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning hover:border-warning/60 transition-colors"
               >
                 {unseenClipCount} new clip{unseenClipCount !== 1 ? "s" : ""} from your coach
               </Link>

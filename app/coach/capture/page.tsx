@@ -99,6 +99,7 @@ import type {
   UnitSummaryRow,
   VoiceResponse,
 } from "@/app/rugby-tagging/types";
+import { StatusPill } from "@/app/components/StatusPill";
 
 type AppMode = "stat" | "game-review";
 
@@ -3386,24 +3387,24 @@ Ellie missed tackle"
                       !recording &&
                       !transcribing &&
                       !pendingResolution && (
-                        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[13px] text-emerald-300">
+                        <StatusPill variant="success" size="md">
                           Ready to tag
-                        </span>
+                        </StatusPill>
                       )}
                     {recording && (
-                      <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-[13px] text-rose-300">
+                      <StatusPill variant="danger" size="md">
                         Recording
-                      </span>
+                      </StatusPill>
                     )}
                     {transcribing && (
-                      <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-[13px] text-blue-300">
+                      <StatusPill variant="neutral" size="md">
                         Processing last tag
-                      </span>
+                      </StatusPill>
                     )}
                     {pendingResolution && (
-                      <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[13px] text-amber-300">
+                      <StatusPill variant="warning" size="md">
                         Confirm player
-                      </span>
+                      </StatusPill>
                     )}
                   </div>
                 )}

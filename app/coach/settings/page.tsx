@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
 import { PageHelp } from "@/app/components/PageHelp";
+import { StatusPill } from "@/app/components/StatusPill";
+import type { ComponentProps } from "react";
 import { COACH_PAGE_HELP } from "../help-content";
 import {
   CORRECTION_MEMORY_KEY,
@@ -724,26 +726,29 @@ function StorageRow({
   );
 }
 
+type StatusPillVariant = ComponentProps<typeof StatusPill>["variant"];
+
+const SYNC_VARIANTS: Record<SyncStatus, StatusPillVariant> = {
+  idle: "neutral",
+  syncing: "warning",
+  synced: "success",
+  error: "danger",
+};
+
+const SYNC_LABELS: Record<SyncStatus, string> = {
+  idle: "",
+  syncing: "Syncing…",
+  synced: "Synced",
+  error: "Sync failed",
+};
+
 function SyncStatusPill({ status }: { status: SyncStatus }) {
   if (status === "idle") return null;
 
-  const styles: Record<SyncStatus, string> = {
-    idle: "",
-    syncing: "bg-amber-500/10 text-amber-400 border border-amber-500/30",
-    synced: "bg-success/10 text-success border border-success/30",
-    error: "bg-danger/10 text-danger border border-danger/30",
-  };
-  const labels: Record<SyncStatus, string> = {
-    idle: "",
-    syncing: "Syncing…",
-    synced: "Synced",
-    error: "Sync failed",
-  };
-
   return (
-    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${styles[status]}`}>
-      {labels[status]}
-    </span>
+    <StatusPill variant={SYNC_VARIANTS[status]} size="md">
+      {SYNC_LABELS[status]}
+    </StatusPill>
   );
 }
 
