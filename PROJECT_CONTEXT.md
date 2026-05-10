@@ -463,10 +463,12 @@ Sidebar pattern:
 - Match context banner shows current match, local storage/video scope, note count, resolved event count, report readiness
 
 ### Saved Matches (/coach/saved-matches)
-- Reopen saved matches into Capture / Insights / Review
-- Delete saved matches
-- Local storage context panel
-- Per-match confidence cues: named players, resolved events, unresolved review items, notes, Ready for report / Needs review
+- Compact one-line rows (click to expand inline detail); one expanded row at a time
+- ••• menu per row: Open in Capture / Review / Insights / Delete match
+- Expanded row shows: full title/subtitle, score, metadata tiles (Updated / Players / Events / Review / Notes), action buttons + delete
+- Compare mode: checkbox on each row; sticky bar fixed at bottom when ≥1 selected; "Compare →" downloads .xlsx when ≥2 selected
+- Empty state: Video icon, "No matches captured yet", action → /coach/capture
+- Per-match confidence cues: named players, resolved events, unresolved review items, notes, Ready for report / Needs review (StatusPill)
 
 ### Coach Compare (/coach/compare)
 - Match comparison: two saved localStorage matches side by side
