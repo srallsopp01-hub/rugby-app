@@ -273,7 +273,7 @@ function PricingCard({
             disabled={loading}
             className={`inline-flex w-full items-center justify-center rounded-lg px-5 py-3 text-sm font-black uppercase transition disabled:opacity-60 ${
               featured
-                ? "bg-foreground-strong text-background hover:opacity-90"
+                ? "bg-accent text-white hover:opacity-90"
                 : "border border-border-light bg-panel-3 text-foreground-strong hover:bg-panel-2"
             }`}
           >
@@ -284,7 +284,7 @@ function PricingCard({
             href={href}
             className={`inline-flex w-full items-center justify-center rounded-lg px-5 py-3 text-sm font-black uppercase transition ${
               featured
-                ? "bg-foreground-strong text-background hover:opacity-90"
+                ? "bg-accent text-white hover:opacity-90"
                 : "border border-border-light bg-panel-3 text-foreground-strong hover:bg-panel-2"
             }`}
           >
@@ -445,7 +445,7 @@ export default function PricingExperience() {
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/signup?plan=team-launch"
-                className="inline-flex items-center justify-center rounded-lg bg-foreground-strong px-7 py-4 text-sm font-black uppercase text-background transition hover:opacity-90"
+                className="inline-flex items-center justify-center rounded-lg bg-accent px-7 py-4 text-sm font-black uppercase text-white transition hover:opacity-90"
               >
                 Start 14-day free trial
               </Link>
@@ -510,7 +510,7 @@ export default function PricingExperience() {
             </div>
             <Link
               href="/signup?plan=team-launch"
-              className="inline-flex items-center justify-center rounded-lg bg-foreground-strong px-6 py-3 text-sm font-black uppercase text-background transition hover:opacity-90"
+              className="inline-flex items-center justify-center rounded-lg bg-accent px-6 py-3 text-sm font-black uppercase text-white transition hover:opacity-90"
             >
               Start 14-day free trial
             </Link>

@@ -473,7 +473,7 @@ export default function InsightsPage() {
                 }
               }}
               disabled={reportRows.length === 0 || pdfExporting}
-              className="rounded-xl border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground transition hover:border-border-light hover:bg-panel-2 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-xl border border-border bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {pdfExporting ? "Generating…" : "↓ Export PDF"}
             </button>

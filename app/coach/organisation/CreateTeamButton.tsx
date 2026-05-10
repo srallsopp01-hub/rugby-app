@@ -37,7 +37,7 @@ export default function CreateTeamButton({ organisationId }: { organisationId: s
     return (
       <button
         onClick={() => setOpen(true)}
-        className="px-4 py-2 rounded-xl bg-foreground-strong text-background text-sm font-semibold hover:opacity-90 transition-opacity"
+        className="px-4 py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:opacity-90 transition-opacity"
       >
         + New team
       </button>
@@ -58,7 +58,7 @@ export default function CreateTeamButton({ organisationId }: { organisationId: s
       <button
         type="submit"
         disabled={saving || !name.trim()}
-        className="px-4 py-2 rounded-xl bg-foreground-strong text-background text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
+        className="px-4 py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
       >
         {saving ? "Creating…" : "Create"}
       </button>

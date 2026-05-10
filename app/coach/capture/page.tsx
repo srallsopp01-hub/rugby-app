@@ -2829,7 +2829,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
               </button>
               <button
                 onClick={openTeamReview}
-                className="rounded-xl border border-border px-5 py-2.5 text-sm font-medium text-foreground"
+                className="rounded-xl border border-border bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
               >
                 Open Team Review
               </button>

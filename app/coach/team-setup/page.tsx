@@ -476,7 +476,7 @@ export default function TeamSetupPage() {
               <button
                 type="button"
                 onClick={openAdd}
-                className="rounded-xl border border-border bg-panel-2 px-4 py-2.5 text-sm font-medium text-foreground"
+                className="rounded-xl border border-border bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
               >
                 + Add player
               </button>
@@ -639,7 +639,7 @@ export default function TeamSetupPage() {
                 type="button"
                 onClick={savePlayer}
                 disabled={!form.fullName.trim()}
-                className="rounded-xl border border-border-light bg-panel-3 px-5 py-2.5 text-sm font-medium text-foreground disabled:opacity-40"
+                className="rounded-xl border border-border bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-40"
               >
                 {editingId ? "Save changes" : "Add to squad"}
               </button>
@@ -670,7 +670,7 @@ export default function TeamSetupPage() {
               <button
                 type="button"
                 onClick={(e) => { openAddFixture(); e.currentTarget.blur(); }}
-                className="rounded-xl border border-border bg-panel-2 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-panel-3"
+                className="rounded-xl border border-border bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
               >
                 + Add fixture
               </button>
@@ -753,7 +753,7 @@ export default function TeamSetupPage() {
                   type="button"
                   onClick={(e) => { saveFixture(); e.currentTarget.blur(); }}
                   disabled={!fixtureForm.opponent.trim() || !fixtureForm.date}
-                  className="rounded-xl border border-border-light bg-panel-3 px-5 py-2.5 text-sm font-medium text-foreground disabled:opacity-40"
+                  className="rounded-xl border border-border bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-40"
                 >
                   {editingFixtureId ? "Save changes" : "Add fixture"}
                 </button>
@@ -848,7 +848,7 @@ export default function TeamSetupPage() {
               <button
                 type="button"
                 onClick={(e) => { setShowSessionForm(true); e.currentTarget.blur(); }}
-                className="rounded-xl border border-border bg-panel-2 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-panel-3"
+                className="rounded-xl border border-border bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
               >
                 + Add session
               </button>
@@ -928,7 +928,7 @@ export default function TeamSetupPage() {
                   type="button"
                   onClick={(e) => { saveSession(); e.currentTarget.blur(); }}
                   disabled={!sessionForm.time || (sessionForm.sessionType === "oneOff" && !sessionForm.oneOffDate)}
-                  className="rounded-xl border border-border-light bg-panel-3 px-5 py-2.5 text-sm font-medium text-foreground disabled:opacity-40"
+                  className="rounded-xl border border-border bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-40"
                 >
                   {editingSessionId ? "Save changes" : "Add session"}
                 </button>

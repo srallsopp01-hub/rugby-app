@@ -326,7 +326,7 @@ export default function TeamPage() {
               type="button"
               onClick={handleSaveTeamName}
               disabled={savingTeamName}
-              className="rounded-xl border border-border bg-foreground-strong px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-50"
+              className="rounded-xl border border-border bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
             >
               {savingTeamName ? "Saving…" : "Save"}
             </button>
@@ -347,7 +347,7 @@ export default function TeamPage() {
                 type="button"
                 onClick={() => void handleGenerateReusableLink()}
                 disabled={generatingLink}
-                className="rounded-xl bg-foreground-strong px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-50"
+                className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
               >
                 {generatingLink ? "Generating…" : "Generate join link"}
               </button>
@@ -479,7 +479,7 @@ export default function TeamPage() {
             <button
               type="submit"
               disabled={generatingCoachLink || !coachName.trim()}
-              className="rounded-xl bg-foreground-strong px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-50"
+              className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
             >
               {generatingCoachLink ? "Generating…" : coachLinkUrl ? "Generate new link" : "Generate invite link"}
             </button>
@@ -714,7 +714,7 @@ function SlotRow({
             <button
               type="submit"
               disabled={sending || !emailDraft.trim()}
-              className="rounded-lg border border-border bg-foreground-strong px-3 py-2 text-xs font-semibold text-background transition hover:opacity-90 disabled:opacity-50"
+              className="rounded-lg border border-border bg-accent px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
             >
               {sending ? "Generating…" : "Copy link"}
             </button>
@@ -748,7 +748,7 @@ function SlotRow({
               <button
                 type="submit"
                 disabled={linkingInProgress || !linkEmail.trim()}
-                className="rounded-lg border border-border bg-foreground-strong px-3 py-2 text-xs font-semibold text-background transition hover:opacity-90 disabled:opacity-50"
+                className="rounded-lg border border-border bg-accent px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
               >
                 {linkingInProgress ? "Linking…" : "Link account"}
               </button>

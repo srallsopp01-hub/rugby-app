@@ -359,7 +359,7 @@ export default function CoachSavedMatchesPage() {
                           <button
                             type="button"
                             onClick={() => openMatch(match.id, "/coach/insights")}
-                            className="rounded-xl border border-border-light bg-panel-3 px-4 py-2.5 text-sm font-medium text-foreground"
+                            className="rounded-xl border border-border bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
                           >
                             Open Insights
                           </button>

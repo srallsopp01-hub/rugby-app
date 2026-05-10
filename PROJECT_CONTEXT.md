@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 10 May 2026 — Custom VideoPlayer component: replaced native `<video controls>` on all three video pages with a shared `app/components/VideoPlayer.tsx` (seek bar, volume, playback rates, fullscreen, J/K/L/frame-step keyboard shortcuts, empty/loading states). Previous: OG images + social metadata.
+**Last updated:** 10 May 2026 — Standardised primary CTA buttons to orange (`bg-accent`) across 7 files: team, organisation, saved-matches, team-setup, insights, capture (post-submit modal), and pricing. One orange button per logical action context; secondary/destructive buttons unchanged. Previous: Custom VideoPlayer component.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
