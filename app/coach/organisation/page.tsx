@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import CreateTeamButton from "./CreateTeamButton";
 import { StatusPill } from "@/app/components/StatusPill";
+import { PageHeader } from "@/app/components/PageHeader";
 import type { ComponentProps } from "react";
 
 type StatusPillVariant = ComponentProps<typeof StatusPill>["variant"];
@@ -93,8 +94,10 @@ export default async function OrganisationPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-10">
-      <h1 className="text-2xl font-bold text-foreground-strong mb-1">Organisation</h1>
-      <p className="text-sm text-muted mb-8">Billing overview and plan details.</p>
+      <PageHeader
+        title="Organisation"
+        subtitle="Billing overview and plan details."
+      />
 
       {/* Overview tile */}
       <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)] mb-4">

@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { usePlayer } from "../../PlayerContext";
 import { PlayerPicker } from "../../PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
+import { PageHeader } from "@/app/components/PageHeader";
 import { useMatches } from "@/app/providers/MatchesContext";
 import { buildReportRowsFromMatch, formatTime, findMatchingPlayer } from "@/app/rugby-tagging/helpers";
 import { buildPlayerCoachingPlan } from "../../playerCoachingPlan";
@@ -161,22 +162,20 @@ export default function GameDetailPage() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header: back link + match header */}
-      <div className="flex-shrink-0 px-6 pt-6 pb-4 space-y-3">
+      <div className="flex-shrink-0 space-y-3 px-6 pt-6">
         <Link href="/player/games" className="text-xs text-muted hover:text-foreground transition-colors">
           ← Back to Games
         </Link>
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-foreground-strong">
-              vs {match.opponent || match.matchTitle || "Opponent"}
-            </h1>
-            <p className="mt-1 text-sm text-muted">{formatDate(match.matchDate)}</p>
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            <GradeBadge grade={row.overallGrade} />
-            <span className="text-xs text-muted-2">Overall grade</span>
-          </div>
-        </div>
+        <PageHeader
+          title={`vs ${match.opponent || match.matchTitle || "Opponent"}`}
+          subtitle={formatDate(match.matchDate)}
+          status={
+            <div className="flex flex-col items-end gap-1">
+              <GradeBadge grade={row.overallGrade} />
+              <span className="text-xs text-muted-2">Overall grade</span>
+            </div>
+          }
+        />
       </div>
 
       {/* Body: left (video + stats + coaching) + right (playlist) */}

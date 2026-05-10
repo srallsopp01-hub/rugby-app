@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PageHeader } from "@/app/components/PageHeader";
 import { usePlayer } from "../PlayerContext";
 import { PlayerPicker } from "../PlayerPicker";
 import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
@@ -54,10 +55,7 @@ export default function PlayerSettingsPage() {
 
   return (
     <div className="p-6 max-w-2xl space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground-strong">Settings</h1>
-        <p className="mt-1 text-sm text-muted">Account and preferences</p>
-      </div>
+      <PageHeader title="Settings" subtitle="Account and preferences" />
 
       {/* Profile */}
       <div className="rounded-2xl border border-border bg-panel p-5">

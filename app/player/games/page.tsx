@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { usePlayer } from "../PlayerContext";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
 import { PLAYER_PAGE_HELP } from "../help-content";
 import { PlayerPicker } from "../PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
@@ -66,20 +67,18 @@ export default function GamesPage() {
 
   return (
     <div className="p-8 max-w-2xl space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold text-foreground-strong">Your Games</h1>
-            <PageHelp {...PLAYER_PAGE_HELP["/player/games"]} />
-          </div>
-          <p className="mt-1 text-sm text-muted">Every match you&apos;ve been tagged in</p>
-        </div>
-        {entries.length > 0 && (
-          <StatusPill size="md">
-            {entries.length} {entries.length === 1 ? "game" : "games"}
-          </StatusPill>
-        )}
-      </div>
+      <PageHeader
+        title="Your Games"
+        subtitle="Every match you've been tagged in"
+        helpButton={<PageHelp {...PLAYER_PAGE_HELP["/player/games"]} />}
+        status={
+          entries.length > 0 ? (
+            <StatusPill size="md">
+              {entries.length} {entries.length === 1 ? "game" : "games"}
+            </StatusPill>
+          ) : undefined
+        }
+      />
 
       {entries.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-10 text-center">

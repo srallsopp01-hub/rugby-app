@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
 import { StatusPill } from "@/app/components/StatusPill";
 import { COACH_PAGE_HELP } from "../help-content";
 import GameReviewTimelinePanel from "@/app/rugby-tagging/components/GameReviewTimelinePanel";
@@ -978,31 +979,27 @@ export default function ReviewPage() {
   return (
     <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1900px] space-y-5">
-        <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div className="max-w-3xl">
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">Coach Review</h1>
-                <PageHelp {...COACH_PAGE_HELP["/coach/review"]} />
-                {playerQuestionCount > 0 && (
-                  <StatusPill
-                    variant="warning"
-                    size="md"
-                    title="Players have asked questions on these clips"
-                  >
-                    {playerQuestionCount} question{playerQuestionCount !== 1 ? "s" : ""}
-                  </StatusPill>
-                )}
-              </div>
-              <p className="mt-2 text-sm text-muted">
-                Team meeting film room with flexible clips, coaching notes, and lightweight telestration.
-              </p>
-            </div>
-            <div className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
-              {autosaveStatus}
-            </div>
-          </div>
-        </div>
+        <PageHeader
+          title="Coach Review"
+          subtitle="Team meeting film room with flexible clips, coaching notes, and lightweight telestration."
+          helpButton={<PageHelp {...COACH_PAGE_HELP["/coach/review"]} />}
+          status={
+            <>
+              {playerQuestionCount > 0 && (
+                <StatusPill
+                  variant="warning"
+                  size="md"
+                  title="Players have asked questions on these clips"
+                >
+                  {playerQuestionCount} question{playerQuestionCount !== 1 ? "s" : ""}
+                </StatusPill>
+              )}
+              <span className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
+                {autosaveStatus}
+              </span>
+            </>
+          }
+        />
 
         <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">

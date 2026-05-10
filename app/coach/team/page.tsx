@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
 import { StatusPill } from "@/app/components/StatusPill";
 import { COACH_PAGE_HELP } from "../help-content";
 import {
@@ -289,26 +290,16 @@ export default function TeamPage() {
       <div className="mx-auto max-w-[1500px] space-y-5">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
-        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div className="max-w-3xl">
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-                  Team access
-                </h1>
-                {COACH_PAGE_HELP["/coach/team"] && (
-                  <PageHelp {...COACH_PAGE_HELP["/coach/team"]} />
-                )}
-              </div>
-              <p className="mt-2 text-sm leading-6 text-muted">
-                Share your join link so players can claim their squad slot directly.
-              </p>
-            </div>
-            <div className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
+        <PageHeader
+          title="Team access"
+          subtitle="Share your join link so players can claim their squad slot directly."
+          helpButton={COACH_PAGE_HELP["/coach/team"] ? <PageHelp {...COACH_PAGE_HELP["/coach/team"]} /> : undefined}
+          status={
+            <span className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
               {statusMessage}
-            </div>
-          </div>
-        </section>
+            </span>
+          }
+        />
 
         {/* ── Team name ──────────────────────────────────────────────────── */}
         <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">

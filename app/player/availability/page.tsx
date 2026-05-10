@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { StatusPill } from "@/app/components/StatusPill";
+import { PageHeader } from "@/app/components/PageHeader";
 import Link from "next/link";
 import { usePlayer } from "@/app/player/PlayerContext";
 import { useTeam } from "@/app/providers/TeamContext";
@@ -203,24 +204,20 @@ export default function PlayerAvailabilityPage() {
       <div className="mx-auto max-w-[800px] space-y-5">
 
         {/* Header */}
-        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">Availability</h1>
-              <p className="mt-2 text-sm text-muted">
-                Let your coach know if you&apos;re available for upcoming fixtures and training sessions.
-              </p>
-            </div>
-            {syncState !== "idle" && (
-              <span className={`mt-1 shrink-0 text-xs font-medium transition-opacity ${
+        <PageHeader
+          title="Availability"
+          subtitle="Let your coach know if you're available for upcoming fixtures and training sessions."
+          status={
+            syncState !== "idle" ? (
+              <span className={`text-xs font-medium transition-opacity ${
                 syncState === "saving" ? "text-muted" :
                 syncState === "saved" ? "text-success" : "text-danger"
               }`}>
                 {syncState === "saving" ? "Saving…" : syncState === "saved" ? "Saved ✓" : "Couldn't save — check connection"}
               </span>
-            )}
-          </div>
-        </section>
+            ) : undefined
+          }
+        />
 
         {/* Upcoming fixtures */}
         <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">

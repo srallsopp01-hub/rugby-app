@@ -17,6 +17,7 @@ import TeamEventsPanel from "@/app/rugby-tagging/components/TeamEventsPanel";
 import MatchMilestonesPanel from "@/app/rugby-tagging/components/MatchMilestonesPanel";
 import PendingResolutionPanel from "@/app/rugby-tagging/components/PendingResolutionPanel";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
 import { COACH_PAGE_HELP } from "../help-content";
 import { VideoPlayer } from "@/app/components/VideoPlayer";
 import { VideoDropzone } from "@/app/components/VideoDropzone";
@@ -2850,30 +2851,20 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
 
       <div className="mx-auto max-w-[1900px] space-y-5">
         <div className="overflow-hidden rounded-2xl border border-border bg-panel shadow-[var(--shadow-soft)]">
-          <div className="border-b border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0))] px-5 py-4">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-              <div className="max-w-3xl">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-semibold tracking-tight text-foreground-strong md:text-3xl">
-                    Capture
-                  </h1>
-                  <PageHelp {...COACH_PAGE_HELP["/coach/capture"]} />
-                </div>
-                <p className="mt-2 text-sm leading-6 text-muted md:text-base">
-                  Tag stats in Stat Mode, switch to Game Review Mode for
-                  timestamped coaching notes, and build a cleaner match analysis
-                  workflow from the same match file.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
+          <div className="bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0))] px-5 pt-4">
+            <PageHeader
+              title="Capture"
+              subtitle="Tag stats in Stat Mode, switch to Game Review Mode for timestamped coaching notes, and build a cleaner match analysis workflow from the same match file."
+              helpButton={<PageHelp {...COACH_PAGE_HELP["/coach/capture"]} />}
+              secondaryAction={
                 <button
                   onClick={reopenHelpModal}
                   className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground"
                 >
                   Help
                 </button>
-
+              }
+              primaryAction={
                 <button
                   type="button"
                   onClick={startNewMatch}
@@ -2881,10 +2872,10 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
                 >
                   Start New Match
                 </button>
-              </div>
-            </div>
+              }
+            />
 
-            <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-6">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
               <div className="rounded-xl border border-border bg-panel-2 px-3 py-3 text-sm text-muted">
                 <div className="text-[11px] uppercase tracking-[0.14em] text-muted-2">
                   Screen

@@ -1553,6 +1553,17 @@ Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Str
 - ✅ `/coach/capture` — targeted only: added `videoSrc` state, wired `setVideoSrc()` at all 3 src set/clear points (file upload, cloud load, session reset), replaced `<video>` with `<VideoPlayer enableFullscreen enableSkipButtons />`. Spacebar push-to-talk handler, upload input, and upload progress UI untouched
 - ✅ Fixed pre-existing `PlayerContext.tsx` build error (`team` possibly null after `await`) by capturing `teamId` before the async function
 
+### Batch BP (May 2026) — Shared PageHeader component
+
+- ✅ New shared component `app/components/PageHeader.tsx` — `title`, `subtitle`, `status`, `primaryAction`, `secondaryAction`, `helpButton`, `belowHeader`, `className` props; pure presentational, no `"use client"`, works in Server Components
+- ✅ Visual spec: flex row (title left, status+actions right), `border-b border-border pb-6 mb-6` separator, `flex-wrap` for narrow viewports, `belowHeader` renders below the border line
+- ✅ Migrated all 21 coach + player pages in scope — `app/coach/page.tsx`, `app/coach/insights/page.tsx`, `app/coach/review/page.tsx`, `app/coach/players/page.tsx`, `app/coach/players/[playerId]/page.tsx`, `app/coach/compare/page.tsx`, `app/coach/saved-matches/page.tsx`, `app/coach/team/page.tsx`, `app/coach/organisation/page.tsx`, `app/coach/settings/page.tsx`, `app/coach/team-setup/page.tsx`, `app/coach/capture/page.tsx`, `app/player/page.tsx`, `app/player/availability/page.tsx`, `app/player/performance/page.tsx`, `app/player/team-analytics/page.tsx`, `app/player/compare/page.tsx`, `app/player/games/page.tsx`, `app/player/games/[gameId]/page.tsx`, `app/player/review/page.tsx`, `app/player/settings/page.tsx`
+- ✅ Match selectors moved to `belowHeader` on insights, players, and player/team-analytics pages
+- ✅ `app/coach/onboarding/page.tsx` skipped (wizard component, no standard header); marketing + auth pages out of scope
+- ✅ `app/coach/capture/page.tsx` — targeted find/replace only; 6-card status grid left as page content; Help button → `secondaryAction`, Start New Match → `primaryAction`
+- ✅ Back link on `player/games/[gameId]` stays above PageHeader, not inside it
+- ✅ TypeScript strict, zero new lint errors, build passes
+
 ---
 
 ## Next — what's left to do

@@ -17,6 +17,7 @@ import { useTeam } from "@/app/providers/TeamContext";
 import type { Fixture, TrainingSession, TrainingSessionDayOfWeek } from "@/app/rugby-tagging/types";
 import { KpiTargetsSection } from "./KpiTargetsSection";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
 import { StatusPill } from "@/app/components/StatusPill";
 import { COACH_PAGE_HELP } from "../help-content";
 import { EmptyState } from "@/app/components/EmptyState";
@@ -395,17 +396,11 @@ export default function TeamSetupPage() {
       <div className="mx-auto max-w-[1600px] space-y-5">
 
         {/* Header */}
-        <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-              Team Setup
-            </h1>
-            <PageHelp {...COACH_PAGE_HELP["/coach/team-setup"]} />
-          </div>
-          <p className="mt-2 text-sm text-muted">
-            Manage your squad — names, positions, and voice recognition settings. This data persists across all matches.
-          </p>
-        </div>
+        <PageHeader
+          title="Team Setup"
+          subtitle="Manage your squad — names, positions, and voice recognition settings. This data persists across all matches."
+          helpButton={<PageHelp {...COACH_PAGE_HELP["/coach/team-setup"]} />}
+        />
 
         {/* Team details */}
         <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">

@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
 import { PLAYER_PAGE_HELP } from "../help-content";
 import {
   ComposedChart,
@@ -238,26 +239,23 @@ export default function PerformancePage() {
   return (
     <div className="p-6 max-w-2xl space-y-5">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground-strong">Performance</h1>
-
-          <p className="mt-1 text-sm text-muted">
-            {entries.length === 0
-              ? "No matches tagged yet"
-              : `${entries.length} ${entries.length === 1 ? "game" : "games"} · ${currentPlayer.primaryPosition || "Player"}`}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {latestRow && (
+      <PageHeader
+        title="Performance"
+        subtitle={
+          entries.length === 0
+            ? "No matches tagged yet"
+            : `${entries.length} ${entries.length === 1 ? "game" : "games"} · ${currentPlayer.primaryPosition || "Player"}`
+        }
+        helpButton={<PageHelp {...PLAYER_PAGE_HELP["/player/performance"]} />}
+        status={
+          latestRow ? (
             <div className="flex flex-col items-end gap-1">
               <GradeBadge grade={latestRow.overallGrade} />
               <span className="text-[10px] text-muted-2">Last game</span>
             </div>
-          )}
-          <PageHelp {...PLAYER_PAGE_HELP["/player/performance"]} />
-        </div>
-      </div>
+          ) : undefined
+        }
+      />
 
       {/* Empty state */}
       {entries.length === 0 && (

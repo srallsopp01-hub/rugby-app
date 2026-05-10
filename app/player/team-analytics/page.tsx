@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
 import { PLAYER_PAGE_HELP } from "../help-content";
 import {
   Bar,
@@ -168,26 +169,20 @@ export default function PlayerTeamAnalyticsPage() {
   return (
     <main className="min-h-screen bg-background p-6 text-foreground">
       <div className="mx-auto max-w-[1500px] space-y-5">
-        <header className="rounded-xl border border-border bg-panel p-5">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold text-foreground-strong">Team Analytics</h1>
-                <PageHelp {...PLAYER_PAGE_HELP["/player/team-analytics"]} />
-              </div>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-                Team-level match analysis shared into the player app. This is read-only and uses saved coach match data.
-              </p>
-            </div>
-            {matches.length > 0 ? (
-              <label className="block min-w-[260px]">
+        <PageHeader
+          title="Team Analytics"
+          subtitle="Team-level match analysis shared into the player app. This is read-only and uses saved coach match data."
+          helpButton={<PageHelp {...PLAYER_PAGE_HELP["/player/team-analytics"]} />}
+          belowHeader={
+            matches.length > 0 ? (
+              <label className="block">
                 <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">
                   Match
                 </span>
                 <select
                   value={selectedMatch?.id || ""}
                   onChange={(event) => setSelectedMatchId(event.target.value)}
-                  className="w-full rounded-lg border border-border bg-panel-2 px-3 py-2 text-sm text-foreground"
+                  className="rounded-lg border border-border bg-panel-2 px-3 py-2 text-sm text-foreground"
                 >
                   {matches.map((match) => (
                     <option key={match.id} value={match.id}>
@@ -197,9 +192,9 @@ export default function PlayerTeamAnalyticsPage() {
                   ))}
                 </select>
               </label>
-            ) : null}
-          </div>
-        </header>
+            ) : undefined
+          }
+        />
 
         {matches.length === 0 || !selectedMatch ? (
           <section className="rounded-xl border border-dashed border-border bg-panel p-8 text-center">

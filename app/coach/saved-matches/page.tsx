@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
 import { StatusPill } from "@/app/components/StatusPill";
 import { COACH_PAGE_HELP } from "../help-content";
 import {
@@ -109,19 +110,11 @@ export default function CoachSavedMatchesPage() {
   return (
     <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1600px] space-y-5">
-        <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <div className="max-w-3xl">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-                Saved Matches
-              </h1>
-              <PageHelp {...COACH_PAGE_HELP["/coach/saved-matches"]} />
-            </div>
-            <p className="mt-2 text-sm text-muted">
-              Reopen a previously saved match in Capture, Review, or Insights.
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          title="Saved Matches"
+          subtitle="Reopen a previously saved match in Capture, Review, or Insights."
+          helpButton={<PageHelp {...COACH_PAGE_HELP["/coach/saved-matches"]} />}
+        />
 
         <div className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
           <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">

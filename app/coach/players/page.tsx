@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
 import { COACH_PAGE_HELP } from "../help-content";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getMatchVideoUrl } from "@/app/rugby-tagging/lib/matchVideoSession";
@@ -100,12 +101,7 @@ function PlayersLoading() {
   return (
     <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1900px] space-y-5">
-        <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-            Players
-          </h1>
-          <p className="mt-2 text-sm text-muted">Loading player data...</p>
-        </div>
+        <PageHeader title="Players" subtitle="Loading player data..." />
       </div>
     </main>
   );
@@ -331,73 +327,66 @@ function PlayersContent() {
   return (
     <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1900px] space-y-5">
-        <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <div className="max-w-3xl">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-                Players
-              </h1>
-              <PageHelp {...COACH_PAGE_HELP["/coach/players"]} />
-            </div>
-            <p className="mt-2 text-sm text-muted">
-              Single-game player review with video and involvement playlist.
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          title="Players"
+          subtitle="Single-game player review with video and involvement playlist."
+          helpButton={<PageHelp {...COACH_PAGE_HELP["/coach/players"]} />}
+          belowHeader={
+            <div className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-[320px_minmax(0,1fr)]">
+                {allMatches.length >= 2 && (
+                  <div className="xl:col-span-2">
+                    <label className="mb-2 block text-sm font-medium text-foreground">
+                      Match
+                    </label>
+                    <select
+                      value={effectiveMatchId}
+                      onChange={(e) => {
+                        setSelectedMatchId(e.target.value);
+                        const newMatch = allMatches.find((m) => m.id === e.target.value);
+                        const firstPlayer = newMatch?.rosterRows?.[0]?.name?.trim() || "";
+                        router.push(`/coach/players${firstPlayer ? `?player=${encodeURIComponent(firstPlayer)}` : ""}`);
+                      }}
+                      className="w-full rounded-xl border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground"
+                    >
+                      {allMatches.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {[m.matchTitle, m.opponent ? `vs ${m.opponent}` : "", m.matchDate].filter(Boolean).join(" · ") || m.id}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-foreground">
+                    Player
+                  </label>
+                  <select
+                    value={selectedPlayerName}
+                    onChange={(e) =>
+                      router.push(
+                        `/coach/players?player=${encodeURIComponent(e.target.value)}`
+                      )
+                    }
+                    className="w-full rounded-xl border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground"
+                  >
+                    {players.map((player) => (
+                      <option key={player} value={player}>
+                        {player}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-        <div className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-[320px_minmax(0,1fr)]">
-            {allMatches.length >= 2 && (
-              <div className="xl:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-foreground">
-                  Match
-                </label>
-                <select
-                  value={effectiveMatchId}
-                  onChange={(e) => {
-                    setSelectedMatchId(e.target.value);
-                    const newMatch = allMatches.find((m) => m.id === e.target.value);
-                    const firstPlayer = newMatch?.rosterRows?.[0]?.name?.trim() || "";
-                    router.push(`/coach/players${firstPlayer ? `?player=${encodeURIComponent(firstPlayer)}` : ""}`);
-                  }}
-                  className="w-full rounded-xl border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground"
-                >
-                  {allMatches.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {[m.matchTitle, m.opponent ? `vs ${m.opponent}` : "", m.matchDate].filter(Boolean).join(" · ") || m.id}
-                    </option>
-                  ))}
-                </select>
+                <div className="rounded-xl border border-border bg-panel-2 px-4 py-3 text-sm text-muted">
+                  {[matchTitle || "Match", opponent ? `vs ${opponent}` : "", matchDate]
+                    .filter(Boolean)
+                    .join(" • ")}
+                </div>
               </div>
-            )}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-foreground">
-                Player
-              </label>
-              <select
-                value={selectedPlayerName}
-                onChange={(e) =>
-                  router.push(
-                    `/coach/players?player=${encodeURIComponent(e.target.value)}`
-                  )
-                }
-                className="w-full rounded-xl border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground"
-              >
-                {players.map((player) => (
-                  <option key={player} value={player}>
-                    {player}
-                  </option>
-                ))}
-              </select>
             </div>
-
-            <div className="rounded-xl border border-border bg-panel-2 px-4 py-3 text-sm text-muted">
-              {[matchTitle || "Match", opponent ? `vs ${opponent}` : "", matchDate]
-                .filter(Boolean)
-                .join(" • ")}
-            </div>
-          </div>
-        </div>
+          }
+        />
 
         {playerRow ? (
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">

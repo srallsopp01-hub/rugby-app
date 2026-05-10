@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
 import { StatusPill } from "@/app/components/StatusPill";
 import type { ComponentProps } from "react";
 import { COACH_PAGE_HELP } from "../help-content";
@@ -307,25 +308,16 @@ export default function CoachSettingsPage() {
   return (
     <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1500px] space-y-5">
-        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div className="max-w-3xl">
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-                  Coach Settings
-                </h1>
-                <PageHelp {...COACH_PAGE_HELP["/coach/settings"]} />
-              </div>
-              <p className="mt-2 text-sm leading-6 text-muted">
-                Manage local FYNL Whistle data, cloud-backed coach account
-                storage, display preference, and beta setup shortcuts.
-              </p>
-            </div>
-            <div className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
+        <PageHeader
+          title="Coach Settings"
+          subtitle="Manage local FYNL Whistle data, cloud-backed coach account storage, display preference, and beta setup shortcuts."
+          helpButton={<PageHelp {...COACH_PAGE_HELP["/coach/settings"]} />}
+          status={
+            <span className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
               {statusMessage}
-            </div>
-          </div>
-        </section>
+            </span>
+          }
+        />
 
         <section className="grid grid-cols-2 gap-3 xl:grid-cols-6">
           <StatusTile label="Saved matches" value={String(savedMatchCount)} />

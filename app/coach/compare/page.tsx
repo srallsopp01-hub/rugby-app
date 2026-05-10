@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
 import { StatusPill } from "@/app/components/StatusPill";
 import { COACH_PAGE_HELP } from "../help-content";
 import {
@@ -489,12 +490,7 @@ export default function ComparePage() {
     return (
       <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[1900px]">
-          <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-            <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-              Compare
-            </h1>
-            <p className="mt-2 text-sm text-muted">Loading saved match data...</p>
-          </div>
+          <PageHeader title="Compare" subtitle="Loading saved match data..." />
         </div>
       </main>
     );
@@ -503,25 +499,16 @@ export default function ComparePage() {
   return (
     <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1900px] space-y-5">
-        <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div className="max-w-3xl">
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-                  Compare
-                </h1>
-                <PageHelp {...COACH_PAGE_HELP["/coach/compare"]} />
-              </div>
-              <p className="mt-2 text-sm leading-6 text-muted">
-                Side-by-side comparison for saved matches and player output.
-                This screen reads saved match records and uses resolved tagged events.
-              </p>
-            </div>
-            <div className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
+        <PageHeader
+          title="Compare"
+          subtitle="Side-by-side comparison for saved matches and player output. This screen reads saved match records and uses resolved tagged events."
+          helpButton={<PageHelp {...COACH_PAGE_HELP["/coach/compare"]} />}
+          status={
+            <span className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
               Comparison only - no tagging or film review
-            </div>
-          </div>
-        </div>
+            </span>
+          }
+        />
 
         {savedMatches.length === 0 ? (
           <EmptyState

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PageHeader } from "@/app/components/PageHeader";
 import { usePlayer } from "../PlayerContext";
 import { PageHelp } from "@/app/components/PageHelp";
 import { PLAYER_PAGE_HELP } from "../help-content";
@@ -380,17 +381,15 @@ export default function ReviewPage() {
     <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[800px] space-y-5">
         {/* Header */}
-        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">Review</h1>
-            <PageHelp {...PLAYER_PAGE_HELP["/player/review"]} />
-          </div>
-          <p className="mt-2 text-sm text-muted">
-            {totalClips > 0 || totalSetPieces > 0
+        <PageHeader
+          title="Review"
+          subtitle={
+            totalClips > 0 || totalSetPieces > 0
               ? `${totalClips} ${totalClips === 1 ? "clip" : "clips"} and ${totalSetPieces} set-piece ${totalSetPieces === 1 ? "tag" : "tags"} from review`
-              : "Coach clips from film review"}
-          </p>
-        </section>
+              : "Coach clips from film review"
+          }
+          helpButton={<PageHelp {...PLAYER_PAGE_HELP["/player/review"]} />}
+        />
 
         {/* Game selector + match content */}
         {clipGroups.length > 0 && selectedGroup && (() => {

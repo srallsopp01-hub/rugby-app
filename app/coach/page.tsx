@@ -22,6 +22,7 @@ import { GradeBadge } from "@/app/components/GradeBadge";
 import { StatusPill } from "@/app/components/StatusPill";
 import type { ComponentProps } from "react";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
 import { COACH_PAGE_HELP } from "./help-content";
 import { DashboardChat } from "./DashboardChat";
 import { fetchNotifyRequests } from "@/lib/teamMembersCloud";
@@ -499,35 +500,27 @@ export default function CoachDashboardPage() {
         )}
 
         {/* Header — personalized greeting */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-                  {greeting}{coachName ? `, ${coachName}` : ""}
-                </h1>
-                <PageHelp {...COACH_PAGE_HELP["/coach"]} />
-              </div>
-              <p className="mt-1 text-sm text-muted">
-                {teamName && <span className="font-medium text-foreground">{teamName}</span>}
-                {teamName && " · "}
-                {formatToday()}
-              </p>
-            </div>
-          </div>
-          {nextFixture && (() => {
-            const days = daysUntil(nextFixture.date);
-            return (
-              <div className="shrink-0 rounded-xl border border-accent/30 bg-accent/10 px-4 py-2.5 text-center">
-                <div className="text-[10px] font-semibold uppercase tracking-widest text-accent">Next match</div>
-                <div className="mt-0.5 text-sm font-bold text-accent">
-                  {days === 0 ? "Today" : days === 1 ? "Tomorrow" : `${days} days`}
-                </div>
-                <div className="text-[10px] text-muted-2">vs {nextFixture.opponent}</div>
-              </div>
-            );
-          })()}
-        </div>
+        <PageHeader
+          title={`${greeting}${coachName ? `, ${coachName}` : ""}`}
+          subtitle={[teamName, formatToday()].filter(Boolean).join(" · ")}
+          helpButton={<PageHelp {...COACH_PAGE_HELP["/coach"]} />}
+          status={
+            nextFixture
+              ? (() => {
+                  const days = daysUntil(nextFixture.date);
+                  return (
+                    <div className="shrink-0 rounded-xl border border-accent/30 bg-accent/10 px-4 py-2.5 text-center">
+                      <div className="text-[10px] font-semibold uppercase tracking-widest text-accent">Next match</div>
+                      <div className="mt-0.5 text-sm font-bold text-accent">
+                        {days === 0 ? "Today" : days === 1 ? "Tomorrow" : `${days} days`}
+                      </div>
+                      <div className="text-[10px] text-muted-2">vs {nextFixture.opponent}</div>
+                    </div>
+                  );
+                })()
+              : undefined
+          }
+        />
 
         {/* Pending requests notification */}
         {notifyRequestCount > 0 && (

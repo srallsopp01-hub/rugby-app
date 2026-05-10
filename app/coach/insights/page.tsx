@@ -37,6 +37,7 @@ import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import { GradeBadge } from "@/app/components/GradeBadge";
 import { StatusPill } from "@/app/components/StatusPill";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
 import { COACH_PAGE_HELP } from "../help-content";
 import { EmptyState as SharedEmptyState } from "@/app/components/EmptyState";
 import { Award, AlertTriangle, Lightbulb, Users, LineChart } from "lucide-react";
@@ -376,36 +377,25 @@ export default function InsightsPage() {
       <div className="mx-auto max-w-[1900px]">
 
         {/* Page header */}
-        <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
-          <div>
-            <h1 className="text-2xl font-semibold text-foreground-strong">Team Analytics</h1>
-            {allMatches.length >= 2 ? (
-              <select
-                value={effectiveMatchId}
-                onChange={(e) => setSelectedMatchId(e.target.value)}
-                className="mt-1.5 rounded-lg border border-border bg-panel-2 px-2 py-1 text-sm text-foreground"
-              >
-                {allMatches.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {[m.matchTitle, m.opponent ? `vs ${m.opponent}` : "", m.matchDate].filter(Boolean).join(" · ") || m.id}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <p className="mt-1 text-sm text-muted">
-                {[matchTitle, opponent ? `vs ${opponent}` : "", matchDate].filter(Boolean).join(" · ")}
-                {!matchTitle && !opponent && "No match loaded — open a saved match or complete tagging in Capture"}
-              </p>
-            )}
-          </div>
-          <div className="flex shrink-0 items-center gap-3">
-            <PageHelp {...COACH_PAGE_HELP["/coach/insights"]} />
+        <PageHeader
+          className="px-6 pt-5"
+          title="Team Analytics"
+          subtitle={
+            allMatches.length < 2
+              ? [matchTitle, opponent ? `vs ${opponent}` : "", matchDate].filter(Boolean).join(" · ") ||
+                "No match loaded — open a saved match or complete tagging in Capture"
+              : undefined
+          }
+          helpButton={<PageHelp {...COACH_PAGE_HELP["/coach/insights"]} />}
+          status={
             <StatusPill
               variant={confidence.readyTone === "ready" ? "success" : "warning"}
               size="md"
             >
               {confidence.readyLabel}
             </StatusPill>
+          }
+          secondaryAction={
             <button
               type="button"
               onClick={async () => {
@@ -439,6 +429,8 @@ export default function InsightsPage() {
             >
               ↓ Export Report
             </button>
+          }
+          primaryAction={
             <button
               type="button"
               onClick={async () => {
@@ -477,8 +469,25 @@ export default function InsightsPage() {
             >
               {pdfExporting ? "Generating…" : "↓ Export PDF"}
             </button>
-          </div>
-        </div>
+          }
+          belowHeader={
+            allMatches.length >= 2 ? (
+              <div className="pb-4">
+                <select
+                  value={effectiveMatchId}
+                  onChange={(e) => setSelectedMatchId(e.target.value)}
+                  className="rounded-lg border border-border bg-panel-2 px-2 py-1 text-sm text-foreground"
+                >
+                  {allMatches.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {[m.matchTitle, m.opponent ? `vs ${m.opponent}` : "", m.matchDate].filter(Boolean).join(" · ") || m.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : undefined
+          }
+        />
 
         {/* Match confidence strip */}
         <div className="flex items-center gap-2 overflow-x-auto border-b border-border bg-panel px-6 py-3">

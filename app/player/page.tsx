@@ -6,6 +6,7 @@ import { usePlayer } from "./PlayerContext";
 import { PlayerPicker } from "./PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
 import { StatusPill } from "@/app/components/StatusPill";
+import { PageHeader } from "@/app/components/PageHeader";
 import { saveSquadProfile } from "@/app/rugby-tagging/lib/team";
 import { buildReportRowsFromMatch, gradeToScore } from "@/app/rugby-tagging/helpers";
 import { buildPlayerCoachingPlan } from "./playerCoachingPlan";
@@ -488,33 +489,29 @@ export default function PlayerHomePage() {
       <div className="mx-auto max-w-[800px] space-y-5">
 
         {/* Header */}
-        <section className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-              {getGreeting()}, {currentPlayer.preferredName || currentPlayer.fullName}
-            </h1>
-            <p className="mt-1 text-sm text-muted">
-              {teamName && <span className="font-medium text-foreground">{teamName}</span>}
-              {teamName && currentPlayer.primaryPosition && " · "}
-              {currentPlayer.primaryPosition}
-            </p>
-          </div>
-          <div className="flex shrink-0 flex-col items-end gap-1.5">
-            {unansweredCount > 0 && (
-              <StatusPill variant="warning" size="md">
-                {unansweredCount} response{unansweredCount !== 1 ? "s" : ""} needed
-              </StatusPill>
-            )}
-            {unseenClipCount > 0 && (
-              <Link
-                href="/player/review"
-                className="inline-flex items-center rounded-full border border-warning/30 bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning hover:border-warning/60 transition-colors"
-              >
-                {unseenClipCount} new clip{unseenClipCount !== 1 ? "s" : ""} from your coach
-              </Link>
-            )}
-          </div>
-        </section>
+        <PageHeader
+          title={`${getGreeting()}, ${currentPlayer.preferredName || currentPlayer.fullName}`}
+          subtitle={[teamName, currentPlayer.primaryPosition].filter(Boolean).join(" · ")}
+          status={
+            (unansweredCount > 0 || unseenClipCount > 0) ? (
+              <div className="flex flex-col items-end gap-1.5">
+                {unansweredCount > 0 && (
+                  <StatusPill variant="warning" size="md">
+                    {unansweredCount} response{unansweredCount !== 1 ? "s" : ""} needed
+                  </StatusPill>
+                )}
+                {unseenClipCount > 0 && (
+                  <Link
+                    href="/player/review"
+                    className="inline-flex items-center rounded-full border border-warning/30 bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning hover:border-warning/60 transition-colors"
+                  >
+                    {unseenClipCount} new clip{unseenClipCount !== 1 ? "s" : ""} from your coach
+                  </Link>
+                )}
+              </div>
+            ) : undefined
+          }
+        />
 
         {/* Availability */}
         <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
