@@ -350,7 +350,7 @@ export default function CoachSettingsPage() {
           />
         </section>
 
-        <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_1fr]">
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr]">
           <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
@@ -367,7 +367,7 @@ export default function CoachSettingsPage() {
               <ThemeSchemeToggle />
             </div>
 
-            <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               <SettingsLink
                 href="/coach/team-setup"
                 label="Team Setup"
@@ -541,7 +541,7 @@ export default function CoachSettingsPage() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_1fr]">
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr]">
           <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
@@ -565,7 +565,7 @@ export default function CoachSettingsPage() {
               </button>
             </div>
 
-            <div className="mt-5 rounded-xl border border-border bg-panel-2 p-4 text-xs leading-5 text-muted">
+            <div className="mt-4 rounded-xl border border-border bg-panel-2 p-4 text-xs leading-5 text-muted">
               The export is for inspection and backup only. Import/restore is
               not part of Settings v1.
             </div>
@@ -584,7 +584,7 @@ export default function CoachSettingsPage() {
               from their source screen.
             </p>
 
-            <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               <ActionButton
                 label="Clear Current Match"
                 description="Remove active Capture session data and active match ID."

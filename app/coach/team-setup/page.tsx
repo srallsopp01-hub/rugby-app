@@ -557,7 +557,7 @@ export default function TeamSetupPage() {
           )}
 
           {sortedPlayers.length === 0 && !showForm && (
-            <div className="mt-4 rounded-xl border border-dashed border-border p-6 text-center">
+            <div className="mt-4 rounded-xl border border-dashed border-border p-4 text-center">
               <p className="text-sm text-muted">
                 No players added yet. Click &quot;+ Add player&quot; to get started.
               </p>
@@ -636,7 +636,7 @@ export default function TeamSetupPage() {
               </div>
             </div>
 
-            <div className="mt-5 flex items-center gap-4">
+            <div className="mt-4 flex items-center gap-4">
               <button
                 type="button"
                 onClick={savePlayer}
@@ -680,7 +680,7 @@ export default function TeamSetupPage() {
           </div>
 
           {showFixtureForm && (
-            <div className="mt-5 rounded-xl border border-border bg-panel-2 p-5">
+            <div className="mt-4 rounded-xl border border-border bg-panel-2 p-5">
               <h3 className="mb-4 text-sm font-semibold text-foreground-strong">
                 {editingFixtureId ? "Edit fixture" : "Add fixture"}
               </h3>
@@ -750,7 +750,7 @@ export default function TeamSetupPage() {
                   />
                 </div>
               </div>
-              <div className="mt-5 flex items-center gap-4">
+              <div className="mt-4 flex items-center gap-4">
                 <button
                   type="button"
                   onClick={(e) => { saveFixture(); e.currentTarget.blur(); }}
@@ -858,7 +858,7 @@ export default function TeamSetupPage() {
           </div>
 
           {showSessionForm && (
-            <div className="mt-5 rounded-xl border border-border bg-panel-2 p-5">
+            <div className="mt-4 rounded-xl border border-border bg-panel-2 p-5">
               <h3 className="mb-4 text-sm font-semibold text-foreground-strong">
                 {editingSessionId ? "Edit training session" : "Add training session"}
               </h3>
@@ -925,7 +925,7 @@ export default function TeamSetupPage() {
                   />
                 </div>
               </div>
-              <div className="mt-5 flex items-center gap-4">
+              <div className="mt-4 flex items-center gap-4">
                 <button
                   type="button"
                   onClick={(e) => { saveSession(); e.currentTarget.blur(); }}

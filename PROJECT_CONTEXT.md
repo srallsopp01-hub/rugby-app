@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 10 May 2026 — Standardised all status pills to a single `<StatusPill>` component (4 variants: success/warning/danger/neutral, 2 sizes: sm/md). `GradeBadge` refactored as a thin wrapper (Dominant→success, Competitive→warning, Below/Poor→danger). Migrated 14 files; delta chips, interactive filter buttons, position pills, and TranscriptPanel event-type pills excluded (separate follow-up). Audit at `docs/status-pill-audit.md`. Previous: Standardised primary CTA buttons to orange (`bg-accent`).
+**Last updated:** 10 May 2026 — Tightened vertical spacing across 4 long coach pages (`/coach/team`, `/coach/saved-matches`, `/coach/settings`, `/coach/team-setup`). Spacing-only pass: `mt-5→mt-4` within panels, `gap-5→gap-4` on two-column grids, stat tile `py-3→py-2` (saves ~40 px per match card), `space-y-4→space-y-3` between match cards. `/coach/organisation` flagged as under-filled — defer to future content batch. Previous: Standardised all status pills to a single `<StatusPill>` component.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---

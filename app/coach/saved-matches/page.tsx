@@ -139,7 +139,7 @@ export default function CoachSavedMatchesPage() {
         </div>
 
         <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">
                 Saved match context
@@ -173,7 +173,7 @@ export default function CoachSavedMatchesPage() {
         </div>
 
         {sortedMatches.length === 0 ? (
-          <div className="rounded-2xl border border-border bg-panel p-6 shadow-[var(--shadow-soft)]">
+          <div className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
             <h2 className="text-lg font-semibold text-foreground-strong">
               No saved matches yet
             </h2>
@@ -205,7 +205,7 @@ export default function CoachSavedMatchesPage() {
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {selectedMatchIds.length > 0 && (
               <div className="sticky top-4 z-10 rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -253,7 +253,7 @@ export default function CoachSavedMatchesPage() {
                     isSelected ? "border-accent" : "border-border"
                   }`}
                 >
-                  <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-panel-2 px-2.5 py-1 text-xs text-muted transition hover:bg-panel">
@@ -292,15 +292,15 @@ export default function CoachSavedMatchesPage() {
                         {confidence.subtitle}
                       </p>
 
-                      <div className="mt-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-5">
-                        <div className="rounded-xl border border-border bg-panel-2 px-3 py-3">
+                      <div className="mt-3 grid grid-cols-2 gap-3 text-sm md:grid-cols-5">
+                        <div className="rounded-xl border border-border bg-panel-2 px-3 py-2">
                           <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
                             Updated
                           </div>
                           <div className="mt-1 text-sm text-foreground">{confidence.updatedLabel}</div>
                         </div>
 
-                        <div className="rounded-xl border border-border bg-panel-2 px-3 py-3">
+                        <div className="rounded-xl border border-border bg-panel-2 px-3 py-2">
                           <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
                             Players
                           </div>
@@ -309,21 +309,21 @@ export default function CoachSavedMatchesPage() {
                           </div>
                         </div>
 
-                        <div className="rounded-xl border border-border bg-panel-2 px-3 py-3">
+                        <div className="rounded-xl border border-border bg-panel-2 px-3 py-2">
                           <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
                             Events
                           </div>
                           <div className="mt-1 text-sm text-foreground">{confidence.resolvedEvents}</div>
                         </div>
 
-                        <div className="rounded-xl border border-border bg-panel-2 px-3 py-3">
+                        <div className="rounded-xl border border-border bg-panel-2 px-3 py-2">
                           <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
                             Review
                           </div>
                           <div className="mt-1 text-sm text-foreground">{confidence.unresolvedReview}</div>
                         </div>
 
-                        <div className="rounded-xl border border-border bg-panel-2 px-3 py-3">
+                        <div className="rounded-xl border border-border bg-panel-2 px-3 py-2">
                           <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
                             Notes
                           </div>
@@ -401,7 +401,7 @@ function ContextTile({
       : "text-foreground";
 
   return (
-    <div className="rounded-xl border border-border bg-panel-2 px-3 py-3">
+    <div className="rounded-xl border border-border bg-panel-2 px-3 py-2">
       <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
         {label}
       </div>

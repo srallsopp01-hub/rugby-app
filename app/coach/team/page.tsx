@@ -315,7 +315,7 @@ export default function TeamPage() {
           <p className="mt-1 text-sm leading-6 text-muted">
             This name appears on the join page and across player screens.
           </p>
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
             <input
               type="text"
               value={teamNameDraft}
@@ -342,7 +342,7 @@ export default function TeamPage() {
             Share this in your team group chat. Players tap the link, pick their squad slot, and join immediately — no approval needed.
           </p>
 
-          <div className="mt-5">
+          <div className="mt-4">
             {!reusableLink && (
               <button
                 type="button"
@@ -495,7 +495,7 @@ export default function TeamPage() {
             Send a personal link to a specific player — their slot will be pre-selected and the link is single-use.
           </p>
 
-          <div className="mt-5">
+          <div className="mt-4">
             {loading && <p className="text-sm text-muted">Loading…</p>}
             {!loading && squadPlayers.length === 0 && (
               <p className="rounded-xl border border-border bg-panel-2 px-4 py-4 text-sm text-muted">
@@ -558,7 +558,7 @@ export default function TeamPage() {
               These players used your join link but couldn&apos;t find their name on the squad. Approve to add them to your squad, or dismiss.
             </p>
 
-            <div className="mt-5 space-y-3">
+            <div className="mt-4 space-y-3">
               {notifyRequests.map((req) => (
                 <div
                   key={req.id}
