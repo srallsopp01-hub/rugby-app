@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 10 May 2026 — Tightened vertical spacing across 4 long coach pages (`/coach/team`, `/coach/saved-matches`, `/coach/settings`, `/coach/team-setup`). Spacing-only pass: `mt-5→mt-4` within panels, `gap-5→gap-4` on two-column grids, stat tile `py-3→py-2` (saves ~40 px per match card), `space-y-4→space-y-3` between match cards. `/coach/organisation` flagged as under-filled — defer to future content batch. Previous: Standardised all status pills to a single `<StatusPill>` component.
+**Last updated:** 10 May 2026 — Polished all empty states across the app; added shared `EmptyState` and `VideoDropzone` components; replaced native file input on Capture with a drag-and-drop dropzone. Previous: Tightened vertical spacing on long coach pages.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -1516,6 +1516,26 @@ Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Str
 
 - `/terms` and `/privacy` routes live — UK GDPR-compliant, covers all sub-processors
 - Footer links added to `app/(marketing)/layout.tsx`; legal disclaimer added to signup form
+
+---
+
+### Batch BO (May 2026) — Empty state polish + VideoDropzone
+
+- ✅ `lucide-react` installed as new dependency (tree-shaken per icon)
+- ✅ New shared component `app/components/EmptyState.tsx` — props: `icon` (LucideIcon), `title`, `description`, `action`, `secondaryAction`, `size` (sm/md/lg). Primary action renders as `<Link>` (href) or `<button>` (onClick). Uses design tokens throughout; both themes.
+- ✅ New shared component `app/components/VideoDropzone.tsx` — replaces native `<input type="file">` on Capture. Full drag-and-drop (onDragOver/Enter/Leave/Drop), click-to-browse via hidden input, drag-over orange accent border state, upload progress bar (amber), success/error tone states. Props: `onFileSelected`, `isUploading`, `uploadProgress`, `uploadTone`, `uploadStatus`, `maxFileSizeLabel`.
+- ✅ 21 empty states migrated across 11 pages — all existing logic/conditions unchanged; only visual treatment replaced:
+  - `/coach/saved-matches` — FolderOpen, "No saved matches yet", CTA → Capture
+  - `/coach/compare` — GitCompareArrows, two states (0 matches / <2 matches); local EmptyState function deleted
+  - `/coach` dashboard — Video, "No matches captured yet", CTA → Capture
+  - `/coach/review` — Scissors (no clips) / Filter (filtered empty)
+  - `/player/review` — Film, "No review content yet"
+  - `/player` home — Trophy, "Your stats will show here"
+  - `/coach/insights` — LineChart (Season Trends locked state) + Award + AlertTriangle + Lightbulb + Users; local EmptyState function deleted
+  - `/coach/players` — Activity (no involvements) + User (no player selected)
+  - `/coach/team` — Users, "No team members yet"
+  - `/coach/team-setup` — User, "Add your first player"
+  - `/coach/capture` — VideoDropzone replaces the native file input + progress block; VideoPlayer emptyState prop upgraded to `<EmptyState icon={Video} ...>`; all upload state vars and handlers untouched
 
 ---
 
