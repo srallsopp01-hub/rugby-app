@@ -40,6 +40,8 @@ import type {
   ReportRow,
   RosterRow,
 } from "@/app/rugby-tagging/types";
+import { EmptyState } from "@/app/components/EmptyState";
+import { Activity, User } from "lucide-react";
 
 type SavedSession = {
   matchTitle?: string;
@@ -530,9 +532,12 @@ function PlayersContent() {
                 ) : null}
 
                 {playerEvents.length === 0 ? (
-                  <div className="rounded-xl border border-border bg-panel-2 px-4 py-4 text-sm text-muted">
-                    No structured involvements logged for this player yet.
-                  </div>
+                  <EmptyState
+                    icon={Activity}
+                    title="No involvements logged"
+                    description="No structured involvements have been logged for this player yet."
+                    size="sm"
+                  />
                 ) : (
                   <div className="max-h-[460px] space-y-2 overflow-y-auto pr-1">
                     {playerEvents.map((event, index) => (
@@ -655,9 +660,11 @@ function PlayersContent() {
             </aside>
           </div>
         ) : (
-          <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)] text-sm text-muted">
-            No player data is available yet.
-          </div>
+          <EmptyState
+            icon={User}
+            title="No player data available"
+            description="Select a player from the list to see their match involvement."
+          />
         )}
       </div>
     </main>

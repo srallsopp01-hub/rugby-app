@@ -29,6 +29,8 @@ import {
 import { getMatchVideoSignedUrl, refreshVideoSignedUrl, SIGNED_URL_EXPIRY_SECONDS } from "@/lib/matchVideoCloud";
 import type { ClipAnnotation, EventItem, RosterRow, VideoAnnotation } from "@/app/rugby-tagging/types";
 import { VideoPlayer } from "@/app/components/VideoPlayer";
+import { EmptyState } from "@/app/components/EmptyState";
+import { Scissors, Filter } from "lucide-react";
 
 type CoachReviewNote = {
   id: number;
@@ -1402,9 +1404,21 @@ export default function ReviewPage() {
               </div>
 
               {filteredClips.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border p-3 text-sm text-muted">
-                  {clips.length === 0 ? "No clips yet. Press spacebar once to start and again to end." : "No clips match this filter."}
-                </div>
+                clips.length === 0 ? (
+                  <EmptyState
+                    icon={Scissors}
+                    title="No clips yet"
+                    description="Press spacebar once to start a clip, again to end. Or use the Mark Start button below the video."
+                    size="sm"
+                  />
+                ) : (
+                  <EmptyState
+                    icon={Filter}
+                    title="No clips match this filter"
+                    description="Try a different category or clear the filter."
+                    size="sm"
+                  />
+                )
               ) : (
                 <div className="space-y-3">
                   {filteredClips.map((clip) => {

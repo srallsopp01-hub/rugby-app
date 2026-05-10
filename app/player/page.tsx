@@ -16,6 +16,8 @@ import { useMatches } from "@/app/providers/MatchesContext";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { ReportRow, AvailabilityResponse, Fixture, TrainingSession, TrainingSessionDayOfWeek } from "@/app/rugby-tagging/types";
 import type { SquadPlayer } from "@/app/rugby-tagging/lib/team";
+import { EmptyState } from "@/app/components/EmptyState";
+import { Trophy } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -729,10 +731,11 @@ export default function PlayerHomePage() {
 
         {/* Empty state — no matches */}
         {!latestRow && (
-          <section className="rounded-2xl border border-dashed border-border p-8 text-center">
-            <p className="text-sm text-muted">No matches tagged yet.</p>
-            <p className="mt-1 text-xs text-muted-2">Ask your coach to tag you in a game.</p>
-          </section>
+          <EmptyState
+            icon={Trophy}
+            title="Your stats will show here"
+            description="Once your coach tags a match you played in, your performance will appear here."
+          />
         )}
 
       </div>

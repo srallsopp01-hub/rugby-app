@@ -38,6 +38,8 @@ import { GradeBadge } from "@/app/components/GradeBadge";
 import { StatusPill } from "@/app/components/StatusPill";
 import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "../help-content";
+import { EmptyState as SharedEmptyState } from "@/app/components/EmptyState";
+import { Award, AlertTriangle, Lightbulb, Users, LineChart } from "lucide-react";
 
 type Tab = "overview" | "game" | "players" | "trends";
 type PlayerFilter = "all" | "forwards" | "backs";
@@ -634,7 +636,12 @@ export default function InsightsPage() {
                     <span className="text-xs text-muted-2">By overall grade this match</span>
                   </div>
                   {topPerformers.length === 0 ? (
-                    <EmptyState>Complete tagging and add player minutes to see top performers.</EmptyState>
+                    <SharedEmptyState
+                      icon={Award}
+                      title="Tagging incomplete"
+                      description="Complete tagging and add player minutes in Capture to see top performers."
+                      size="sm"
+                    />
                   ) : (
                     <div className="space-y-3">
                       {topPerformers.map((player, i) => (
@@ -670,7 +677,12 @@ export default function InsightsPage() {
                     <span className="text-xs text-muted-2">Below or Poor grade this match</span>
                   </div>
                   {needsAttention.length === 0 && reportRows.length === 0 ? (
-                    <EmptyState>Complete tagging and add player minutes first.</EmptyState>
+                    <SharedEmptyState
+                      icon={AlertTriangle}
+                      title="Tagging incomplete"
+                      description="Complete tagging and add player minutes in Capture first."
+                      size="sm"
+                    />
                   ) : needsAttention.length === 0 ? (
                     <div className="flex h-[80px] items-center justify-center rounded-xl border border-[#7ea37e]/30 bg-[#7ea37e]/5 text-sm text-[#7ea37e]">
                       All players graded Competitive or above this match
@@ -773,7 +785,12 @@ export default function InsightsPage() {
               <div className="rounded-2xl border border-border bg-panel p-5">
                 <h2 className="mb-4 text-base font-semibold text-foreground-strong">Headline Insights</h2>
                 {headlineInsights.length === 0 ? (
-                  <EmptyState>No insights yet. Complete tagging in Capture, then reopen Insights.</EmptyState>
+                  <SharedEmptyState
+                    icon={Lightbulb}
+                    title="No insights yet"
+                    description="Complete tagging in Capture, then reopen Insights."
+                    size="sm"
+                  />
                 ) : (
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     {headlineInsights.map((insight, i) => (
@@ -946,9 +963,11 @@ export default function InsightsPage() {
 
               <div className="rounded-2xl border border-border bg-panel p-5">
                 {filteredPlayerRows.length === 0 ? (
-                  <EmptyState>
-                    No player data yet. Complete tagging in Capture, add player minutes, then reopen Insights.
-                  </EmptyState>
+                  <SharedEmptyState
+                    icon={Users}
+                    title="No player data yet"
+                    description="Complete tagging in Capture, add player minutes, then reopen Insights."
+                  />
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[900px] text-sm">
@@ -1023,16 +1042,12 @@ export default function InsightsPage() {
           {activeTab === "trends" && (
             <div className="space-y-6">
               {!seasonChartData ? (
-                <div className="rounded-2xl border border-dashed border-border bg-panel p-12 text-center">
-                  <div className="text-4xl">📊</div>
-                  <h2 className="mt-4 text-lg font-semibold text-foreground-strong">Season trends need more data</h2>
-                  <p className="mt-2 text-sm text-muted">
-                    Save more matches to unlock season trends. At least 2 saved matches are required.
-                  </p>
-                  <p className="mt-1 text-xs text-muted-2">
-                    You currently have {allMatches.length} saved match{allMatches.length !== 1 ? "es" : ""}.
-                  </p>
-                </div>
+                <SharedEmptyState
+                  icon={LineChart}
+                  title="Season trends unlock at 2 matches"
+                  description={`Save at least 2 matches to see how your team's performance changes over time. You currently have ${allMatches.length} saved match${allMatches.length !== 1 ? "es" : ""}.`}
+                  size="lg"
+                />
               ) : (
                 <>
                   {/* Season averages */}
@@ -1360,10 +1375,3 @@ function SeasonStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function EmptyState({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-dashed border-border px-4 py-5 text-sm text-muted">
-      {children}
-    </div>
-  );
-}

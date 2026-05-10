@@ -27,6 +27,8 @@ import { DashboardChat } from "./DashboardChat";
 import { fetchNotifyRequests } from "@/lib/teamMembersCloud";
 import { useTeam } from "@/app/providers/TeamContext";
 import { useMatches } from "@/app/providers/MatchesContext";
+import { EmptyState } from "@/app/components/EmptyState";
+import { Video } from "lucide-react";
 
 type StatusPillVariant = ComponentProps<typeof StatusPill>["variant"];
 
@@ -989,12 +991,12 @@ export default function CoachDashboardPage() {
                   )}
                 </div>
               ) : (
-                <div className="px-5 py-6 text-center">
-                  <p className="text-sm text-muted">No match data yet.</p>
-                  <Link href="/coach/capture" className="mt-2 inline-block text-xs text-accent underline-offset-4 hover:underline">
-                    Capture your first match →
-                  </Link>
-                </div>
+                <EmptyState
+                  icon={Video}
+                  title="No matches captured yet"
+                  description="Capture your first match to see player performance and personalised recommendations."
+                  action={{ label: "Start your first match", href: "/coach/capture" }}
+                />
               )}
             </section>
           </div>

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { PageHelp } from "@/app/components/PageHelp";
 import { StatusPill } from "@/app/components/StatusPill";
@@ -9,6 +8,8 @@ import {
   type SavedMatchRecord,
 } from "@/app/rugby-tagging/lib/savedMatches";
 import { useMatches } from "@/app/providers/MatchesContext";
+import { EmptyState } from "@/app/components/EmptyState";
+import { GitCompareArrows } from "lucide-react";
 import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfidence";
 import {
   buildReportRowsFromMatch,
@@ -164,34 +165,6 @@ function SelectField({
   );
 }
 
-function EmptyState({
-  title,
-  body,
-}: {
-  title: string;
-  body: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-border bg-panel p-6 shadow-[var(--shadow-soft)]">
-      <h2 className="text-lg font-semibold text-foreground-strong">{title}</h2>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{body}</p>
-      <div className="mt-5 flex flex-wrap gap-3">
-        <Link
-          href="/coach/capture"
-          className="rounded-xl border border-border bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
-        >
-          Open Capture
-        </Link>
-        <Link
-          href="/coach/saved-matches"
-          className="rounded-xl border border-border bg-panel-2 px-4 py-2 text-sm font-medium text-foreground transition hover:bg-panel"
-        >
-          View Saved Matches
-        </Link>
-      </div>
-    </div>
-  );
-}
 
 function SnapshotCard({ snapshot, side }: { snapshot: MatchSnapshot; side: CompareSide }) {
   const title = side === "left" ? "Left match" : "Right match";
@@ -552,13 +525,19 @@ export default function ComparePage() {
 
         {savedMatches.length === 0 ? (
           <EmptyState
+            icon={GitCompareArrows}
             title="No saved matches yet"
-            body="Save a match from Capture first, then return here to compare team and player performance."
+            description="Save a match from Capture first, then return here to compare team and player performance."
+            action={{ label: "Open Capture", href: "/coach/capture" }}
+            secondaryAction={{ label: "View Saved Matches", href: "/coach/saved-matches" }}
           />
         ) : savedMatches.length < 2 ? (
           <EmptyState
-            title="One more saved match needed"
-            body="Compare needs at least two saved matches. Your current saved match is available, but there is not enough data for a side-by-side view yet."
+            icon={GitCompareArrows}
+            title="Need at least 2 matches"
+            description="Capture one more match to unlock side-by-side comparison."
+            action={{ label: "Open Capture", href: "/coach/capture" }}
+            secondaryAction={{ label: "View Saved Matches", href: "/coach/saved-matches" }}
           />
         ) : (
           <>

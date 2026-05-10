@@ -15,6 +15,8 @@ import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfid
 import { generateMultiMatchWorkbook } from "@/app/rugby-tagging/lib/exports/multiMatchExport";
 import { downloadWorkbook } from "@/app/rugby-tagging/lib/exports/downloadWorkbook";
 import { useMatches } from "@/app/providers/MatchesContext";
+import { EmptyState } from "@/app/components/EmptyState";
+import { FolderOpen } from "lucide-react";
 
 export default function CoachSavedMatchesPage() {
   const router = useRouter();
@@ -173,37 +175,13 @@ export default function CoachSavedMatchesPage() {
         </div>
 
         {sortedMatches.length === 0 ? (
-          <div className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
-            <h2 className="text-lg font-semibold text-foreground-strong">
-              No saved matches yet
-            </h2>
-            <p className="mt-2 text-sm text-muted">
-              Save a match from Capture first, then it will appear here and sync to your coach account in the background.
-            </p>
-
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-              <div className="rounded-xl border border-border bg-panel-2 p-4">
-                <div className="text-sm font-medium text-foreground">1. Open Capture</div>
-                <div className="mt-1 text-sm text-muted">
-                  Add the team sheet, match details, and video.
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-border bg-panel-2 p-4">
-                <div className="text-sm font-medium text-foreground">2. Tag and review</div>
-                <div className="mt-1 text-sm text-muted">
-                  Log events, import transcript text, and resolve Needs Review items.
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-border bg-panel-2 p-4">
-                <div className="text-sm font-medium text-foreground">3. Save and reopen</div>
-                <div className="mt-1 text-sm text-muted">
-                  Save the match, then return here later to continue in the right screen.
-                </div>
-              </div>
-            </div>
-          </div>
+          <EmptyState
+            icon={FolderOpen}
+            title="No saved matches yet"
+            description="Save a match from Capture and it will appear here, synced to your account."
+            action={{ label: "Capture a match", href: "/coach/capture" }}
+            size="lg"
+          />
         ) : (
           <div className="space-y-3">
             {selectedMatchIds.length > 0 && (

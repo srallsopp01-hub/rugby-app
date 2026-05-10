@@ -22,6 +22,8 @@ import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { ClipAnnotation, ClipPlayerNote, ClipReaction } from "@/app/rugby-tagging/types";
 import { getMatchVideoSignedUrl, refreshVideoSignedUrl, SIGNED_URL_EXPIRY_SECONDS } from "@/lib/matchVideoCloud";
 import { markReviewAsSeen } from "../lib/reviewSeen";
+import { EmptyState } from "@/app/components/EmptyState";
+import { Film } from "lucide-react";
 
 type ClipGroup = {
   match: SavedMatchRecord;
@@ -633,20 +635,11 @@ export default function ReviewPage() {
 
         {/* Empty state — nothing at all */}
         {clipGroups.length === 0 && (
-          <div className="rounded-xl border border-dashed border-border p-12 text-center space-y-3">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-panel-3">
-              <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
-                <rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.25" className="text-muted-2" />
-                <path d="M6.5 6.5l4 2-4 2V6.5z" fill="currentColor" className="text-muted-2" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">No review content yet</p>
-              <p className="mt-1 text-xs text-muted">
-                Your coach hasn&apos;t created shared clips yet.
-              </p>
-            </div>
-          </div>
+          <EmptyState
+            icon={Film}
+            title="No review content yet"
+            description="When your coach saves clips from this match, they'll appear here for review."
+          />
         )}
       </div>
     </main>

@@ -19,6 +19,8 @@ import { KpiTargetsSection } from "./KpiTargetsSection";
 import { PageHelp } from "@/app/components/PageHelp";
 import { StatusPill } from "@/app/components/StatusPill";
 import { COACH_PAGE_HELP } from "../help-content";
+import { EmptyState } from "@/app/components/EmptyState";
+import { User } from "lucide-react";
 
 function PositionMultiSelect({
   selected,
@@ -557,11 +559,12 @@ export default function TeamSetupPage() {
           )}
 
           {sortedPlayers.length === 0 && !showForm && (
-            <div className="mt-4 rounded-xl border border-dashed border-border p-4 text-center">
-              <p className="text-sm text-muted">
-                No players added yet. Click &quot;+ Add player&quot; to get started.
-              </p>
-            </div>
+            <EmptyState
+              icon={User}
+              title="Add your first player"
+              description='Click "+ Add player" to start building your squad roster.'
+              size="sm"
+            />
           )}
         </div>
 

@@ -25,6 +25,8 @@ import {
   type SquadProfile,
 } from "@/app/rugby-tagging/lib/team";
 import { useTeam } from "@/app/providers/TeamContext";
+import { EmptyState } from "@/app/components/EmptyState";
+import { Users } from "lucide-react";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 
@@ -608,9 +610,11 @@ export default function TeamPage() {
           <div className="mt-5 space-y-3">
             {loading && <p className="text-sm text-muted">Loading…</p>}
             {!loading && acceptedMembers.length === 0 && (
-              <p className="rounded-xl border border-border bg-panel-2 px-4 py-4 text-sm text-muted">
-                No team members yet. Share your join link to get started.
-              </p>
+              <EmptyState
+                icon={Users}
+                title="No team members yet"
+                description="Share your team join link or send a personal invite to add players and coaches."
+              />
             )}
             {acceptedMembers.map((member) => (
               <MemberRow

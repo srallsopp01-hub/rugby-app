@@ -19,6 +19,9 @@ import PendingResolutionPanel from "@/app/rugby-tagging/components/PendingResolu
 import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "../help-content";
 import { VideoPlayer } from "@/app/components/VideoPlayer";
+import { VideoDropzone } from "@/app/components/VideoDropzone";
+import { EmptyState } from "@/app/components/EmptyState";
+import { Video } from "lucide-react";
 import {
   clearMatchVideoSession,
   setMatchVideoFile,
@@ -3113,77 +3116,50 @@ Ellie missed tackle"
                 <label className="mb-2 block text-sm font-medium text-foreground">
                   Match video
                 </label>
-                <div className="rounded-xl border border-dashed border-border-light bg-panel-2 px-4 py-4">
-                  <input
-                    type="file"
-                    accept="video/*"
-                    className="block w-full cursor-pointer text-sm text-muted file:mr-4 file:rounded-lg file:border file:border-border-light file:bg-panel-3 file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file && videoRef.current) {
-                        if (videoRef.current.src?.startsWith("blob:")) {
-                          URL.revokeObjectURL(videoRef.current.src);
-                        }
-                        const nextVideoSrc = setMatchVideoFile(file);
-                        videoRef.current.src = nextVideoSrc;
-                        setVideoSrc(nextVideoSrc);
-                        sessionStorage.setItem("rugby-tagging-video-src", nextVideoSrc);
-                        videoRef.current.playbackRate = 1;
-                        setPlaybackRate(1);
-                        setCurrentTime(0);
-                        setVideoLoaded(true);
-                        setIsVideoPlaying(false);
-                        setVideoDuration(0);
-                        setVideoUploadStatus("idle");
-                        setVideoUploadPercent(0);
-                        setVideoUploadError("");
-                        setMatchSubmitStatus("idle");
-                        setMatchSubmitError("");
-                        setStatusMessage("Video loaded");
-                        pendingVideoFileRef.current = file;
-                        // Upload immediately if match is already saved, otherwise queue
-                        if (currentMatchId) {
-                          void triggerVideoUpload(file, currentMatchId);
-                        }
-                      } else {
-                        setVideoSrc(null);
-                        setVideoLoaded(false);
-                        setIsVideoPlaying(false);
-                        setVideoDuration(0);
-                        setPlaybackRate(1);
-                        setVideoUploadStatus("idle");
-                        setVideoUploadError("");
-                        setMatchSubmitStatus("idle");
-                        setMatchSubmitError("");
-                        pendingVideoFileRef.current = null;
-                        sessionStorage.removeItem("rugby-tagging-video-src");
+                <VideoDropzone
+                  onFileSelected={(file) => {
+                    if (videoRef.current) {
+                      if (videoRef.current.src?.startsWith("blob:")) {
+                        URL.revokeObjectURL(videoRef.current.src);
                       }
-                    }}
-                  />
-                  {videoUploadStatus !== "idle" && (
-                    <div className="mt-2 flex items-center gap-2 text-xs">
-                      {videoUploadStatus === "uploading" && (
-                        <>
-                          <span className="text-amber-400">{videoUploadLabel}</span>
-                          <div className="h-1 flex-1 overflow-hidden rounded-full bg-border">
-                            <div
-                              className="h-full rounded-full bg-amber-400 transition-all"
-                              style={{ width: `${videoUploadPercent}%` }}
-                            />
-                          </div>
-                        </>
-                      )}
-                      {videoUploadStatus === "uploaded" && (
-                        <span className="text-success">Synced to cloud</span>
-                      )}
-                      {videoUploadStatus === "error" && (
-                        <span className="text-danger">
-                          Upload failed - {videoUploadError || "video not saved to cloud"}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
+                      const nextVideoSrc = setMatchVideoFile(file);
+                      videoRef.current.src = nextVideoSrc;
+                      setVideoSrc(nextVideoSrc);
+                      sessionStorage.setItem("rugby-tagging-video-src", nextVideoSrc);
+                      videoRef.current.playbackRate = 1;
+                      setPlaybackRate(1);
+                      setCurrentTime(0);
+                      setVideoLoaded(true);
+                      setIsVideoPlaying(false);
+                      setVideoDuration(0);
+                      setVideoUploadStatus("idle");
+                      setVideoUploadPercent(0);
+                      setVideoUploadError("");
+                      setMatchSubmitStatus("idle");
+                      setMatchSubmitError("");
+                      setStatusMessage("Video loaded");
+                      pendingVideoFileRef.current = file;
+                      if (currentMatchId) {
+                        void triggerVideoUpload(file, currentMatchId);
+                      }
+                    }
+                  }}
+                  isUploading={videoUploadStatus === "uploading"}
+                  uploadProgress={videoUploadPercent}
+                  uploadTone={
+                    videoUploadStatus === "uploaded" ? "success" :
+                    videoUploadStatus === "uploading" ? "uploading" :
+                    videoUploadStatus === "error" ? "error" :
+                    "idle"
+                  }
+                  uploadStatus={
+                    videoUploadStatus === "uploading" ? videoUploadLabel :
+                    videoUploadStatus === "uploaded" ? "Synced to cloud" :
+                    videoUploadStatus === "error" ? `Upload failed – ${videoUploadError || "video not saved to cloud"}` :
+                    undefined
+                  }
+                  maxFileSizeLabel="Up to 5 GB · mp4, mov, m4v"
+                />
               </div>
 
               <VideoPlayer
@@ -3208,13 +3184,12 @@ Ellie missed tackle"
                   setStatusMessage("Could not load match video from cloud");
                 }}
                 emptyState={
-                  <div className="flex flex-col items-center gap-2 text-center">
-                    <svg width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-muted-2" aria-hidden="true">
-                      <rect x="3" y="9" width="38" height="26" rx="3" />
-                      <path d="M17 16l12 6-12 6V16z" />
-                    </svg>
-                    <span className="text-sm text-muted">Load a video to begin tagging</span>
-                  </div>
+                  <EmptyState
+                    icon={Video}
+                    title="Load a match video"
+                    description="Choose a file above to begin tagging."
+                    size="sm"
+                  />
                 }
               />
 
