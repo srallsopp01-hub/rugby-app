@@ -18,6 +18,7 @@ import MatchMilestonesPanel from "@/app/rugby-tagging/components/MatchMilestones
 import PendingResolutionPanel from "@/app/rugby-tagging/components/PendingResolutionPanel";
 import { PageHelp } from "@/app/components/PageHelp";
 import { PageHeader } from "@/app/components/PageHeader";
+import CaptureWalkthroughModal, { hasSeenCaptureWalkthrough } from "@/app/components/CaptureWalkthroughModal";
 import { COACH_PAGE_HELP } from "../help-content";
 import { VideoPlayer } from "@/app/components/VideoPlayer";
 import { VideoDropzone } from "@/app/components/VideoDropzone";
@@ -161,6 +162,15 @@ export default function RugbyVoiceTaggingMVP() {
   const [teamSheetPaste, setTeamSheetPaste] = useState("");
   const [showReportSetupModal, setShowReportSetupModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
+
+  // Auto-open walkthrough on first visit to Capture
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!hasSeenCaptureWalkthrough()) {
+      setShowWalkthrough(true);
+    }
+  }, []);
   const [transcriptImportText, setTranscriptImportText] = useState("");
   const [cleanedTranscriptText, setCleanedTranscriptText] = useState("");
   const [cleanedTranscriptItems, setCleanedTranscriptItems] = useState<
@@ -2776,6 +2786,11 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
         }}
       />
 
+      <CaptureWalkthroughModal
+        open={showWalkthrough}
+        onClose={() => setShowWalkthrough(false)}
+      />
+
       {showReportSetupModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-border bg-panel p-6 shadow-[var(--shadow-soft)]">
@@ -2857,12 +2872,21 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
               subtitle="Tag stats in Stat Mode, switch to Game Review Mode for timestamped coaching notes, and build a cleaner match analysis workflow from the same match file."
               helpButton={<PageHelp {...COACH_PAGE_HELP["/coach/capture"]} />}
               secondaryAction={
-                <button
-                  onClick={reopenHelpModal}
-                  className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground"
-                >
-                  Help
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowWalkthrough(true)}
+                    className="text-xs text-muted hover:text-foreground-strong border border-border hover:border-border-light rounded-md px-3 py-1.5 transition-colors"
+                  >
+                    Walkthrough
+                  </button>
+                  <button
+                    onClick={reopenHelpModal}
+                    className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground"
+                  >
+                    Help
+                  </button>
+                </>
               }
               primaryAction={
                 <button

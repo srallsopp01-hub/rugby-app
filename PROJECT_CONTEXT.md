@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 10 May 2026 — Polished all empty states across the app; added shared `EmptyState` and `VideoDropzone` components; replaced native file input on Capture with a drag-and-drop dropzone. Previous: Tightened vertical spacing on long coach pages.
+**Last updated:** 11 May 2026 — Added 15-slide Capture Walkthrough Modal (`app/components/CaptureWalkthroughModal.tsx`); auto-opens on first visit, persists progress in localStorage (`fynlwhistle-capture-walkthrough-progress`), re-openable via new "Walkthrough" button in Capture page header. Previous: Polished all empty states; added `EmptyState` and `VideoDropzone` components.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
