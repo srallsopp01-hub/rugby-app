@@ -20,6 +20,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    if (!team) return;
+    const teamId = team.id;
+
     async function resolvePlayerIdentity() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
@@ -29,6 +32,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         .from("team_members")
         .select("player_squad_id")
         .eq("user_id", user.id)
+        .eq("team_id", teamId)
         .eq("status", "active")
         .eq("role", "player")
         .maybeSingle();
@@ -40,7 +44,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }
 
     void resolvePlayerIdentity();
-  }, []);
+  }, [team?.id]);
 
   const currentPlayer = currentPlayerId && team
     ? (team.players.find((p) => p.id === currentPlayerId) ?? null)

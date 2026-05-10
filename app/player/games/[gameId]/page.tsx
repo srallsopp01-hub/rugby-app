@@ -13,6 +13,7 @@ import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { EventItem } from "@/app/rugby-tagging/types";
 import type { SquadPlayer } from "@/app/rugby-tagging/lib/team";
 import { getMatchVideoSignedUrlWithResult, refreshVideoSignedUrl, SIGNED_URL_EXPIRY_SECONDS } from "@/lib/matchVideoCloud";
+import { VideoPlayer } from "@/app/components/VideoPlayer";
 
 function playerNameSet(player: SquadPlayer): Set<string> {
   return new Set([
@@ -193,11 +194,11 @@ export default function GameDetailPage() {
             </div>
           ) : videoUrl ? (
             <div className="rounded-xl border border-border bg-panel overflow-hidden">
-              <video
+              <VideoPlayer
                 ref={videoRef}
                 src={videoUrl}
-                className="w-full aspect-video bg-black"
-                controls
+                className="rounded-none"
+                enableFullscreen
                 onError={() => {
                   if (!videoUrl || videoUrl.startsWith("blob:")) return;
                   if (!match?.videoStoragePath) return;

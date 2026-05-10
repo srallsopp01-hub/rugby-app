@@ -18,6 +18,7 @@ import MatchMilestonesPanel from "@/app/rugby-tagging/components/MatchMilestones
 import PendingResolutionPanel from "@/app/rugby-tagging/components/PendingResolutionPanel";
 import { PageHelp } from "@/app/components/PageHelp";
 import { COACH_PAGE_HELP } from "../help-content";
+import { VideoPlayer } from "@/app/components/VideoPlayer";
 import {
   clearMatchVideoSession,
   setMatchVideoFile,
@@ -175,6 +176,7 @@ export default function RugbyVoiceTaggingMVP() {
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [videoSrc, setVideoSrc] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState("Ready");
   const [showRawTranscript, setShowRawTranscript] = useState(true);
   const [videoLoaded, setVideoLoaded] = useState(false);
@@ -869,6 +871,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
       videoRef.current.src = url;
       videoRef.current.playbackRate = playbackRate;
       videoRef.current.load();
+      setVideoSrc(url);
       setStatusMessage("Cloud video loaded");
     });
 
@@ -1027,6 +1030,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
       videoRef.current.removeAttribute("src");
       videoRef.current.load();
     }
+    setVideoSrc(null);
 
     localStorage.removeItem(getScopedStorageKey());
     sessionStorage.removeItem("rugby-tagging-video-src");
@@ -3121,6 +3125,7 @@ Ellie missed tackle"
                         }
                         const nextVideoSrc = setMatchVideoFile(file);
                         videoRef.current.src = nextVideoSrc;
+                        setVideoSrc(nextVideoSrc);
                         sessionStorage.setItem("rugby-tagging-video-src", nextVideoSrc);
                         videoRef.current.playbackRate = 1;
                         setPlaybackRate(1);
@@ -3140,6 +3145,7 @@ Ellie missed tackle"
                           void triggerVideoUpload(file, currentMatchId);
                         }
                       } else {
+                        setVideoSrc(null);
                         setVideoLoaded(false);
                         setIsVideoPlaying(false);
                         setVideoDuration(0);
@@ -3179,31 +3185,37 @@ Ellie missed tackle"
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-2xl border border-border bg-black shadow-[var(--shadow-panel)]">
-                <video
-                  ref={videoRef}
-                  className="aspect-video min-h-[340px] w-full cursor-pointer bg-black object-contain xl:min-h-[460px] 2xl:min-h-[560px]"
-                  onLoadedData={() => {
-                    setVideoLoaded(true);
-                    if (videoRef.current) {
-                      videoRef.current.playbackRate = playbackRate;
-                    }
-                  }}
-                  onLoadedMetadata={() => {
-                    setVideoDuration(videoRef.current?.duration || 0);
-                  }}
-                  onTimeUpdate={() =>
-                    setCurrentTime(videoRef.current?.currentTime || 0)
+              <VideoPlayer
+                ref={videoRef}
+                src={videoSrc}
+                className="min-h-[340px] xl:min-h-[460px] 2xl:min-h-[560px] border border-border shadow-[var(--shadow-panel)]"
+                videoClassName="min-h-[340px] xl:min-h-[460px] 2xl:min-h-[560px]"
+                enableFullscreen
+                enableSkipButtons
+                onLoadedData={() => {
+                  setVideoLoaded(true);
+                  if (videoRef.current) {
+                    videoRef.current.playbackRate = playbackRate;
                   }
-                  onPlay={() => setIsVideoPlaying(true)}
-                  onPause={() => setIsVideoPlaying(false)}
-                  onError={() => {
-                    if (!videoStoragePath || videoRef.current?.src?.startsWith("blob:")) return;
-                    setStatusMessage("Could not load match video from cloud");
-                  }}
-                  onClick={toggleVideoPlayback}
-                />
-              </div>
+                }}
+                onLoadedMetadata={(d) => setVideoDuration(d)}
+                onTimeUpdate={(t) => setCurrentTime(t)}
+                onPlay={() => setIsVideoPlaying(true)}
+                onPause={() => setIsVideoPlaying(false)}
+                onError={() => {
+                  if (!videoStoragePath || videoRef.current?.src?.startsWith("blob:")) return;
+                  setStatusMessage("Could not load match video from cloud");
+                }}
+                emptyState={
+                  <div className="flex flex-col items-center gap-2 text-center">
+                    <svg width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-muted-2" aria-hidden="true">
+                      <rect x="3" y="9" width="38" height="26" rx="3" />
+                      <path d="M17 16l12 6-12 6V16z" />
+                    </svg>
+                    <span className="text-sm text-muted">Load a video to begin tagging</span>
+                  </div>
+                }
+              />
 
               <div className="mt-4 rounded-2xl border border-border bg-panel-2 p-4">
                 <div className="mb-4 flex flex-col gap-3 rounded-xl border border-border bg-panel px-4 py-3">

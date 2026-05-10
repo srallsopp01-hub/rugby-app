@@ -27,6 +27,7 @@ import {
 } from "@/app/rugby-tagging/lib/setPieceReview";
 import { getMatchVideoSignedUrl, refreshVideoSignedUrl, SIGNED_URL_EXPIRY_SECONDS } from "@/lib/matchVideoCloud";
 import type { ClipAnnotation, EventItem, RosterRow, VideoAnnotation } from "@/app/rugby-tagging/types";
+import { VideoPlayer } from "@/app/components/VideoPlayer";
 
 type CoachReviewNote = {
   id: number;
@@ -668,49 +669,6 @@ export default function ReviewPage() {
         }
       }
 
-      if (!video) return;
-
-      if (!isPresenting && (event.code === "ArrowLeft" || event.code === "ArrowRight")) {
-        if (!video.paused) return;
-        event.preventDefault();
-        const delta = event.code === "ArrowRight" ? 1 / 30 : -1 / 30;
-        const duration = Number.isFinite(video.duration) ? video.duration : 0;
-        const next = Math.max(0, Math.min(video.currentTime + delta, duration || video.currentTime + delta));
-        video.currentTime = next;
-        setCurrentTime(next);
-        return;
-      }
-
-      if (event.code === "KeyJ") {
-        event.preventDefault();
-        const delta = video.paused ? -2 : -5;
-        const next = Math.max(0, video.currentTime + delta);
-        video.currentTime = next;
-        setCurrentTime(next);
-        return;
-      }
-
-      if (event.code === "KeyK") {
-        event.preventDefault();
-        if (video.paused) {
-          void video.play();
-        } else {
-          video.pause();
-        }
-        return;
-      }
-
-      if (event.code === "KeyL") {
-        event.preventDefault();
-        if (video.paused) {
-          void video.play();
-          return;
-        }
-        const nextRate = Math.min(4, video.playbackRate * 2);
-        video.playbackRate = nextRate;
-        setPlaybackRate(nextRate);
-        return;
-      }
     }
 
     window.addEventListener("keydown", onKeyDown);
@@ -944,22 +902,6 @@ export default function ReviewPage() {
     setCurrentTime(nextTime);
   };
 
-  const jumpVideoBy = (seconds: number) => {
-    const video = videoRef.current;
-    if (!video) return;
-    const duration = Number.isFinite(video.duration) ? video.duration : 0;
-    const nextTime = Math.max(0, Math.min(video.currentTime + seconds, duration || video.currentTime + seconds));
-    video.currentTime = nextTime;
-    setCurrentTime(nextTime);
-  };
-
-  const changePlaybackRate = (nextRate: number) => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.playbackRate = nextRate;
-    setPlaybackRate(nextRate);
-  };
-
   const selectAnnotationTool = (tool: AnnotationTool) => {
     if (!activeClip) return;
     setAnnotationTool((current) => (current === tool ? null : tool));
@@ -1100,12 +1042,18 @@ export default function ReviewPage() {
 
               {videoSrc ? (
                 <>
-                  <div className="relative overflow-hidden rounded-2xl border border-border bg-black shadow-[var(--shadow-panel)]">
-                    <video
+                  <div className="relative">
+                    <VideoPlayer
                       ref={videoRef}
-                      controls
                       src={videoSrc}
-                      className="aspect-video min-h-[340px] w-full bg-black object-contain xl:min-h-[460px] 2xl:min-h-[560px]"
+                      className="min-h-[340px] xl:min-h-[460px] 2xl:min-h-[560px] border border-border shadow-[var(--shadow-panel)]"
+                      videoClassName="min-h-[340px] xl:min-h-[460px] 2xl:min-h-[560px]"
+                      enableFrameStep
+                      enableJKL
+                      enableFullscreen
+                      enableSkipButtons
+                      enablePlaybackRates
+                      onPlaybackRateChange={(r) => setPlaybackRate(r)}
                       onError={() => {
                         if (!videoSrc || videoSrc.startsWith("blob:")) return;
                         const matchId = getCurrentMatchId();
@@ -1117,47 +1065,37 @@ export default function ReviewPage() {
                       onLoadedData={() => {
                         if (videoRef.current) {
                           videoRef.current.playbackRate = playbackRate;
-                          setVideoDuration(Number.isFinite(videoRef.current.duration) ? videoRef.current.duration : 0);
+                          setVideoDuration(
+                            Number.isFinite(videoRef.current.duration)
+                              ? videoRef.current.duration
+                              : 0
+                          );
                         }
                         redrawAnnotations();
                       }}
-                      onTimeUpdate={() => {
-                        const nextTime = videoRef.current?.currentTime || 0;
+                      onTimeUpdate={(nextTime) => {
                         setCurrentTime(nextTime);
-                        const inRange = clips.find((clip) => nextTime >= clip.startTime && nextTime <= clip.endTime);
+                        const inRange = clips.find(
+                          (clip) => nextTime >= clip.startTime && nextTime <= clip.endTime
+                        );
                         if (inRange) setActiveClipId(inRange.id);
                       }}
+                      overlay={
+                        <canvas
+                          ref={canvasRef}
+                          className={`absolute inset-0 h-full w-full ${
+                            annotationTool && activeClip
+                              ? "cursor-crosshair"
+                              : "pointer-events-none"
+                          }`}
+                          onPointerDown={handleCanvasPointerDown}
+                          onPointerMove={handleCanvasPointerMove}
+                          onPointerUp={handleCanvasPointerUp}
+                        />
+                      }
                     />
-                    <canvas
-                      ref={canvasRef}
-                      className={`absolute inset-0 h-full w-full ${annotationTool && activeClip ? "cursor-crosshair" : "pointer-events-none"}`}
-                      onPointerDown={handleCanvasPointerDown}
-                      onPointerMove={handleCanvasPointerMove}
-                      onPointerUp={handleCanvasPointerUp}
-                    />
-                    <button
-                      type="button"
-                      title="Fullscreen"
-                      onClick={async () => {
-                        const container = videoRef.current?.parentElement;
-                        if (!container) return;
-                        try {
-                          await container.requestFullscreen();
-                        } catch (error) {
-                          console.error("Failed to enter fullscreen", error);
-                        }
-                      }}
-                      className="absolute right-3 top-3 z-10 rounded-lg border border-border bg-panel/90 backdrop-blur px-2 py-1.5 text-foreground hover:bg-panel"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M2 5V2h3" />
-                        <path d="M12 5V2H9" />
-                        <path d="M2 9v3h3" />
-                        <path d="M12 9v3H9" />
-                      </svg>
-                    </button>
                     {isPresenting && filteredClips[presentationIndex] && (
-                      <div className="absolute bottom-0 left-0 right-0 z-10 border-t border-border bg-background/85 px-4 py-3 backdrop-blur">
+                      <div className="absolute bottom-0 left-0 right-0 z-20 border-t border-border bg-background/85 px-4 py-3 backdrop-blur">
                         <div className="flex items-center gap-3">
                           <div className="min-w-0 flex-1">
                             <div className="text-xs uppercase tracking-widest text-muted-2">
@@ -1210,28 +1148,6 @@ export default function ReviewPage() {
 
                   <div className="mt-4 rounded-2xl border border-border bg-panel-2 p-4">
                     <div className="flex flex-wrap items-center gap-2">
-                      <button type="button" onClick={() => jumpVideoBy(-5)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground">
-                        -5s
-                      </button>
-                      <button type="button" onClick={() => jumpVideoBy(5)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground">
-                        +5s
-                      </button>
-
-                      <div className="ml-0 h-6 w-px bg-border md:ml-1" />
-
-                      {[0.25, 0.5, 0.75, 1, 2].map((rate) => (
-                        <button
-                          type="button"
-                          key={rate}
-                          onClick={() => changePlaybackRate(rate)}
-                          className={`rounded-xl border px-4 py-2.5 text-sm font-medium ${
-                            playbackRate === rate ? "border-border-light bg-panel-3 text-foreground" : "border-border text-foreground"
-                          }`}
-                        >
-                          {rate}x
-                        </button>
-                      ))}
-
                       <div className="ml-auto flex items-center gap-2">
                         <span className="text-sm text-muted">{formatTime(currentTime)}</span>
                         <div className="h-6 w-px bg-border" />

@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 8 May 2026 — OG images + social metadata: added `app/opengraph-image.tsx` (branded 1200×630 `ImageResponse`), `openGraph`/`twitter`/`metadataBase` in root layout, and page-specific metadata on `/pricing`. Pricing page copy: removed false "No card required" claim (Stripe always collects a card for subscription trials), replaced with honest trial cancellation language; tightened early adopter banner subtitle for scarcity. Removed redundant "trial period" suggestion from pre-launch checklist (already implemented). Previous: Fixed team-setup data-loss race condition.
+**Last updated:** 10 May 2026 — Custom VideoPlayer component: replaced native `<video controls>` on all three video pages with a shared `app/components/VideoPlayer.tsx` (seek bar, volume, playback rates, fullscreen, J/K/L/frame-step keyboard shortcuts, empty/loading states). Previous: OG images + social metadata.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -1516,6 +1516,22 @@ Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Str
 
 - `/terms` and `/privacy` routes live — UK GDPR-compliant, covers all sub-processors
 - Footer links added to `app/(marketing)/layout.tsx`; legal disclaimer added to signup form
+
+---
+
+### Batch BN (May 2026) — Custom VideoPlayer component
+
+- ✅ New shared component `app/components/VideoPlayer.tsx` — `React.forwardRef<HTMLVideoElement>` so all imperative `.currentTime`, `.play()`, `.playbackRate` calls in parent pages continue to work unchanged
+- ✅ Custom seek bar: drag-to-seek, hover tooltip (time preview), orange accent fill, scrubber thumb
+- ✅ Controls overlay: Play/Pause, time display, volume (icon + vertical slider on hover), -5s/+5s (opt-in), playback rates 0.25x–2x (opt-in), fullscreen (opt-in)
+- ✅ J/K/L keyboard shortcuts + ArrowLeft/Right frame-step (opt-in via `enableJKL` / `enableFrameStep`) — spacebar never bound by the component; each page keeps its own spacebar handler
+- ✅ `isTypingTarget` guard prevents shortcuts firing in inputs/textareas
+- ✅ Styled empty state (placeholder) and loading state (spinner + hint text) when `src` is null — no more black boxes
+- ✅ Both dark and bright themes via CSS custom property tokens only — no hardcoded colours
+- ✅ `/player/games/[gameId]` — replaced `<video controls>` with `<VideoPlayer ref={videoRef} src={videoUrl} enableFullscreen />`. `seekToEvent()` unchanged
+- ✅ `/coach/review` — replaced video + standalone fullscreen button + rate buttons + skip buttons with `<VideoPlayer enableFrameStep enableJKL enableFullscreen enableSkipButtons enablePlaybackRates />`. Annotation canvas passed as `overlay` prop. Presentation mode overlay kept as sibling with `z-20`. Page keyboard handler reduced to spacebar + presentation shortcuts only
+- ✅ `/coach/capture` — targeted only: added `videoSrc` state, wired `setVideoSrc()` at all 3 src set/clear points (file upload, cloud load, session reset), replaced `<video>` with `<VideoPlayer enableFullscreen enableSkipButtons />`. Spacebar push-to-talk handler, upload input, and upload progress UI untouched
+- ✅ Fixed pre-existing `PlayerContext.tsx` build error (`team` possibly null after `await`) by capturing `teamId` before the async function
 
 ---
 
