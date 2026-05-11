@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { POSITION_OPTIONS } from "@/app/rugby-tagging/constants";
 import { markOnboardingComplete } from "@/app/rugby-tagging/lib/onboarding";
+import { fetchCloudTeam, isTeamPopulated } from "@/lib/teamCloud";
 import {
   createDefaultSquadProfile,
   createPlayerId,
@@ -20,6 +21,10 @@ type PlayerDraft = {
 
 const BLANK_DRAFT: PlayerDraft = { fullName: "", jerseyNumber: "", primaryPosition: "" };
 
+function hasContent(p: SquadProfile): boolean {
+  return p.teamName.trim().length > 0 || p.players.length > 0;
+}
+
 export default function OnboardingWizard() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -28,6 +33,24 @@ export default function OnboardingWizard() {
   );
   const [showPlayerForm, setShowPlayerForm] = useState(false);
   const [draft, setDraft] = useState<PlayerDraft>(BLANK_DRAFT);
+  const [cloudChecked, setCloudChecked] = useState(false);
+
+  // If the cloud already has a populated team, the user shouldn't be here.
+  // Mark onboarding complete and bounce back to /coach so the wizard never
+  // mounts over real data.
+  useEffect(() => {
+    let cancelled = false;
+    void fetchCloudTeam().then(({ team }) => {
+      if (cancelled) return;
+      if (team && isTeamPopulated(team)) {
+        markOnboardingComplete();
+        router.replace("/coach");
+        return;
+      }
+      setCloudChecked(true);
+    });
+    return () => { cancelled = true; };
+  }, [router]);
 
   const updateField = (
     field: "teamName" | "coachName" | "primaryColour" | "secondaryColour",
@@ -67,18 +90,18 @@ export default function OnboardingWizard() {
   };
 
   const goNext = (nextStep: 2 | 3) => {
-    saveSquadProfile(profile);
+    if (hasContent(profile)) saveSquadProfile(profile);
     setStep(nextStep);
   };
 
   const finish = () => {
-    saveSquadProfile(profile);
+    if (hasContent(profile)) saveSquadProfile(profile);
     markOnboardingComplete();
     router.replace("/coach");
   };
 
+  // Skip is an explicit opt-out — never write a blank profile to the cloud.
   const skip = () => {
-    saveSquadProfile(profile);
     markOnboardingComplete();
     router.replace("/coach");
   };
@@ -86,6 +109,8 @@ export default function OnboardingWizard() {
   const sortedPlayers = [...profile.players].sort(
     (a, b) => (a.jerseyNumber ?? 999) - (b.jerseyNumber ?? 999)
   );
+
+  if (!cloudChecked) return null;
 
   return (
     <div className="min-h-full bg-background px-6 py-10 text-foreground">

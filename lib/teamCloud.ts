@@ -3,7 +3,7 @@ import type { Team } from "@/app/rugby-tagging/lib/team";
 import type { AvailabilityResponse } from "@/app/rugby-tagging/types";
 import { getMyTeamContext } from "@/lib/teamContext";
 
-function isTeamPopulated(t: Team): boolean {
+export function isTeamPopulated(t: Team): boolean {
   return (
     t.teamName.trim().length > 0 ||
     t.players.length > 0 ||
