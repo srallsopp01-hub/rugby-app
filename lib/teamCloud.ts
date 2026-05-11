@@ -1,8 +1,18 @@
 import { createClient } from "@/lib/supabase/client";
 import type { Team } from "@/app/rugby-tagging/lib/team";
-import { getTeam, saveTeam } from "@/app/rugby-tagging/lib/team";
 import type { AvailabilityResponse } from "@/app/rugby-tagging/types";
 import { getMyTeamContext } from "@/lib/teamContext";
+
+function isTeamPopulated(t: Team): boolean {
+  return (
+    t.teamName.trim().length > 0 ||
+    t.players.length > 0 ||
+    (t.fixtures?.length ?? 0) > 0 ||
+    (t.trainingSessions?.length ?? 0) > 0 ||
+    (t.kpiTargets?.length ?? 0) > 0 ||
+    (t.actionSamples?.length ?? 0) > 0
+  );
+}
 
 type TeamRow = {
   id: string;
@@ -173,76 +183,3 @@ export async function upsertPlayerAvailabilityResponse(
   }
 }
 
-export async function syncLocalTeamToCloud(teamId?: string): Promise<{
-  ok: boolean;
-  error?: string;
-}> {
-  const local = getTeam();
-  const { team: cloud, error: fetchError } = await fetchCloudTeam(teamId);
-
-  if (fetchError) return { ok: false, error: `Fetch team: ${fetchError}` };
-
-  const merged = mergeTeams(cloud, local);
-  if (!merged) return { ok: true };
-
-  saveTeam(merged);
-
-  if (!cloud || merged.updatedAt !== cloud.updatedAt) {
-    return upsertCloudTeam(merged, teamId);
-  }
-
-  return { ok: true };
-}
-
-function isTeamPopulated(t: Team): boolean {
-  return (
-    t.teamName.trim().length > 0 ||
-    t.players.length > 0 ||
-    (t.fixtures?.length ?? 0) > 0 ||
-    (t.trainingSessions?.length ?? 0) > 0 ||
-    (t.kpiTargets?.length ?? 0) > 0 ||
-    (t.actionSamples?.length ?? 0) > 0
-  );
-}
-
-export function mergeTeams(
-  cloud: Team | null,
-  local: Team | null
-): Team | null {
-  if (!cloud && !local) return null;
-  if (!cloud) return local;
-  if (!local) return cloud;
-
-  // A freshly-initialised blank team always has a "now" timestamp, so the raw
-  // timestamp comparison below would let it overwrite a real team. Anything
-  // populated beats anything empty regardless of when it was last touched.
-  const cloudPop = isTeamPopulated(cloud);
-  const localPop = isTeamPopulated(local);
-  if (cloudPop && !localPop) return cloud;
-  if (localPop && !cloudPop) return local;
-
-  const cloudTime = new Date(cloud.updatedAt).getTime();
-  const localTime = new Date(local.updatedAt).getTime();
-
-  // Tie goes to cloud so the server-assigned UUID id wins over any local squad_... id.
-  return localTime > cloudTime ? local : cloud;
-}
-
-// ---------------------------------------------------------------------------
-// Backwards-compatibility aliases — remove in Move 2.5
-// ---------------------------------------------------------------------------
-
-/** @deprecated Use fetchCloudTeam */
-export const fetchCloudSquadProfile = async () => {
-  const result = await fetchCloudTeam();
-  return { profile: result.team, error: result.error };
-};
-
-/** @deprecated Use upsertCloudTeam */
-export const upsertCloudSquadProfile = upsertCloudTeam;
-
-/** @deprecated Use syncLocalTeamToCloud */
-export const syncLocalSquadProfileToCloud = syncLocalTeamToCloud;
-
-/** @deprecated Use mergeTeams */
-export const mergeSquadProfiles = mergeTeams;

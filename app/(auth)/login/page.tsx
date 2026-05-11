@@ -64,7 +64,21 @@ function LoginContent() {
       return;
     }
 
-    router.push(safeNext || (mode === "player" ? "/player" : "/coach"));
+    if (safeNext) {
+      router.push(safeNext);
+      router.refresh();
+      return;
+    }
+
+    if (mode === "player") {
+      router.push("/player");
+      router.refresh();
+      return;
+    }
+
+    const res = await fetch("/api/auth/redirect");
+    const { redirectTo } = await res.json();
+    router.push(redirectTo);
     router.refresh();
   }
 

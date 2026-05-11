@@ -1,4 +1,5 @@
 import type React from "react";
+import Link from "next/link";
 
 export type BlogPost = {
   slug: string;
@@ -259,7 +260,380 @@ const post2Content = (
   </>
 );
 
+const post3Content = (
+  <>
+    <p className="italic text-muted mb-5">
+      Penalty count gets too much attention. Turnovers won and lost get nowhere near enough. Here&apos;s why that matters.
+    </p>
+
+    <p className={p}>
+      Walk into any club rugby debrief and you&apos;ll hear the same number quoted: penalty count. &ldquo;We gave away 14 penalties today, lads.&rdquo; It&apos;s the first stat off the tongue, the first thing on the whiteboard, the easiest thing to point at when a game gets away from you.
+    </p>
+
+    <p className={p}>
+      It&apos;s also one of the least useful stats you can lead a debrief with.
+    </p>
+
+    <h2 className={h2}>Why penalty count is overrated</h2>
+
+    <p className={p}>
+      Penalties are visible. They stop the game, they get whistled, they often get talked about by the referee. So they&apos;re easy to remember and easy to count. That&apos;s why coaches default to them. Not because they&apos;re the most important stat, but because they&apos;re the most available one.
+    </p>
+
+    <p className={p}>
+      The problem is that penalty count without context doesn&apos;t tell you much. Fourteen penalties might be a discipline disaster, or it might be a side that pushed the breakdown hard for 80 minutes against a referee who was strict on the jackal. The number on its own can&apos;t tell those two stories apart.
+    </p>
+
+    <p className={p}>
+      Worse, leading with penalty count tends to push players towards a specific kind of dressing-room reaction: defensive, individual, slightly sulky. The flanker who got pinged twice for not rolling away will hear &ldquo;14 penalties&rdquo; and think the coach is talking about him. The loosehead who got done for boring in will check out for the rest of the meeting. You haven&apos;t taught anyone anything; you&apos;ve just made a few players feel singled out.
+    </p>
+
+    <h2 className={h2}>The stat almost no one tracks</h2>
+
+    <p className={p}>
+      Now ask the same coach how many turnovers their side won. Or, harder question, how many turnovers their side conceded.
+    </p>
+
+    <p className={p}>
+      Most coaches can&apos;t tell you. They might remember the obvious ones: the ball lost over the top in midfield, the intercepted pass that led to a try. But the steady drip of turnovers across 80 minutes is almost never tracked at club level. The breakdown, the tackle, the deck after a poor offload.
+    </p>
+
+    <p className={p}>
+      That&apos;s a problem, because turnovers are usually the single most important stat in the game.
+    </p>
+
+    <p className={p}>A turnover does three things at once:</p>
+
+    <ul className={ul}>
+      <li className={li}>It ends your attack</li>
+      <li className={li}>It hands the opposition possession</li>
+      <li className={li}>
+        It often hands them territory too, because the turnover usually happens when you&apos;ve committed players to the breakdown and they&apos;re now out of the defensive line
+      </li>
+    </ul>
+
+    <p className={p}>
+      A penalty against you costs you possession too, but at least the opposition has to do something with it. A turnover often gives them a free run at unstructured space.
+    </p>
+
+    <p className={p}>
+      <strong className={strong}>
+        If you only have time to track one number from a match, track turnover differential. Not penalty count.
+      </strong>
+    </p>
+
+    <h2 className={h2}>Why coaches don&apos;t track it</h2>
+
+    <p className={p}>Three reasons, all reasonable.</p>
+
+    <p className={p}>
+      First, turnovers are harder to spot than penalties. The whistle doesn&apos;t go. The game keeps moving. By the time the next phase has started, the moment is gone. So unless you&apos;re actively watching for them, you miss most of them.
+    </p>
+
+    <p className={p}>
+      Second, turnovers don&apos;t fit cleanly into a spreadsheet column. A penalty is a binary thing: given away, or not. A turnover has more shape to it. Was it a poor offload? A failed jackal? A held-up over the line? A knock-on under pressure? Most coaches don&apos;t have a structure for capturing that, so they don&apos;t capture any of it.
+    </p>
+
+    <p className={p}>
+      Third, and this is the one that matters: most match analysis tools are built around tagging events that get a whistle. Penalties, scores, set pieces. Turnovers fall through the cracks.
+    </p>
+
+    <h2 className={h2}>Starting without adding another spreadsheet</h2>
+
+    <p className={p}>
+      Here&apos;s the test. Watch the next match back, your own side or someone else&apos;s, doesn&apos;t matter. Every time possession changes hands without a whistle, mark it. Just a tick on a bit of paper. Don&apos;t worry about who or how, just count.
+    </p>
+
+    <p className={p}>
+      Most coaches who do this for the first time are surprised by the number. A typical club match has somewhere between 8 and 18 turnovers per side. That&apos;s a lot of changes of possession that nobody is reviewing.
+    </p>
+
+    <p className={p}>
+      Once you&apos;ve got the count, the next step is to capture a small amount of context. Not 10 fields per turnover, just two:
+    </p>
+
+    <ul className={ul}>
+      <li className={li}>Where on the pitch did it happen?</li>
+      <li className={li}>
+        What kind of turnover was it (breakdown, tackle, handling error, lineout/scrum)?
+      </li>
+    </ul>
+
+    <p className={p}>
+      Two fields. That&apos;s enough to start finding patterns. If half your turnovers are happening in your own 22 from breakdown contests you didn&apos;t need to take, that&apos;s a coaching message. If most of them are handling errors in their own 22, that&apos;s a different message entirely.
+    </p>
+
+    <p className={p}>
+      You don&apos;t need a full analysis system to do this. You can do it on paper while you watch the video back. The point isn&apos;t the tooling, it&apos;s the habit of looking.
+    </p>
+
+    <h2 className={h2}>The shift in the dressing room</h2>
+
+    <p className={p}>
+      Once you start leading debriefs with turnover differential instead of penalty count, two things change.
+    </p>
+
+    <p className={p}>
+      The conversation gets less personal. &ldquo;We conceded eleven turnovers and won five&rdquo; is a team stat. Nobody feels singled out. The whole side owns it together.
+    </p>
+
+    <p className={p}>
+      And the conversation gets more useful. Penalties are usually about discipline, a hard thing to coach in a 30-minute Tuesday session. Turnovers are usually about decisions and skills, both of which are very coachable. &ldquo;We&apos;re losing the ball at the breakdown when we have three forwards committed and the carrier hasn&apos;t presented&rdquo; is a problem you can run a session on. &ldquo;We gave away too many penalties&rdquo; is a problem you can only tell people to stop doing.
+    </p>
+
+    <p className={p}>
+      If you&apos;re a coach trying to spend less time chasing the symptoms of a bad performance and more time fixing the causes, change which number you lead with. We built FYNL Whistle so coaches can tag turnovers as easily as penalties (same voice command, same one-second log), but you don&apos;t need our tool to start. You just need a pen, a piece of paper, and a willingness to count something different.
+    </p>
+  </>
+);
+
+const post4Content = (
+  <>
+    <p className={p}>
+      To track turnovers in rugby, count every change of possession that
+      happens without a referee&apos;s whistle and capture two pieces of
+      context: where on the pitch it happened, and what type it was
+      (breakdown, tackle, handling error, or set piece). Most amateur club
+      matches have between 8 and 18 turnovers per side, and tracking them
+      gives you a more useful picture of the game than penalty count.
+    </p>
+
+    <p className={p}>
+      This guide covers what counts as a turnover, how to log them during
+      match analysis, and what good looks like at club level.
+    </p>
+
+    <h2 className={h2}>What counts as a turnover in rugby</h2>
+
+    <p className={p}>
+      A turnover is any change of possession that isn&apos;t caused by a
+      referee&apos;s decision. That excludes:
+    </p>
+
+    <ul className={ul}>
+      <li className={li}>Penalties</li>
+      <li className={li}>Free kicks</li>
+      <li className={li}>
+        Set piece outcomes (a lost lineout or scrum is a set piece result,
+        not a turnover)
+      </li>
+      <li className={li}>Scoring plays</li>
+    </ul>
+
+    <p className={p}>It includes:</p>
+
+    <ul className={ul}>
+      <li className={li}>
+        <span className={strong}>Breakdown turnovers</span> — jackal,
+        counter-ruck, or held-up over the ball
+      </li>
+      <li className={li}>
+        <span className={strong}>Tackle turnovers</span> — ball ripped or
+        stripped in contact
+      </li>
+      <li className={li}>
+        <span className={strong}>Handling errors under pressure</span> —
+        knock-ons, dropped passes, bad offloads
+      </li>
+      <li className={li}>
+        <span className={strong}>Kick recoveries</span> — when an attacking
+        kick is regathered cleanly by the defence
+      </li>
+      <li className={li}>
+        <span className={strong}>Held up over the line</span> — possession
+        lost trying to score
+      </li>
+    </ul>
+
+    <p className={p}>
+      Some coaches separate &ldquo;errors&rdquo; (knock-ons, dropped passes)
+      from &ldquo;contests won&rdquo; (jackals, rips). Both are useful to
+      track, but the simplest starting point is to count any non-whistle
+      change of possession as one turnover.
+    </p>
+
+    <h2 className={h2}>The two fields that matter</h2>
+
+    <p className={p}>
+      You don&apos;t need a 12-column spreadsheet. For each turnover, capture:
+    </p>
+
+    <ol className="list-decimal list-outside ml-5 mb-5 space-y-2">
+      <li className={li}>
+        <span className={strong}>Pitch location</span> — own 22, own half,
+        opposition half, opposition 22. Four zones is plenty.
+      </li>
+      <li className={li}>
+        <span className={strong}>Type</span> — breakdown, tackle, handling
+        error, kick, set piece (held up).
+      </li>
+    </ol>
+
+    <p className={p}>
+      That&apos;s it. Two fields. Anything else is overhead that stops you
+      from actually doing it.
+    </p>
+
+    <h2 className={h2}>How to log turnovers during match analysis</h2>
+
+    <p className={p}>
+      Three approaches work, depending on how you watch matches back.
+    </p>
+
+    <p className={p}>
+      <span className={strong}>Paper.</span> Print a small grid — four pitch
+      zones across the top, five turnover types down the side. Every time
+      possession changes without a whistle, put a tick in the right box. Takes
+      15 seconds to set up, no tooling needed. This is how to start.
+    </p>
+
+    <p className={p}>
+      <span className={strong}>Spreadsheet.</span> A row per turnover, columns
+      for time, location, type, won/lost. Slower to log but easier to filter
+      later. Use this if you want to look at trends across multiple matches.
+    </p>
+
+    <p className={p}>
+      <span className={strong}>Voice or video tagging tools.</span> Tag
+      turnovers in real time as you watch the video back. Faster than
+      spreadsheets, captures timestamps automatically, and means you can
+      rewatch the moment in two clicks. FYNL Whistle does this with voice
+      commands — say &ldquo;turnover won, breakdown&rdquo; while watching,
+      and it logs the event with the video timestamp.
+    </p>
+
+    <p className={p}>
+      Whichever method you use, log every turnover for at least three matches
+      before you start analysing patterns. Single-match data is too noisy.
+    </p>
+
+    <h2 className={h2}>What good looks like</h2>
+
+    <p className={p}>
+      There isn&apos;t a public benchmark for turnover differential at amateur
+      club level — the data simply isn&apos;t tracked widely enough. From the
+      matches we&apos;ve seen analysed in FYNL Whistle, a rough guide for
+      amateur 1st XV rugby:
+    </p>
+
+    <div className="overflow-x-auto my-6">
+      <table className="w-full text-sm border-collapse">
+        <thead>
+          <tr className="border-b border-border">
+            <th className="text-left py-2 pr-4 font-semibold text-foreground-strong">Metric</th>
+            <th className="text-left py-2 pr-4 font-semibold text-foreground-strong">Below average</th>
+            <th className="text-left py-2 pr-4 font-semibold text-foreground-strong">Average</th>
+            <th className="text-left py-2 font-semibold text-foreground-strong">Strong</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr className="border-b border-border">
+            <td className="py-2 pr-4 text-foreground">Turnovers won per match</td>
+            <td className="py-2 pr-4 text-foreground">Under 6</td>
+            <td className="py-2 pr-4 text-foreground">6–10</td>
+            <td className="py-2 text-foreground">10+</td>
+          </tr>
+          <tr className="border-b border-border">
+            <td className="py-2 pr-4 text-foreground">Turnovers conceded per match</td>
+            <td className="py-2 pr-4 text-foreground">14+</td>
+            <td className="py-2 pr-4 text-foreground">8–13</td>
+            <td className="py-2 text-foreground">Under 8</td>
+          </tr>
+          <tr>
+            <td className="py-2 pr-4 text-foreground">Differential (won minus conceded)</td>
+            <td className="py-2 pr-4 text-foreground">-5 or worse</td>
+            <td className="py-2 pr-4 text-foreground">-2 to +2</td>
+            <td className="py-2 text-foreground">+3 or better</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p className={p}>
+      A side with a +3 differential or better is usually controlling
+      possession well and forcing errors from the opposition. A side with -5
+      or worse is usually either turning the ball over too easily or failing
+      to contest at the breakdown.
+    </p>
+
+    <p className={p}>
+      These numbers will vary by level. Higher grades tend to have lower
+      absolute turnover counts because handling and breakdown skills are
+      sharper, but the differential is still the most useful comparison.
+    </p>
+
+    <h2 className={h2}>Why this matters more than penalty count</h2>
+
+    <p className={p}>
+      Penalty count is the stat coaches default to because it&apos;s visible
+      and easy to count. Turnover differential is more useful because it tells
+      you about possession and territory together — the two things that most
+      often decide a rugby match.
+    </p>
+
+    <p className={p}>
+      We covered the case for shifting your debrief from penalty count to
+      turnover differential in{" "}
+      <Link
+        href="/blog/the-one-stat-club-coaches-under-track"
+        className="text-accent hover:underline"
+      >
+        The One Stat Club Coaches Over-Track
+      </Link>
+      . The short version: leading with turnovers makes debriefs less personal,
+      more team-focused, and easier to turn into Tuesday training sessions.
+    </p>
+
+    <h2 className={h2}>What to do next</h2>
+
+    <p className={p}>
+      Pick one match this season and track turnovers for it. Use paper, a
+      spreadsheet, or whatever&apos;s easiest. Capture two fields per turnover:
+      location and type.
+    </p>
+
+    <p className={p}>
+      After three matches, look at the patterns. Most coaches find their
+      turnovers cluster in a way they didn&apos;t expect — maybe most are
+      happening in their own 22, or most are handling errors rather than
+      contests, or most are happening in the last 20 minutes when fitness
+      drops.
+    </p>
+
+    <p className={p}>That cluster is your coaching message for the next training block.</p>
+
+    <p className={p}>
+      If tracking turnovers manually starts to feel like work, FYNL Whistle
+      logs them automatically when you tag a match by voice. Either way, the
+      most important thing is to start counting. The number you lead your
+      debrief with shapes the conversation that follows.
+    </p>
+  </>
+);
+
 export const blogPosts: BlogPost[] = [
+  {
+    slug: "how-to-track-turnovers-in-rugby",
+    title: "How to Track Turnovers in Rugby (A Coach's Guide)",
+    description:
+      "A practical guide to tracking turnovers in rugby — what counts as a turnover, how to log them quickly during match analysis, and what good looks like at amateur club level.",
+    date: "May 2026",
+    dateISO: "2026-05-14",
+    readingTime: "4 min read",
+    tags: ["Reference"],
+    content: post4Content,
+  },
+  {
+    slug: "the-one-stat-club-coaches-under-track",
+    title: "The One Stat Club Coaches Over-Track (and the One They Under-Track)",
+    description:
+      "Penalty count gets too much attention in club rugby. Turnovers won and lost get nowhere near enough. Here's why, and how to start tracking turnovers properly.",
+    date: "May 2026",
+    dateISO: "2026-05-07",
+    readingTime: "5 min read",
+    tags: ["Analysis"],
+    content: post3Content,
+  },
   {
     slug: "what-good-coaching-feedback-looks-like",
     title: "What Good Coaching Feedback Actually Looks Like",

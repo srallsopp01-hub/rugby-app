@@ -1,34 +1,12 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
+import { PageHeader } from "@/app/components/PageHeader";
 import { usePlayer } from "../PlayerContext";
 import { PlayerPicker } from "../PlayerPicker";
 import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
-import { PLAYER_IDENTITY_KEY, SQUAD_PROFILE_KEY } from "@/app/rugby-tagging/constants";
-import { SAVED_MATCHES_KEY } from "@/app/rugby-tagging/lib/savedMatches";
-
-const PLAYER_STORAGE_KEYS = [PLAYER_IDENTITY_KEY, SQUAD_PROFILE_KEY, SAVED_MATCHES_KEY];
-
-function getStorageSnapshot(): string {
-  if (typeof window === "undefined") return "{}";
-  return JSON.stringify(
-    PLAYER_STORAGE_KEYS.reduce<Record<string, string | null>>((acc, key) => {
-      acc[key] = localStorage.getItem(key);
-      return acc;
-    }, {})
-  );
-}
-
-function subscribeStorage(cb: () => void) {
-  if (typeof window === "undefined") return () => {};
-  window.addEventListener("storage", cb);
-  window.addEventListener("player-identity-changed", cb);
-  return () => {
-    window.removeEventListener("storage", cb);
-    window.removeEventListener("player-identity-changed", cb);
-  };
-}
+import { useTeam } from "@/app/providers/TeamContext";
+import { useMatches } from "@/app/providers/MatchesContext";
 
 const STATUS_LABELS: Record<string, string> = {
   active: "Active",
@@ -56,36 +34,14 @@ function NavCard({ href, label, description }: { href: string; label: string; de
 
 export default function PlayerSettingsPage() {
   const { currentPlayer, clearCurrentPlayer, ready } = usePlayer();
+  const { team } = useTeam();
+  const { matches } = useMatches();
 
-  const snapshotJson = useSyncExternalStore(
-    subscribeStorage,
-    getStorageSnapshot,
-    () => "{}"
-  );
-
-  const localData = useMemo(() => {
-    try {
-      const raw = JSON.parse(snapshotJson) as Record<string, string | null>;
-
-      let teamName = "—";
-      let playerCount = 0;
-      try {
-        const profile = raw[SQUAD_PROFILE_KEY] ? JSON.parse(raw[SQUAD_PROFILE_KEY]!) : null;
-        if (profile?.teamName) teamName = profile.teamName;
-        if (Array.isArray(profile?.players)) playerCount = (profile.players as unknown[]).length;
-      } catch { /* ignore parse errors */ }
-
-      let matchCount = 0;
-      try {
-        const matches = raw[SAVED_MATCHES_KEY] ? JSON.parse(raw[SAVED_MATCHES_KEY]!) : null;
-        if (Array.isArray(matches)) matchCount = (matches as unknown[]).length;
-      } catch { /* ignore parse errors */ }
-
-      return { teamName, playerCount, matchCount };
-    } catch {
-      return { teamName: "—", playerCount: 0, matchCount: 0 };
-    }
-  }, [snapshotJson]);
+  const localData = {
+    teamName: team?.teamName ?? "—",
+    playerCount: team?.players?.length ?? 0,
+    matchCount: matches.length,
+  };
 
   if (!ready) return null;
   if (!currentPlayer) return <PlayerPicker />;
@@ -99,10 +55,7 @@ export default function PlayerSettingsPage() {
 
   return (
     <div className="p-6 max-w-2xl space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground-strong">Settings</h1>
-        <p className="mt-1 text-sm text-muted">Account and preferences</p>
-      </div>
+      <PageHeader title="Settings" subtitle="Account and preferences" />
 
       {/* Profile */}
       <div className="rounded-2xl border border-border bg-panel p-5">

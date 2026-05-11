@@ -13,6 +13,10 @@ type TranscriptPanelProps = {
   submitMatchDisabled?: boolean;
   submitMatchStatus?: "idle" | "submitting" | "submitted" | "error";
   submitMatchError?: string;
+  ourScore?: number | "";
+  opponentScore?: number | "";
+  onOurScoreChange?: (v: number | "") => void;
+  onOpponentScoreChange?: (v: number | "") => void;
 };
 
 export default function TranscriptPanel({
@@ -26,6 +30,10 @@ export default function TranscriptPanel({
   submitMatchDisabled = false,
   submitMatchStatus = "idle",
   submitMatchError = "",
+  ourScore = "",
+  opponentScore = "",
+  onOurScoreChange,
+  onOpponentScoreChange,
 }: TranscriptPanelProps) {
   return (
     <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-panel)]">
@@ -196,6 +204,38 @@ export default function TranscriptPanel({
           );
         });
         })()}
+      </div>
+
+      <div className="mt-4">
+        <p className="mb-2 text-xs font-medium text-muted">Final Score</p>
+        <div className="flex gap-3">
+          <div className="flex flex-1 flex-col gap-1">
+            <label className="text-xs text-muted">Us</label>
+            <input
+              type="number"
+              min={0}
+              value={ourScore}
+              onChange={(e) =>
+                onOurScoreChange?.(e.target.value === "" ? "" : Number(e.target.value))
+              }
+              className="w-full rounded-lg border border-border bg-panel-2 px-3 py-2 text-center text-sm text-foreground-strong"
+              placeholder="0"
+            />
+          </div>
+          <div className="flex flex-1 flex-col gap-1">
+            <label className="text-xs text-muted">Them</label>
+            <input
+              type="number"
+              min={0}
+              value={opponentScore}
+              onChange={(e) =>
+                onOpponentScoreChange?.(e.target.value === "" ? "" : Number(e.target.value))
+              }
+              className="w-full rounded-lg border border-border bg-panel-2 px-3 py-2 text-center text-sm text-foreground-strong"
+              placeholder="0"
+            />
+          </div>
+        </div>
       </div>
 
       <div className="mt-4">

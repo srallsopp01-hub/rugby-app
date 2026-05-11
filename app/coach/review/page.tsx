@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
+import { StatusPill } from "@/app/components/StatusPill";
 import { COACH_PAGE_HELP } from "../help-content";
 import GameReviewTimelinePanel from "@/app/rugby-tagging/components/GameReviewTimelinePanel";
 import CoachReviewPanel from "@/app/rugby-tagging/components/CoachReviewPanel";
@@ -9,6 +11,13 @@ import TeamSnapshotPanel from "@/app/rugby-tagging/components/TeamSnapshotPanel"
 import { getMatchVideoUrl } from "@/app/rugby-tagging/lib/matchVideoSession";
 import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfidence";
 import { DEFAULT_ROSTER_ROWS, STORAGE_KEY } from "@/app/rugby-tagging/constants";
+import { ACTIVE_TEAM_ID_KEY } from "@/lib/teamContext";
+
+// Scope the capture session key per team so review never loads a different team's session.
+function getScopedStorageKey(): string {
+  try { const t = localStorage.getItem(ACTIVE_TEAM_ID_KEY) ?? ""; return t ? `${STORAGE_KEY}-${t}` : STORAGE_KEY; }
+  catch { return STORAGE_KEY; }
+}
 import { formatTime, hydrateRosterRows } from "@/app/rugby-tagging/helpers";
 import { getCurrentMatchId, getSavedMatchById, upsertSavedMatch } from "@/app/rugby-tagging/lib/savedMatches";
 import { getTeam } from "@/app/rugby-tagging/lib/team";
@@ -20,6 +29,9 @@ import {
 } from "@/app/rugby-tagging/lib/setPieceReview";
 import { getMatchVideoSignedUrl, refreshVideoSignedUrl, SIGNED_URL_EXPIRY_SECONDS } from "@/lib/matchVideoCloud";
 import type { ClipAnnotation, EventItem, RosterRow, VideoAnnotation } from "@/app/rugby-tagging/types";
+import { VideoPlayer } from "@/app/components/VideoPlayer";
+import { EmptyState } from "@/app/components/EmptyState";
+import { Scissors, Filter } from "lucide-react";
 
 type CoachReviewNote = {
   id: number;
@@ -108,7 +120,7 @@ function loadSavedReviewSession(): SavedSession {
       };
     }
 
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(getScopedStorageKey());
     if (!raw) return {};
     const saved: SavedSession = JSON.parse(raw);
     return saved && typeof saved === "object"
@@ -246,7 +258,7 @@ export default function ReviewPage() {
         typeof next.showRawTranscript === "boolean" ? next.showRawTranscript : showRawTranscript;
 
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
+        const raw = localStorage.getItem(getScopedStorageKey());
         const existing = raw ? JSON.parse(raw) : {};
         const payload = {
           ...existing,
@@ -263,7 +275,7 @@ export default function ReviewPage() {
           showRawTranscript: nextShowRawTranscript,
           videoStoragePath: existing.videoStoragePath || savedSession.videoStoragePath,
         };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        localStorage.setItem(getScopedStorageKey(), JSON.stringify(payload));
       } catch (error) {
         console.error("Failed to save review session", error);
         setAutosaveStatus("Autosave failed");
@@ -492,6 +504,23 @@ export default function ReviewPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Proactively refresh the signed URL 5 minutes before it expires (at 55 min)
+  // so coaches reviewing long matches never hit a 403.
+  useEffect(() => {
+    if (!videoSrc || videoSrc.startsWith("blob:")) return;
+    const matchId = getCurrentMatchId();
+    const match = matchId ? getSavedMatchById(matchId) : null;
+    if (!match?.videoStoragePath) return;
+    const storagePath = match.videoStoragePath;
+    const timer = setTimeout(() => {
+      void refreshVideoSignedUrl(storagePath).then((url) => {
+        if (url) setVideoSrc(url);
+      });
+    }, 55 * 60 * 1000);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoSrc]);
+
   useEffect(() => {
     redrawAnnotations();
     window.addEventListener("resize", redrawAnnotations);
@@ -644,49 +673,6 @@ export default function ReviewPage() {
         }
       }
 
-      if (!video) return;
-
-      if (!isPresenting && (event.code === "ArrowLeft" || event.code === "ArrowRight")) {
-        if (!video.paused) return;
-        event.preventDefault();
-        const delta = event.code === "ArrowRight" ? 1 / 30 : -1 / 30;
-        const duration = Number.isFinite(video.duration) ? video.duration : 0;
-        const next = Math.max(0, Math.min(video.currentTime + delta, duration || video.currentTime + delta));
-        video.currentTime = next;
-        setCurrentTime(next);
-        return;
-      }
-
-      if (event.code === "KeyJ") {
-        event.preventDefault();
-        const delta = video.paused ? -2 : -5;
-        const next = Math.max(0, video.currentTime + delta);
-        video.currentTime = next;
-        setCurrentTime(next);
-        return;
-      }
-
-      if (event.code === "KeyK") {
-        event.preventDefault();
-        if (video.paused) {
-          void video.play();
-        } else {
-          video.pause();
-        }
-        return;
-      }
-
-      if (event.code === "KeyL") {
-        event.preventDefault();
-        if (video.paused) {
-          void video.play();
-          return;
-        }
-        const nextRate = Math.min(4, video.playbackRate * 2);
-        video.playbackRate = nextRate;
-        setPlaybackRate(nextRate);
-        return;
-      }
     }
 
     window.addEventListener("keydown", onKeyDown);
@@ -920,22 +906,6 @@ export default function ReviewPage() {
     setCurrentTime(nextTime);
   };
 
-  const jumpVideoBy = (seconds: number) => {
-    const video = videoRef.current;
-    if (!video) return;
-    const duration = Number.isFinite(video.duration) ? video.duration : 0;
-    const nextTime = Math.max(0, Math.min(video.currentTime + seconds, duration || video.currentTime + seconds));
-    video.currentTime = nextTime;
-    setCurrentTime(nextTime);
-  };
-
-  const changePlaybackRate = (nextRate: number) => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.playbackRate = nextRate;
-    setPlaybackRate(nextRate);
-  };
-
   const selectAnnotationTool = (tool: AnnotationTool) => {
     if (!activeClip) return;
     setAnnotationTool((current) => (current === tool ? null : tool));
@@ -1009,30 +979,27 @@ export default function ReviewPage() {
   return (
     <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1900px] space-y-5">
-        <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div className="max-w-3xl">
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">Coach Review</h1>
-                <PageHelp {...COACH_PAGE_HELP["/coach/review"]} />
-                {playerQuestionCount > 0 && (
-                  <span
-                    title="Players have asked questions on these clips"
-                    className="rounded-full border border-warning/40 bg-warning/10 px-2.5 py-1 text-xs font-semibold text-warning"
-                  >
-                    {playerQuestionCount} question{playerQuestionCount !== 1 ? "s" : ""}
-                  </span>
-                )}
-              </div>
-              <p className="mt-2 text-sm text-muted">
-                Team meeting film room with flexible clips, coaching notes, and lightweight telestration.
-              </p>
-            </div>
-            <div className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
-              {autosaveStatus}
-            </div>
-          </div>
-        </div>
+        <PageHeader
+          title="Coach Review"
+          subtitle="Team meeting film room with flexible clips, coaching notes, and lightweight telestration."
+          helpButton={<PageHelp {...COACH_PAGE_HELP["/coach/review"]} />}
+          status={
+            <>
+              {playerQuestionCount > 0 && (
+                <StatusPill
+                  variant="warning"
+                  size="md"
+                  title="Players have asked questions on these clips"
+                >
+                  {playerQuestionCount} question{playerQuestionCount !== 1 ? "s" : ""}
+                </StatusPill>
+              )}
+              <span className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
+                {autosaveStatus}
+              </span>
+            </>
+          }
+        />
 
         <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
@@ -1076,69 +1043,60 @@ export default function ReviewPage() {
 
               {videoSrc ? (
                 <>
-                  <div className="relative overflow-hidden rounded-2xl border border-border bg-black shadow-[var(--shadow-panel)]">
-                    <video
+                  <div className="relative">
+                    <VideoPlayer
                       ref={videoRef}
-                      controls
                       src={videoSrc}
-                      className="aspect-video min-h-[340px] w-full bg-black object-contain xl:min-h-[460px] 2xl:min-h-[560px]"
+                      className="min-h-[340px] xl:min-h-[460px] 2xl:min-h-[560px] border border-border shadow-[var(--shadow-panel)]"
+                      videoClassName="min-h-[340px] xl:min-h-[460px] 2xl:min-h-[560px]"
+                      enableFrameStep
+                      enableJKL
+                      enableFullscreen
+                      enableSkipButtons
+                      enablePlaybackRates
+                      onPlaybackRateChange={(r) => setPlaybackRate(r)}
                       onError={() => {
                         if (!videoSrc || videoSrc.startsWith("blob:")) return;
                         const matchId = getCurrentMatchId();
                         if (!matchId) return;
                         const m = getSavedMatchById(matchId);
                         if (!m?.videoStoragePath) return;
-                        setVideoSrc("");
-                        setVideoCloudStatus("loading");
-                        void refreshVideoSignedUrl(m.videoStoragePath).then((url) => {
-                          if (url) { setVideoSrc(url); setVideoCloudStatus("loaded"); }
-                          else setVideoCloudStatus("unavailable");
-                        });
+                        setVideoCloudStatus("unavailable");
                       }}
                       onLoadedData={() => {
                         if (videoRef.current) {
                           videoRef.current.playbackRate = playbackRate;
-                          setVideoDuration(Number.isFinite(videoRef.current.duration) ? videoRef.current.duration : 0);
+                          setVideoDuration(
+                            Number.isFinite(videoRef.current.duration)
+                              ? videoRef.current.duration
+                              : 0
+                          );
                         }
                         redrawAnnotations();
                       }}
-                      onTimeUpdate={() => {
-                        const nextTime = videoRef.current?.currentTime || 0;
+                      onTimeUpdate={(nextTime) => {
                         setCurrentTime(nextTime);
-                        const inRange = clips.find((clip) => nextTime >= clip.startTime && nextTime <= clip.endTime);
+                        const inRange = clips.find(
+                          (clip) => nextTime >= clip.startTime && nextTime <= clip.endTime
+                        );
                         if (inRange) setActiveClipId(inRange.id);
                       }}
+                      overlay={
+                        <canvas
+                          ref={canvasRef}
+                          className={`absolute inset-0 h-full w-full ${
+                            annotationTool && activeClip
+                              ? "cursor-crosshair"
+                              : "pointer-events-none"
+                          }`}
+                          onPointerDown={handleCanvasPointerDown}
+                          onPointerMove={handleCanvasPointerMove}
+                          onPointerUp={handleCanvasPointerUp}
+                        />
+                      }
                     />
-                    <canvas
-                      ref={canvasRef}
-                      className={`absolute inset-0 h-full w-full ${annotationTool && activeClip ? "cursor-crosshair" : "pointer-events-none"}`}
-                      onPointerDown={handleCanvasPointerDown}
-                      onPointerMove={handleCanvasPointerMove}
-                      onPointerUp={handleCanvasPointerUp}
-                    />
-                    <button
-                      type="button"
-                      title="Fullscreen"
-                      onClick={async () => {
-                        const container = videoRef.current?.parentElement;
-                        if (!container) return;
-                        try {
-                          await container.requestFullscreen();
-                        } catch (error) {
-                          console.error("Failed to enter fullscreen", error);
-                        }
-                      }}
-                      className="absolute right-3 top-3 z-10 rounded-lg border border-border bg-panel/90 backdrop-blur px-2 py-1.5 text-foreground hover:bg-panel"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M2 5V2h3" />
-                        <path d="M12 5V2H9" />
-                        <path d="M2 9v3h3" />
-                        <path d="M12 9v3H9" />
-                      </svg>
-                    </button>
                     {isPresenting && filteredClips[presentationIndex] && (
-                      <div className="absolute bottom-0 left-0 right-0 z-10 border-t border-border bg-background/85 px-4 py-3 backdrop-blur">
+                      <div className="absolute bottom-0 left-0 right-0 z-20 border-t border-border bg-background/85 px-4 py-3 backdrop-blur">
                         <div className="flex items-center gap-3">
                           <div className="min-w-0 flex-1">
                             <div className="text-xs uppercase tracking-widest text-muted-2">
@@ -1191,28 +1149,6 @@ export default function ReviewPage() {
 
                   <div className="mt-4 rounded-2xl border border-border bg-panel-2 p-4">
                     <div className="flex flex-wrap items-center gap-2">
-                      <button type="button" onClick={() => jumpVideoBy(-5)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground">
-                        -5s
-                      </button>
-                      <button type="button" onClick={() => jumpVideoBy(5)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground">
-                        +5s
-                      </button>
-
-                      <div className="ml-0 h-6 w-px bg-border md:ml-1" />
-
-                      {[0.25, 0.5, 0.75, 1, 2].map((rate) => (
-                        <button
-                          type="button"
-                          key={rate}
-                          onClick={() => changePlaybackRate(rate)}
-                          className={`rounded-xl border px-4 py-2.5 text-sm font-medium ${
-                            playbackRate === rate ? "border-border-light bg-panel-3 text-foreground" : "border-border text-foreground"
-                          }`}
-                        >
-                          {rate}x
-                        </button>
-                      ))}
-
                       <div className="ml-auto flex items-center gap-2">
                         <span className="text-sm text-muted">{formatTime(currentTime)}</span>
                         <div className="h-6 w-px bg-border" />
@@ -1465,9 +1401,21 @@ export default function ReviewPage() {
               </div>
 
               {filteredClips.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border p-3 text-sm text-muted">
-                  {clips.length === 0 ? "No clips yet. Press spacebar once to start and again to end." : "No clips match this filter."}
-                </div>
+                clips.length === 0 ? (
+                  <EmptyState
+                    icon={Scissors}
+                    title="No clips yet"
+                    description="Press spacebar once to start a clip, again to end. Or use the Mark Start button below the video."
+                    size="sm"
+                  />
+                ) : (
+                  <EmptyState
+                    icon={Filter}
+                    title="No clips match this filter"
+                    description="Try a different category or clear the filter."
+                    size="sm"
+                  />
+                )
               ) : (
                 <div className="space-y-3">
                   {filteredClips.map((clip) => {
@@ -1543,16 +1491,14 @@ export default function ReviewPage() {
                                   const isQuestion = reaction.type === "question";
                                   return (
                                     <div key={`${reaction.playerId}-${reaction.createdAt}`} className="flex flex-col gap-0.5">
-                                      <span
-                                        className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
-                                          isQuestion
-                                            ? "border-warning/40 bg-warning/10 text-warning"
-                                            : "border-success/40 bg-success/10 text-success"
-                                        }`}
+                                      <StatusPill
+                                        variant={isQuestion ? "warning" : "success"}
+                                        size="sm"
+                                        className="gap-1.5"
                                       >
                                         <span>{isQuestion ? "🤔" : "👍"}</span>
                                         <span>{name}</span>
-                                      </span>
+                                      </StatusPill>
                                       {isQuestion && reaction.note && (
                                         <span className="ml-1 text-[11px] text-muted">{reaction.note}</span>
                                       )}
@@ -1688,6 +1634,7 @@ export default function ReviewPage() {
             />
 
             <TeamSnapshotPanel
+              teamName={matchTitle || "Team"}
               tackles={teamTotals.tackles}
               missed={teamTotals.missed}
               tacklePct={teamTacklePct}

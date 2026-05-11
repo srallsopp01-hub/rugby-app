@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
+import { StatusPill } from "@/app/components/StatusPill";
 import { COACH_PAGE_HELP } from "../help-content";
 import {
   fetchTeamMembers,
@@ -19,18 +21,20 @@ import {
   type InviteLink,
 } from "@/lib/teamMembersCloud";
 import {
-  createDefaultSquadProfile,
-  getSquadProfile,
   saveSquadProfile,
   type SquadPlayer,
   type SquadProfile,
 } from "@/app/rugby-tagging/lib/team";
+import { useTeam } from "@/app/providers/TeamContext";
+import { EmptyState } from "@/app/components/EmptyState";
+import { Users } from "lucide-react";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 
 export default function TeamPage() {
-  const [profile, setProfile] = useState<SquadProfile | null>(null);
-  const [teamNameDraft, setTeamNameDraft] = useState("");
+  const { team: liveTeam } = useTeam();
+  const [profile, setProfile] = useState<SquadProfile | null>(liveTeam ?? null);
+  const [teamNameDraft, setTeamNameDraft] = useState(liveTeam?.teamName ?? "");
   const [savingTeamName, setSavingTeamName] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Manage your team access");
   const [loading, setLoading] = useState(true);
@@ -45,6 +49,11 @@ export default function TeamPage() {
   const [sendingSlotInvite, setSendingSlotInvite] = useState(false);
   const [copiedSlotId, setCopiedSlotId] = useState<string | null>(null);
 
+  const [linkingSlot, setLinkingSlot] = useState<string | null>(null);
+  const [linkEmail, setLinkEmail] = useState("");
+  const [linkingInProgress, setLinkingInProgress] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+
   const [coachName, setCoachName] = useState("");
   const [coachTitle, setCoachTitle] = useState("");
   const [coachEmail, setCoachEmail] = useState("");
@@ -56,13 +65,15 @@ export default function TeamPage() {
   const [acceptedMembers, setAcceptedMembers] = useState<TeamMember[]>([]);
   const [notifyRequests, setNotifyRequests] = useState<TeamMember[]>([]);
 
+  // Keep local profile in sync with TeamContext (handles async initial fetch).
   useEffect(() => {
-    const loadedProfile = getSquadProfile();
-    if (loadedProfile) {
-      setProfile(loadedProfile);
-      setTeamNameDraft(loadedProfile.teamName);
+    if (liveTeam) {
+      setProfile(liveTeam);
+      setTeamNameDraft((prev) => prev || liveTeam.teamName);
     }
+  }, [liveTeam]);
 
+  useEffect(() => {
     void Promise.all([
       fetchTeamMembers(),
       fetchNotifyRequests(),
@@ -80,6 +91,42 @@ export default function TeamPage() {
 
   const squadPlayers = (profile?.players ?? []).filter((p) => p.status !== "unavailable");
   const unclaimedSlots = squadPlayers.filter((p) => !p.linkedUserId);
+
+  async function handleLinkAccount(playerSquadId: string) {
+    if (!profile || !linkEmail.trim()) return;
+    setLinkingInProgress(true);
+    setLinkError(null);
+    try {
+      const res = await fetch("/api/invite/link-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teamId: profile.id,
+          playerSquadId,
+          email: linkEmail.trim(),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed to link account");
+      // Optimistically mark the slot as claimed in local state
+      setProfile((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          players: prev.players.map((p) =>
+            p.id === playerSquadId ? { ...p, linkedUserId: "__linked__" } : p
+          ),
+        };
+      });
+      setLinkingSlot(null);
+      setLinkEmail("");
+      setStatusMessage(`Account linked to ${squadPlayers.find((p) => p.id === playerSquadId)?.fullName ?? "player"}`);
+    } catch (e) {
+      setLinkError(e instanceof Error ? e.message : "Link failed");
+    } finally {
+      setLinkingInProgress(false);
+    }
+  }
 
   async function handleGenerateReusableLink() {
     setGeneratingLink(true);
@@ -184,9 +231,9 @@ export default function TeamPage() {
       return;
     }
     setSavingTeamName(true);
-    const currentProfile = profile ?? createDefaultSquadProfile();
+    if (!profile) return;
     const updatedProfile = {
-      ...currentProfile,
+      ...profile,
       teamName: nextName,
       updatedAt: new Date().toISOString(),
     };
@@ -243,26 +290,16 @@ export default function TeamPage() {
       <div className="mx-auto max-w-[1500px] space-y-5">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
-        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div className="max-w-3xl">
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-                  Team access
-                </h1>
-                {COACH_PAGE_HELP["/coach/team"] && (
-                  <PageHelp {...COACH_PAGE_HELP["/coach/team"]} />
-                )}
-              </div>
-              <p className="mt-2 text-sm leading-6 text-muted">
-                Share your join link so players can claim their squad slot directly.
-              </p>
-            </div>
-            <div className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
+        <PageHeader
+          title="Team access"
+          subtitle="Share your join link so players can claim their squad slot directly."
+          helpButton={COACH_PAGE_HELP["/coach/team"] ? <PageHelp {...COACH_PAGE_HELP["/coach/team"]} /> : undefined}
+          status={
+            <span className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
               {statusMessage}
-            </div>
-          </div>
-        </section>
+            </span>
+          }
+        />
 
         {/* ── Team name ──────────────────────────────────────────────────── */}
         <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
@@ -271,7 +308,7 @@ export default function TeamPage() {
           <p className="mt-1 text-sm leading-6 text-muted">
             This name appears on the join page and across player screens.
           </p>
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
             <input
               type="text"
               value={teamNameDraft}
@@ -283,7 +320,7 @@ export default function TeamPage() {
               type="button"
               onClick={handleSaveTeamName}
               disabled={savingTeamName}
-              className="rounded-xl border border-border bg-foreground-strong px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-50"
+              className="rounded-xl border border-border bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
             >
               {savingTeamName ? "Saving…" : "Save"}
             </button>
@@ -298,13 +335,13 @@ export default function TeamPage() {
             Share this in your team group chat. Players tap the link, pick their squad slot, and join immediately — no approval needed.
           </p>
 
-          <div className="mt-5">
+          <div className="mt-4">
             {!reusableLink && (
               <button
                 type="button"
                 onClick={() => void handleGenerateReusableLink()}
                 disabled={generatingLink}
-                className="rounded-xl bg-foreground-strong px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-50"
+                className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
               >
                 {generatingLink ? "Generating…" : "Generate join link"}
               </button>
@@ -436,7 +473,7 @@ export default function TeamPage() {
             <button
               type="submit"
               disabled={generatingCoachLink || !coachName.trim()}
-              className="rounded-xl bg-foreground-strong px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-50"
+              className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
             >
               {generatingCoachLink ? "Generating…" : coachLinkUrl ? "Generate new link" : "Generate invite link"}
             </button>
@@ -451,7 +488,7 @@ export default function TeamPage() {
             Send a personal link to a specific player — their slot will be pre-selected and the link is single-use.
           </p>
 
-          <div className="mt-5">
+          <div className="mt-4">
             {loading && <p className="text-sm text-muted">Loading…</p>}
             {!loading && squadPlayers.length === 0 && (
               <p className="rounded-xl border border-border bg-panel-2 px-4 py-4 text-sm text-muted">
@@ -476,10 +513,24 @@ export default function TeamPage() {
                     onOpen={() => {
                       setActiveInviteSlot(player.id);
                       setSlotInviteEmail("");
+                      setLinkingSlot(null);
                     }}
                     onClose={() => setActiveInviteSlot(null)}
                     onEmailChange={setSlotInviteEmail}
                     onSubmit={(e) => void handleSendSlotInvite(e, player.id)}
+                    isLinking={linkingSlot === player.id}
+                    linkEmail={linkingSlot === player.id ? linkEmail : ""}
+                    linkError={linkingSlot === player.id ? linkError : null}
+                    linkingInProgress={linkingInProgress}
+                    onOpenLink={() => {
+                      setLinkingSlot(player.id);
+                      setLinkEmail("");
+                      setLinkError(null);
+                      setActiveInviteSlot(null);
+                    }}
+                    onCloseLink={() => { setLinkingSlot(null); setLinkError(null); }}
+                    onLinkEmailChange={setLinkEmail}
+                    onLinkSubmit={(e) => { e.preventDefault(); void handleLinkAccount(player.id); }}
                   />
                 ))}
               </div>
@@ -500,7 +551,7 @@ export default function TeamPage() {
               These players used your join link but couldn&apos;t find their name on the squad. Approve to add them to your squad, or dismiss.
             </p>
 
-            <div className="mt-5 space-y-3">
+            <div className="mt-4 space-y-3">
               {notifyRequests.map((req) => (
                 <div
                   key={req.id}
@@ -550,9 +601,11 @@ export default function TeamPage() {
           <div className="mt-5 space-y-3">
             {loading && <p className="text-sm text-muted">Loading…</p>}
             {!loading && acceptedMembers.length === 0 && (
-              <p className="rounded-xl border border-border bg-panel-2 px-4 py-4 text-sm text-muted">
-                No team members yet. Share your join link to get started.
-              </p>
+              <EmptyState
+                icon={Users}
+                title="No team members yet"
+                description="Share your team join link or send a personal invite to add players and coaches."
+              />
             )}
             {acceptedMembers.map((member) => (
               <MemberRow
@@ -582,6 +635,14 @@ function SlotRow({
   onClose,
   onEmailChange,
   onSubmit,
+  isLinking,
+  linkEmail,
+  linkError,
+  linkingInProgress,
+  onOpenLink,
+  onCloseLink,
+  onLinkEmailChange,
+  onLinkSubmit,
 }: {
   player: SquadPlayer;
   isActive: boolean;
@@ -592,7 +653,17 @@ function SlotRow({
   onClose: () => void;
   onEmailChange: (email: string) => void;
   onSubmit: (e: React.FormEvent) => void;
+  isLinking: boolean;
+  linkEmail: string;
+  linkError: string | null;
+  linkingInProgress: boolean;
+  onOpenLink: () => void;
+  onCloseLink: () => void;
+  onLinkEmailChange: (email: string) => void;
+  onLinkSubmit: (e: React.FormEvent) => void;
 }) {
+  const isIdle = !isActive && !isLinking;
+
   return (
     <div className="rounded-xl border border-border bg-panel-2 px-4 py-3">
       <div className="flex items-center justify-between gap-3">
@@ -604,14 +675,23 @@ function SlotRow({
         </div>
         {isCopied ? (
           <span className="text-xs font-semibold text-success">Link copied!</span>
-        ) : !isActive ? (
-          <button
-            type="button"
-            onClick={onOpen}
-            className="shrink-0 rounded-lg border border-border bg-panel px-3 py-1.5 text-xs font-semibold text-foreground-strong transition hover:border-border-light"
-          >
-            Send invite to…
-          </button>
+        ) : isIdle ? (
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={onOpen}
+              className="rounded-lg border border-border bg-panel px-3 py-1.5 text-xs font-semibold text-foreground-strong transition hover:border-border-light"
+            >
+              Send invite
+            </button>
+            <button
+              type="button"
+              onClick={onOpenLink}
+              className="rounded-lg border border-border bg-panel px-3 py-1.5 text-xs font-semibold text-muted transition hover:border-border-light hover:text-foreground"
+            >
+              Link account
+            </button>
+          </div>
         ) : null}
       </div>
 
@@ -630,7 +710,7 @@ function SlotRow({
             <button
               type="submit"
               disabled={sending || !emailDraft.trim()}
-              className="rounded-lg border border-border bg-foreground-strong px-3 py-2 text-xs font-semibold text-background transition hover:opacity-90 disabled:opacity-50"
+              className="rounded-lg border border-border bg-accent px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
             >
               {sending ? "Generating…" : "Copy link"}
             </button>
@@ -643,6 +723,42 @@ function SlotRow({
             </button>
           </div>
         </form>
+      )}
+
+      {isLinking && (
+        <div className="mt-3">
+          <p className="mb-2 text-xs text-muted">
+            Player already has an account? Enter their email to link it directly.
+          </p>
+          <form onSubmit={onLinkSubmit} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              type="email"
+              required
+              autoFocus
+              value={linkEmail}
+              onChange={(e) => onLinkEmailChange(e.target.value)}
+              placeholder="player@example.com"
+              className="min-w-0 flex-1 rounded-lg border border-border bg-panel px-3 py-2 text-sm text-foreground-strong outline-none transition focus:border-border-light"
+            />
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={linkingInProgress || !linkEmail.trim()}
+                className="rounded-lg border border-border bg-accent px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+              >
+                {linkingInProgress ? "Linking…" : "Link account"}
+              </button>
+              <button
+                type="button"
+                onClick={onCloseLink}
+                className="rounded-lg border border-border bg-panel px-3 py-2 text-xs font-semibold text-muted transition hover:border-border-light"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+          {linkError && <p className="mt-2 text-xs text-red-400">{linkError}</p>}
+        </div>
       )}
     </div>
   );
@@ -673,13 +789,13 @@ function MemberRow({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-foreground-strong">{displayName}</span>
-          <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted">
+          <StatusPill size="sm">
             {member.role === "player" ? "Player" : "Coach"}
-          </span>
+          </StatusPill>
           {member.canManageTeam && (
-            <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success">
+            <StatusPill variant="success" size="sm">
               Head permissions
-            </span>
+            </StatusPill>
           )}
         </div>
         {member.coachLabel && (

@@ -1,18 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { usePlayer } from "../../PlayerContext";
 import { PlayerPicker } from "../../PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
-import { SAVED_MATCHES_KEY, subscribeSavedMatchesChanged } from "@/app/rugby-tagging/lib/savedMatches";
+import { PageHeader } from "@/app/components/PageHeader";
+import { useMatches } from "@/app/providers/MatchesContext";
 import { buildReportRowsFromMatch, formatTime, findMatchingPlayer } from "@/app/rugby-tagging/helpers";
 import { buildPlayerCoachingPlan } from "../../playerCoachingPlan";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { EventItem } from "@/app/rugby-tagging/types";
 import type { SquadPlayer } from "@/app/rugby-tagging/lib/team";
 import { getMatchVideoSignedUrlWithResult, refreshVideoSignedUrl, SIGNED_URL_EXPIRY_SECONDS } from "@/lib/matchVideoCloud";
+import { VideoPlayer } from "@/app/components/VideoPlayer";
 
 function playerNameSet(player: SquadPlayer): Set<string> {
   return new Set([
@@ -61,17 +63,11 @@ export default function GameDetailPage() {
   const gameId = typeof params.gameId === "string" ? params.gameId : "";
   const { currentPlayer, ready } = usePlayer();
 
-  const matchesRaw = useSyncExternalStore(
-    subscribeSavedMatchesChanged,
-    () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
-    () => "[]"
-  );
+  const { matches } = useMatches();
 
   const { match, row, events, notFound } = useMemo(() => {
     if (!currentPlayer || !gameId) return { match: null, row: null, events: [], notFound: false };
-    let all: SavedMatchRecord[];
-    try { all = JSON.parse(matchesRaw); } catch { return { match: null, row: null, events: [], notFound: true }; }
-    const m = all.find((s) => s.id === gameId) ?? null;
+    const m = matches.find((s) => s.id === gameId) ?? null;
     if (!m) return { match: null, row: null, events: [], notFound: true };
     const rows = buildReportRowsFromMatch(m.rosterRows, m.events);
     const names = playerNameSet(currentPlayer);
@@ -81,7 +77,7 @@ export default function GameDetailPage() {
       null;
     if (!playerRow) return { match: null, row: null, events: [], notFound: true };
     return { match: m, row: playerRow, events: playerEvents(m, currentPlayer, playerRow.name), notFound: false };
-  }, [matchesRaw, currentPlayer, gameId]);
+  }, [matches, currentPlayer, gameId]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoUrl, setVideoUrl] = useState("");
@@ -89,13 +85,19 @@ export default function GameDetailPage() {
   const [videoError, setVideoError] = useState<string | null>(null);
   const [activeEventIdx, setActiveEventIdx] = useState<number | null>(null);
   const playlistRef = useRef<HTMLDivElement>(null);
+  const videoRetryCount = useRef(0);
+
+  useEffect(() => {
+    videoRetryCount.current = 0;
+    setVideoError(null);
+  }, [match?.videoStoragePath]);
 
   useEffect(() => {
     return () => { if (videoUrl.startsWith("blob:")) URL.revokeObjectURL(videoUrl); };
   }, [videoUrl]);
 
   useEffect(() => {
-    if (videoUrl || !match?.videoStoragePath) return;
+    if (videoUrl || videoError || !match?.videoStoragePath) return;
     let cancelled = false;
     queueMicrotask(() => {
       if (!cancelled) setVideoLoading(true);
@@ -160,22 +162,20 @@ export default function GameDetailPage() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header: back link + match header */}
-      <div className="flex-shrink-0 px-6 pt-6 pb-4 space-y-3">
+      <div className="flex-shrink-0 space-y-3 px-6 pt-6">
         <Link href="/player/games" className="text-xs text-muted hover:text-foreground transition-colors">
           ← Back to Games
         </Link>
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-foreground-strong">
-              vs {match.opponent || match.matchTitle || "Opponent"}
-            </h1>
-            <p className="mt-1 text-sm text-muted">{formatDate(match.matchDate)}</p>
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            <GradeBadge grade={row.overallGrade} />
-            <span className="text-xs text-muted-2">Overall grade</span>
-          </div>
-        </div>
+        <PageHeader
+          title={`vs ${match.opponent || match.matchTitle || "Opponent"}`}
+          subtitle={formatDate(match.matchDate)}
+          status={
+            <div className="flex flex-col items-end gap-1">
+              <GradeBadge grade={row.overallGrade} />
+              <span className="text-xs text-muted-2">Overall grade</span>
+            </div>
+          }
+        />
       </div>
 
       {/* Body: left (video + stats + coaching) + right (playlist) */}
@@ -193,19 +193,22 @@ export default function GameDetailPage() {
             </div>
           ) : videoUrl ? (
             <div className="rounded-xl border border-border bg-panel overflow-hidden">
-              <video
+              <VideoPlayer
                 ref={videoRef}
                 src={videoUrl}
-                className="w-full aspect-video bg-black"
-                controls
+                className="rounded-none"
+                enableFullscreen
                 onError={() => {
                   if (!videoUrl || videoUrl.startsWith("blob:")) return;
                   if (!match?.videoStoragePath) return;
-                  setVideoUrl("");
-                  setVideoLoading(true);
+                  if (videoRetryCount.current >= 1) {
+                    setVideoError("Video could not be loaded from cloud");
+                    return;
+                  }
+                  videoRetryCount.current += 1;
                   void refreshVideoSignedUrl(match.videoStoragePath).then((url) => {
                     if (url) setVideoUrl(url);
-                    setVideoLoading(false);
+                    else setVideoError("Video could not be loaded from cloud");
                   });
                 }}
               />

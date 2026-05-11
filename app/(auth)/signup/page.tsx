@@ -265,6 +265,18 @@ function SignupContent() {
             </p>
           )}
 
+          <p className="text-xs leading-5 text-muted">
+            By creating an account you agree to our{" "}
+            <Link href="/terms" className="underline hover:text-foreground">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="underline hover:text-foreground">
+              Privacy Policy
+            </Link>
+            .
+          </p>
+
           <button
             type="submit"
             disabled={loading}

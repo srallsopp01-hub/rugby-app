@@ -1,4 +1,5 @@
 type TeamSnapshotPanelProps = {
+  teamName: string;
   tackles: number;
   missed: number;
   tacklePct: number;
@@ -14,6 +15,7 @@ type TeamSnapshotPanelProps = {
 };
 
 export default function TeamSnapshotPanel({
+  teamName,
   tackles,
   missed,
   tacklePct,
@@ -78,14 +80,14 @@ export default function TeamSnapshotPanel({
         </div>
 
         <div className="rounded-xl border border-border bg-panel-2 p-3">
-          <div className="text-muted">Easts Scrum %</div>
+          <div className="text-muted">{teamName} Scrum %</div>
           <div className="mt-1 font-semibold text-foreground">
             {scrumSuccessPct.toFixed(0)}%
           </div>
         </div>
 
         <div className="rounded-xl border border-border bg-panel-2 p-3">
-          <div className="text-muted">Easts Lineout %</div>
+          <div className="text-muted">{teamName} Lineout %</div>
           <div className="mt-1 font-semibold text-foreground">
             {lineoutSuccessPct.toFixed(0)}%
           </div>

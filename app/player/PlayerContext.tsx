@@ -1,10 +1,8 @@
 "use client";
 
-import { createContext, useContext, useMemo, useSyncExternalStore } from "react";
-import { getTeam, TEAM_CHANGED_EVENT } from "@/app/rugby-tagging/lib/team";
-import { PLAYER_IDENTITY_KEY } from "@/app/rugby-tagging/constants";
-import { ACTIVE_TEAM_ID_KEY } from "@/lib/teamContext";
-import { namespacedPlayerKey } from "@/app/player/SyncPlayerData";
+import { createContext, useContext, useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useTeam } from "@/app/providers/TeamContext";
 import type { SquadPlayer } from "@/app/rugby-tagging/lib/team";
 
 type PlayerContextValue = {
@@ -16,100 +14,48 @@ type PlayerContextValue = {
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
 
-const PLAYER_IDENTITY_EVENT = "player-identity-changed";
-
-// ─── Active team ID (written by getMyTeamContext + SyncPlayerData) ───────────
-
-function subscribeActiveTeamId(cb: () => void) {
-  window.addEventListener(PLAYER_IDENTITY_EVENT, cb);
-  window.addEventListener("storage", cb);
-  return () => {
-    window.removeEventListener(PLAYER_IDENTITY_EVENT, cb);
-    window.removeEventListener("storage", cb);
-  };
-}
-
-function getActiveTeamIdSnapshot(): string {
-  return localStorage.getItem(ACTIVE_TEAM_ID_KEY) || "";
-}
-
-// ─── Player identity (scoped by active team) ─────────────────────────────────
-
-function subscribePlayerIdentity(cb: () => void) {
-  window.addEventListener(PLAYER_IDENTITY_EVENT, cb);
-  window.addEventListener("storage", cb);
-  return () => {
-    window.removeEventListener(PLAYER_IDENTITY_EVENT, cb);
-    window.removeEventListener("storage", cb);
-  };
-}
-
-function getPlayerIdSnapshot(activeTeamId: string): string {
-  if (!activeTeamId) {
-    // Team not yet resolved — fall back to legacy key for existing sessions.
-    return localStorage.getItem(PLAYER_IDENTITY_KEY) || "";
-  }
-  return localStorage.getItem(namespacedPlayerKey(activeTeamId)) || "";
-}
-
-// ─── Profile changes (squad data) ────────────────────────────────────────────
-
-function subscribeProfileChanges(cb: () => void) {
-  window.addEventListener(TEAM_CHANGED_EVENT, cb);
-  window.addEventListener("storage", cb);
-  return () => {
-    window.removeEventListener(TEAM_CHANGED_EVENT, cb);
-    window.removeEventListener("storage", cb);
-  };
-}
-
-function getProfileVersionSnapshot(): string {
-  return getTeam()?.updatedAt ?? "";
-}
-
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
-  const activeTeamId = useSyncExternalStore(
-    subscribeActiveTeamId,
-    getActiveTeamIdSnapshot,
-    () => ""
-  );
+  const { team } = useTeam();
+  const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
 
-  const currentPlayerId = useSyncExternalStore(
-    subscribePlayerIdentity,
-    () => getPlayerIdSnapshot(activeTeamId),
-    () => ""
-  );
+  useEffect(() => {
+    if (!team) return;
+    const teamId = team.id;
 
-  const profileVersion = useSyncExternalStore(
-    subscribeProfileChanges,
-    getProfileVersionSnapshot,
-    () => ""
-  );
+    async function resolvePlayerIdentity() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setReady(true); return; }
 
-  const currentPlayer = useMemo(() => {
-    if (!currentPlayerId) return null;
-    const team = getTeam();
-    return team?.players.find((p) => p.id === currentPlayerId) ?? null;
-    // profileVersion re-triggers when SyncPlayerData saves a freshly fetched profile
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPlayerId, profileVersion]);
+      const { data: membership } = await supabase
+        .from("team_members")
+        .select("player_squad_id")
+        .eq("user_id", user.id)
+        .eq("team_id", teamId)
+        .eq("status", "active")
+        .eq("role", "player")
+        .maybeSingle();
 
-  const ready = useSyncExternalStore(() => () => {}, () => true, () => false);
+      if (membership?.player_squad_id) {
+        setCurrentPlayerId(membership.player_squad_id);
+      }
+      setReady(true);
+    }
+
+    void resolvePlayerIdentity();
+  }, [team?.id]);
+
+  const currentPlayer = currentPlayerId && team
+    ? (team.players.find((p) => p.id === currentPlayerId) ?? null)
+    : null;
 
   function setCurrentPlayer(player: SquadPlayer) {
-    const key = activeTeamId
-      ? namespacedPlayerKey(activeTeamId)
-      : PLAYER_IDENTITY_KEY;
-    localStorage.setItem(key, player.id);
-    window.dispatchEvent(new Event(PLAYER_IDENTITY_EVENT));
+    setCurrentPlayerId(player.id);
   }
 
   function clearCurrentPlayer() {
-    const key = activeTeamId
-      ? namespacedPlayerKey(activeTeamId)
-      : PLAYER_IDENTITY_KEY;
-    localStorage.removeItem(key);
-    window.dispatchEvent(new Event(PLAYER_IDENTITY_EVENT));
+    setCurrentPlayerId(null);
   }
 
   return (

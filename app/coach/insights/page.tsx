@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
+import { useMatches } from "@/app/providers/MatchesContext";
 import {
   BarChart,
   Bar,
@@ -12,13 +13,10 @@ import {
   CartesianGrid,
   Cell,
 } from "recharts";
-import {
-  CURRENT_MATCH_ID_KEY,
-  SAVED_MATCHES_KEY,
-} from "@/app/rugby-tagging/lib/savedMatches";
-import { STORAGE_KEY, SQUAD_PROFILE_KEY } from "@/app/rugby-tagging/constants";
+import { getCurrentMatchId } from "@/app/rugby-tagging/lib/savedMatches";
+import { STORAGE_KEY } from "@/app/rugby-tagging/constants";
 import type { ManualKpi, BuiltinKpiTarget } from "@/app/rugby-tagging/lib/team";
-import { DEFAULT_BUILTIN_TARGETS } from "@/app/rugby-tagging/lib/team";
+import { DEFAULT_BUILTIN_TARGETS, getTeam } from "@/app/rugby-tagging/lib/team";
 import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfidence";
 import { generateTeamAnalyticsWorkbook } from "@/app/rugby-tagging/lib/exports/teamAnalyticsExport";
 import { downloadWorkbook } from "@/app/rugby-tagging/lib/exports/downloadWorkbook";
@@ -37,8 +35,12 @@ import {
 import type { EventItem, RosterRow } from "@/app/rugby-tagging/types";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import { GradeBadge } from "@/app/components/GradeBadge";
+import { StatusPill } from "@/app/components/StatusPill";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
 import { COACH_PAGE_HELP } from "../help-content";
+import { EmptyState as SharedEmptyState } from "@/app/components/EmptyState";
+import { Award, AlertTriangle, Lightbulb, Users, LineChart } from "lucide-react";
 
 type Tab = "overview" | "game" | "players" | "trends";
 type PlayerFilter = "all" | "forwards" | "backs";
@@ -53,21 +55,10 @@ type SavedSession = {
   coachNotes?: unknown[];
 };
 
-const emptyArraySnapshot = "[]";
-const subscribeToStorage = () => () => {};
-
-function getStorageSnapshot(key: string, fallback: string) {
-  if (typeof window === "undefined") return fallback;
-  return localStorage.getItem(key) || fallback;
-}
-
-function parseSavedMatches(snapshot: string): SavedMatchRecord[] {
-  try {
-    const parsed = JSON.parse(snapshot);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+const ACTIVE_TEAM_ID_KEY = "fynlwhistle-active-team-id";
+function scopedSessionKey(): string {
+  try { const t = localStorage.getItem(ACTIVE_TEAM_ID_KEY) ?? ""; return t ? `${STORAGE_KEY}-${t}` : STORAGE_KEY; }
+  catch { return STORAGE_KEY; }
 }
 
 function parseSavedSession(snapshot: string): SavedSession | null {
@@ -94,32 +85,17 @@ export default function InsightsPage() {
   const [expandedTrendPlayer, setExpandedTrendPlayer] = useState<string | null>(null);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [pdfExporting, setPdfExporting] = useState(false);
+  const { matches: allMatches } = useMatches();
+  const [currentMatchId] = useState(() => getCurrentMatchId());
+
+  // Reset manual match selection when the match list changes (e.g. team switch).
+  useEffect(() => { setSelectedMatchId(null); }, [allMatches]);
+  const [sessionMatch] = useState<SavedSession | null>(() => {
+    if (typeof window === "undefined") return null;
+    return parseSavedSession(localStorage.getItem(scopedSessionKey()) ?? "{}");
+  });
+
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
-
-  const savedMatchesSnapshot = useSyncExternalStore(
-    subscribeToStorage,
-    () => getStorageSnapshot(SAVED_MATCHES_KEY, emptyArraySnapshot),
-    () => emptyArraySnapshot
-  );
-  const currentMatchId = useSyncExternalStore(
-    subscribeToStorage,
-    () => getStorageSnapshot(CURRENT_MATCH_ID_KEY, ""),
-    () => ""
-  );
-  const sessionSnapshot = useSyncExternalStore(
-    subscribeToStorage,
-    () => getStorageSnapshot(STORAGE_KEY, "{}"),
-    () => "{}"
-  );
-
-  const allMatches = useMemo(
-    () => parseSavedMatches(savedMatchesSnapshot),
-    [savedMatchesSnapshot]
-  );
-  const sessionMatch = useMemo(
-    () => parseSavedSession(sessionSnapshot),
-    [sessionSnapshot]
-  );
   const effectiveMatchId = selectedMatchId ?? currentMatchId;
   const activeMatch = useMemo(
     () => allMatches.find((m) => m.id === effectiveMatchId) || null,
@@ -323,11 +299,7 @@ export default function InsightsPage() {
 
   const squadProfile = useMemo(() => {
     if (!mounted) return null;
-    try {
-      const raw = localStorage.getItem(SQUAD_PROFILE_KEY);
-      if (!raw) return null;
-      return JSON.parse(raw) as { kpiTargets?: Array<BuiltinKpiTarget | ManualKpi> };
-    } catch { return null; }
+    return getTeam() as { kpiTargets?: Array<BuiltinKpiTarget | ManualKpi> } | null;
   }, [mounted]);
 
   const kpiTargets = squadProfile?.kpiTargets ?? [];
@@ -405,39 +377,25 @@ export default function InsightsPage() {
       <div className="mx-auto max-w-[1900px]">
 
         {/* Page header */}
-        <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
-          <div>
-            <h1 className="text-2xl font-semibold text-foreground-strong">Team Analytics</h1>
-            {allMatches.length >= 2 ? (
-              <select
-                value={effectiveMatchId}
-                onChange={(e) => setSelectedMatchId(e.target.value)}
-                className="mt-1.5 rounded-lg border border-border bg-panel-2 px-2 py-1 text-sm text-foreground"
-              >
-                {allMatches.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {[m.matchTitle, m.opponent ? `vs ${m.opponent}` : "", m.matchDate].filter(Boolean).join(" · ") || m.id}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <p className="mt-1 text-sm text-muted">
-                {[matchTitle, opponent ? `vs ${opponent}` : "", matchDate].filter(Boolean).join(" · ")}
-                {!matchTitle && !opponent && "No match loaded — open a saved match or complete tagging in Capture"}
-              </p>
-            )}
-          </div>
-          <div className="flex shrink-0 items-center gap-3">
-            <PageHelp {...COACH_PAGE_HELP["/coach/insights"]} />
-            <div
-              className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${
-                confidence.readyTone === "ready"
-                  ? "border-[#7ea37e]/40 bg-[#7ea37e]/10 text-[#7ea37e]"
-                  : "border-[#b79a63]/40 bg-[#b79a63]/10 text-[#b79a63]"
-              }`}
+        <PageHeader
+          className="px-6 pt-5"
+          title="Team Analytics"
+          subtitle={
+            allMatches.length < 2
+              ? [matchTitle, opponent ? `vs ${opponent}` : "", matchDate].filter(Boolean).join(" · ") ||
+                "No match loaded — open a saved match or complete tagging in Capture"
+              : undefined
+          }
+          helpButton={<PageHelp {...COACH_PAGE_HELP["/coach/insights"]} />}
+          status={
+            <StatusPill
+              variant={confidence.readyTone === "ready" ? "success" : "warning"}
+              size="md"
             >
               {confidence.readyLabel}
-            </div>
+            </StatusPill>
+          }
+          secondaryAction={
             <button
               type="button"
               onClick={async () => {
@@ -471,6 +429,8 @@ export default function InsightsPage() {
             >
               ↓ Export Report
             </button>
+          }
+          primaryAction={
             <button
               type="button"
               onClick={async () => {
@@ -505,12 +465,29 @@ export default function InsightsPage() {
                 }
               }}
               disabled={reportRows.length === 0 || pdfExporting}
-              className="rounded-xl border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground transition hover:border-border-light hover:bg-panel-2 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-xl border border-border bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {pdfExporting ? "Generating…" : "↓ Export PDF"}
             </button>
-          </div>
-        </div>
+          }
+          belowHeader={
+            allMatches.length >= 2 ? (
+              <div className="pb-4">
+                <select
+                  value={effectiveMatchId}
+                  onChange={(e) => setSelectedMatchId(e.target.value)}
+                  className="rounded-lg border border-border bg-panel-2 px-2 py-1 text-sm text-foreground"
+                >
+                  {allMatches.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {[m.matchTitle, m.opponent ? `vs ${m.opponent}` : "", m.matchDate].filter(Boolean).join(" · ") || m.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : undefined
+          }
+        />
 
         {/* Match confidence strip */}
         <div className="flex items-center gap-2 overflow-x-auto border-b border-border bg-panel px-6 py-3">
@@ -668,7 +645,12 @@ export default function InsightsPage() {
                     <span className="text-xs text-muted-2">By overall grade this match</span>
                   </div>
                   {topPerformers.length === 0 ? (
-                    <EmptyState>Complete tagging and add player minutes to see top performers.</EmptyState>
+                    <SharedEmptyState
+                      icon={Award}
+                      title="Tagging incomplete"
+                      description="Complete tagging and add player minutes in Capture to see top performers."
+                      size="sm"
+                    />
                   ) : (
                     <div className="space-y-3">
                       {topPerformers.map((player, i) => (
@@ -704,7 +686,12 @@ export default function InsightsPage() {
                     <span className="text-xs text-muted-2">Below or Poor grade this match</span>
                   </div>
                   {needsAttention.length === 0 && reportRows.length === 0 ? (
-                    <EmptyState>Complete tagging and add player minutes first.</EmptyState>
+                    <SharedEmptyState
+                      icon={AlertTriangle}
+                      title="Tagging incomplete"
+                      description="Complete tagging and add player minutes in Capture first."
+                      size="sm"
+                    />
                   ) : needsAttention.length === 0 ? (
                     <div className="flex h-[80px] items-center justify-center rounded-xl border border-[#7ea37e]/30 bg-[#7ea37e]/5 text-sm text-[#7ea37e]">
                       All players graded Competitive or above this match
@@ -807,7 +794,12 @@ export default function InsightsPage() {
               <div className="rounded-2xl border border-border bg-panel p-5">
                 <h2 className="mb-4 text-base font-semibold text-foreground-strong">Headline Insights</h2>
                 {headlineInsights.length === 0 ? (
-                  <EmptyState>No insights yet. Complete tagging in Capture, then reopen Insights.</EmptyState>
+                  <SharedEmptyState
+                    icon={Lightbulb}
+                    title="No insights yet"
+                    description="Complete tagging in Capture, then reopen Insights."
+                    size="sm"
+                  />
                 ) : (
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     {headlineInsights.map((insight, i) => (
@@ -980,9 +972,11 @@ export default function InsightsPage() {
 
               <div className="rounded-2xl border border-border bg-panel p-5">
                 {filteredPlayerRows.length === 0 ? (
-                  <EmptyState>
-                    No player data yet. Complete tagging in Capture, add player minutes, then reopen Insights.
-                  </EmptyState>
+                  <SharedEmptyState
+                    icon={Users}
+                    title="No player data yet"
+                    description="Complete tagging in Capture, add player minutes, then reopen Insights."
+                  />
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[900px] text-sm">
@@ -1057,16 +1051,12 @@ export default function InsightsPage() {
           {activeTab === "trends" && (
             <div className="space-y-6">
               {!seasonChartData ? (
-                <div className="rounded-2xl border border-dashed border-border bg-panel p-12 text-center">
-                  <div className="text-4xl">📊</div>
-                  <h2 className="mt-4 text-lg font-semibold text-foreground-strong">Season trends need more data</h2>
-                  <p className="mt-2 text-sm text-muted">
-                    Save more matches to unlock season trends. At least 2 saved matches are required.
-                  </p>
-                  <p className="mt-1 text-xs text-muted-2">
-                    You currently have {allMatches.length} saved match{allMatches.length !== 1 ? "es" : ""}.
-                  </p>
-                </div>
+                <SharedEmptyState
+                  icon={LineChart}
+                  title="Season trends unlock at 2 matches"
+                  description={`Save at least 2 matches to see how your team's performance changes over time. You currently have ${allMatches.length} saved match${allMatches.length !== 1 ? "es" : ""}.`}
+                  size="lg"
+                />
               ) : (
                 <>
                   {/* Season averages */}
@@ -1394,10 +1384,3 @@ function SeasonStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function EmptyState({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-dashed border-border px-4 py-5 text-sm text-muted">
-      {children}
-    </div>
-  );
-}

@@ -1,40 +1,12 @@
 "use client";
 
-import { useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { StatusPill } from "@/app/components/StatusPill";
+import { PageHeader } from "@/app/components/PageHeader";
 import Link from "next/link";
 import { usePlayer } from "@/app/player/PlayerContext";
-import {
-  TEAM_KEY,
-} from "@/app/rugby-tagging/constants";
-import {
-  saveTeam,
-  TEAM_CHANGED_EVENT,
-  type Team,
-} from "@/app/rugby-tagging/lib/team";
+import { useTeam } from "@/app/providers/TeamContext";
 import type { AvailabilityResponse, Fixture, TrainingSession, TrainingSessionDayOfWeek } from "@/app/rugby-tagging/types";
-
-// ---------------------------------------------------------------------------
-// Storage subscription — reacts to saveTeam() calls
-// ---------------------------------------------------------------------------
-
-function subscribeTeam(cb: () => void) {
-  window.addEventListener(TEAM_CHANGED_EVENT, cb);
-  return () => window.removeEventListener(TEAM_CHANGED_EVENT, cb);
-}
-
-function getTeamSnapshot(): string {
-  if (typeof window === "undefined") return "{}";
-  return localStorage.getItem(TEAM_KEY) || "{}";
-}
-
-function parseProfile(snapshot: string): Team | null {
-  try {
-    const parsed = JSON.parse(snapshot);
-    return parsed && typeof parsed === "object" ? (parsed as Team) : null;
-  } catch {
-    return null;
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -124,16 +96,24 @@ function AvailabilityButtons({
 
 export default function PlayerAvailabilityPage() {
   const { currentPlayer, ready } = usePlayer();
+  const { team: profile } = useTeam();
   const [syncState, setSyncState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const profileSnapshot = useSyncExternalStore(
-    subscribeTeam,
-    getTeamSnapshot,
-    () => "{}"
-  );
+  // Local responses state — initialised from TeamContext on each profile update
+  // until the player first taps a button (hasInteracted). After that, the player's
+  // optimistic updates own the state and profile refetches are ignored.
+  // No setTeamCache / TEAM_CHANGED_EVENT: the RPC is the sole cloud write.
+  const [responses, setResponses] = useState<AvailabilityResponse[]>([]);
+  const responsesRef = useRef<AvailabilityResponse[]>([]);
+  const hasInteracted = useRef(false);
 
-  const profile = useMemo(() => parseProfile(profileSnapshot), [profileSnapshot]);
+  useEffect(() => {
+    if (!hasInteracted.current && profile?.availabilityResponses != null) {
+      responsesRef.current = profile.availabilityResponses;
+      setResponses(profile.availabilityResponses);
+    }
+  }, [profile]);
 
   const today = todayIso();
 
@@ -150,11 +130,6 @@ export default function PlayerAvailabilityPage() {
     [profile]
   );
 
-  const responses = useMemo(
-    () => profile?.availabilityResponses ?? [],
-    [profile]
-  );
-
   function getFixtureResponse(fixtureId: string): AvailabilityResponse["response"] | null {
     return responses.find((r) => r.fixtureId === fixtureId && r.playerId === currentPlayer?.id)?.response ?? null;
   }
@@ -164,27 +139,27 @@ export default function PlayerAvailabilityPage() {
   }
 
   function upsertResponse(patch: Partial<AvailabilityResponse> & { response: AvailabilityResponse["response"] }) {
-    if (!profile || !currentPlayer) return;
-    const existing = responses.findIndex(
+    if (!currentPlayer) return;
+    hasInteracted.current = true;
+    // Read from ref to avoid stale closure when two buttons are clicked in quick succession.
+    const currentResponses = responsesRef.current;
+    const existing = currentResponses.findIndex(
       (r) =>
         r.playerId === currentPlayer.id &&
         (patch.fixtureId ? r.fixtureId === patch.fixtureId : r.trainingSessionId === patch.trainingSessionId)
     );
     const next: AvailabilityResponse = {
-      id: existing >= 0 ? responses[existing].id : crypto.randomUUID(),
+      id: existing >= 0 ? currentResponses[existing].id : crypto.randomUUID(),
       playerId: currentPlayer.id,
       ...patch,
       updatedAt: new Date().toISOString(),
     };
     const updated =
       existing >= 0
-        ? responses.map((r, i) => (i === existing ? next : r))
-        : [...responses, next];
-    saveTeam({
-      ...profile,
-      availabilityResponses: updated,
-      updatedAt: new Date().toISOString(),
-    });
+        ? currentResponses.map((r, i) => (i === existing ? next : r))
+        : [...currentResponses, next];
+    responsesRef.current = updated;
+    setResponses(updated);
 
     setSyncState("saving");
     if (syncTimer.current) clearTimeout(syncTimer.current);
@@ -229,24 +204,20 @@ export default function PlayerAvailabilityPage() {
       <div className="mx-auto max-w-[800px] space-y-5">
 
         {/* Header */}
-        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">Availability</h1>
-              <p className="mt-2 text-sm text-muted">
-                Let your coach know if you&apos;re available for upcoming fixtures and training sessions.
-              </p>
-            </div>
-            {syncState !== "idle" && (
-              <span className={`mt-1 shrink-0 text-xs font-medium transition-opacity ${
+        <PageHeader
+          title="Availability"
+          subtitle="Let your coach know if you're available for upcoming fixtures and training sessions."
+          status={
+            syncState !== "idle" ? (
+              <span className={`text-xs font-medium transition-opacity ${
                 syncState === "saving" ? "text-muted" :
                 syncState === "saved" ? "text-success" : "text-danger"
               }`}>
                 {syncState === "saving" ? "Saving…" : syncState === "saved" ? "Saved ✓" : "Couldn't save — check connection"}
               </span>
-            )}
-          </div>
-        </section>
+            ) : undefined
+          }
+        />
 
         {/* Upcoming fixtures */}
         <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
@@ -258,13 +229,13 @@ export default function PlayerAvailabilityPage() {
                   <div className="mb-3">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-foreground-strong">vs {fixture.opponent}</span>
-                      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                        fixture.homeOrAway === "home"
-                          ? "border-success/30 bg-success/10 text-success"
-                          : "border-border bg-panel-3 text-muted"
-                      }`}>
+                      <StatusPill
+                        variant={fixture.homeOrAway === "home" ? "success" : "neutral"}
+                        size="sm"
+                        uppercase
+                      >
                         {fixture.homeOrAway}
-                      </span>
+                      </StatusPill>
                       {fixture.round && (
                         <span className="text-xs text-muted-2">Rd {fixture.round}</span>
                       )}

@@ -61,7 +61,7 @@ function formatPrice(currency: CurrencyCode, value: number) {
 }
 
 function getVisiblePrice(plan: PlanPrice, cycle: BillingCycle) {
-  return cycle === "yearly" ? plan.yearlyPromo : plan.monthly;
+  return cycle === "yearly" ? plan.yearlyPromo : plan.monthlyFounder;
 }
 
 function BillingToggle({
@@ -154,9 +154,15 @@ function PriceDisplay({
           <span className="text-muted-2">First year only</span>
         </div>
       ) : (
-        <p className="mt-3 text-xs text-muted">
-          Standard monthly pricing. Switch to yearly for the launch offer.
-        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+          <span className="rounded-md border border-success/35 bg-success/10 px-2.5 py-1 font-bold uppercase text-success">
+            Founder pricing
+          </span>
+          <span className="text-muted">
+            {prefix.toLowerCase()}{formatPrice(currency, plan.monthly)}/month after 6 months
+          </span>
+          <span className="text-muted-2">First 20 clubs only</span>
+        </div>
       )}
     </div>
   );
@@ -267,7 +273,7 @@ function PricingCard({
             disabled={loading}
             className={`inline-flex w-full items-center justify-center rounded-lg px-5 py-3 text-sm font-black uppercase transition disabled:opacity-60 ${
               featured
-                ? "bg-foreground-strong text-background hover:opacity-90"
+                ? "bg-accent text-white hover:opacity-90"
                 : "border border-border-light bg-panel-3 text-foreground-strong hover:bg-panel-2"
             }`}
           >
@@ -278,7 +284,7 @@ function PricingCard({
             href={href}
             className={`inline-flex w-full items-center justify-center rounded-lg px-5 py-3 text-sm font-black uppercase transition ${
               featured
-                ? "bg-foreground-strong text-background hover:opacity-90"
+                ? "bg-accent text-white hover:opacity-90"
                 : "border border-border-light bg-panel-3 text-foreground-strong hover:bg-panel-2"
             }`}
           >
@@ -439,7 +445,7 @@ export default function PricingExperience() {
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/signup?plan=team-launch"
-                className="inline-flex items-center justify-center rounded-lg bg-foreground-strong px-7 py-4 text-sm font-black uppercase text-background transition hover:opacity-90"
+                className="inline-flex items-center justify-center rounded-lg bg-accent px-7 py-4 text-sm font-black uppercase text-white transition hover:opacity-90"
               >
                 Start 14-day free trial
               </Link>
@@ -479,8 +485,8 @@ export default function PricingExperience() {
                 Early adopter offer: get 25% off your first yearly plan.
               </p>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Available for the first clubs joining during launch. Discount
-                applies to the first year only.
+                Founder spots are limited. First clubs in at launch lock in this
+                rate for their first year — after that, standard pricing applies.
               </p>
             </div>
             <div className="rounded-lg border border-success/35 bg-success/10 px-4 py-3 text-sm font-bold text-success">
@@ -493,18 +499,18 @@ export default function PricingExperience() {
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="font-mono text-xs font-bold uppercase text-muted-2">
-                Free trial
+                14-day free trial
               </p>
               <h2 className="mt-2 text-2xl font-black uppercase text-foreground-strong">
-                Try the full coaching workflow with one analysed match. No card required.
+                Try the full coaching workflow free for 14 days.
               </h2>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Includes access to the review workspace, AI summary, clips and sharing.
+                Includes the review workspace, AI summary, clips, and player sharing. Cancel before your trial ends and you won&apos;t be charged.
               </p>
             </div>
             <Link
               href="/signup?plan=team-launch"
-              className="inline-flex items-center justify-center rounded-lg bg-foreground-strong px-6 py-3 text-sm font-black uppercase text-background transition hover:opacity-90"
+              className="inline-flex items-center justify-center rounded-lg bg-accent px-6 py-3 text-sm font-black uppercase text-white transition hover:opacity-90"
             >
               Start 14-day free trial
             </Link>

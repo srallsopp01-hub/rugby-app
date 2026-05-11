@@ -1,39 +1,31 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ChevronDown, MoreHorizontal, Video } from "lucide-react";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
+import { StatusPill } from "@/app/components/StatusPill";
 import { COACH_PAGE_HELP } from "../help-content";
 import {
   clearCurrentMatchId,
   deleteSavedMatch,
-  getSavedMatches,
-  SAVED_MATCHES_CHANGED_EVENT,
   setCurrentMatchId,
   type SavedMatchRecord,
 } from "@/app/rugby-tagging/lib/savedMatches";
 import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfidence";
 import { generateMultiMatchWorkbook } from "@/app/rugby-tagging/lib/exports/multiMatchExport";
 import { downloadWorkbook } from "@/app/rugby-tagging/lib/exports/downloadWorkbook";
+import { useMatches } from "@/app/providers/MatchesContext";
+import { EmptyState } from "@/app/components/EmptyState";
 
 export default function CoachSavedMatchesPage() {
   const router = useRouter();
-  const [savedMatches, setSavedMatches] = useState<SavedMatchRecord[]>([]);
+  const { matches: savedMatches } = useMatches();
   const [selectedMatchIds, setSelectedMatchIds] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-
-  useEffect(() => {
-    const refreshSavedMatches = () => setSavedMatches(getSavedMatches());
-
-    refreshSavedMatches();
-    window.addEventListener(SAVED_MATCHES_CHANGED_EVENT, refreshSavedMatches);
-    window.addEventListener("storage", refreshSavedMatches);
-
-    return () => {
-      window.removeEventListener(SAVED_MATCHES_CHANGED_EVENT, refreshSavedMatches);
-      window.removeEventListener("storage", refreshSavedMatches);
-    };
-  }, []);
+  const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
   const toggleSelected = (matchId: string) => {
     setSelectedMatchIds((prev) =>
@@ -44,6 +36,14 @@ export default function CoachSavedMatchesPage() {
   };
 
   const clearSelection = () => setSelectedMatchIds([]);
+
+  const toggleExpand = (id: string) =>
+    setExpandedMatchId((prev) => (prev === id ? null : id));
+
+  const toggleMenu = (id: string) =>
+    setMenuOpenId((prev) => (prev === id ? null : id));
+
+  const closeMenu = () => setMenuOpenId(null);
 
   const downloadComparison = async () => {
     if (selectedMatchIds.length < 2) return;
@@ -65,16 +65,21 @@ export default function CoachSavedMatchesPage() {
   };
 
   const sortedMatches = useMemo(() => {
+    const toMs = (dateStr: string): number => {
+      if (!dateStr) return 0;
+      // DD/MM/YYYY (free-text input format used by the app)
+      const m = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (m) return new Date(+m[3], +m[2] - 1, +m[1]).getTime();
+      // ISO or any other format
+      const d = new Date(dateStr);
+      return isNaN(d.getTime()) ? 0 : d.getTime();
+    };
     return [...savedMatches].sort((a, b) => {
-      const aTime = new Date(a.updatedAt).getTime();
-      const bTime = new Date(b.updatedAt).getTime();
-      return bTime - aTime;
+      const aMs = toMs(a.matchDate || "") || toMs(a.updatedAt);
+      const bMs = toMs(b.matchDate || "") || toMs(b.updatedAt);
+      return bMs - aMs;
     });
   }, [savedMatches]);
-  const latestMatch = sortedMatches[0] || null;
-  const latestSummary = latestMatch
-    ? buildMatchConfidenceSummary(latestMatch)
-    : null;
 
   const openMatch = (
     matchId: string,
@@ -96,315 +101,356 @@ export default function CoachSavedMatchesPage() {
     if (!confirmed) return;
 
     try {
-      const currentMatchId =
+      const currentId =
         typeof window !== "undefined"
           ? localStorage.getItem("rugby-tagging-current-match-id") || ""
           : "";
+      if (currentId === matchId) clearCurrentMatchId();
 
-      if (currentMatchId === matchId) {
-        clearCurrentMatchId();
-      }
-
-      deleteSavedMatch(matchId);
-      setSavedMatches(getSavedMatches());
+      const match = savedMatches.find((m) => m.id === matchId);
+      deleteSavedMatch(matchId, match?.videoStoragePath);
     } catch (error) {
       console.error("Failed to delete saved match", error);
     }
   };
 
+  const selectedCount = selectedMatchIds.length;
+
   return (
-    <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-background px-4 py-5 pb-24 text-foreground sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1600px] space-y-5">
-        <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <div className="max-w-3xl">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-                Saved Matches
-              </h1>
-              <PageHelp {...COACH_PAGE_HELP["/coach/saved-matches"]} />
-            </div>
-            <p className="mt-2 text-sm text-muted">
-              Reopen a previously saved match in Capture, Review, or Insights.
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          title="Saved Matches"
+          subtitle="Reopen a previously saved match in Capture, Review, or Insights."
+          helpButton={<PageHelp {...COACH_PAGE_HELP["/coach/saved-matches"]} />}
+        />
 
-        <div className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
-          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-foreground-strong">
-                Current beta storage
-              </h2>
-              <p className="mt-1 text-sm text-muted">
-                Saved matches stay available locally first, then sync to your coach account when cloud storage is reachable. Video files still need to be loaded on this device.
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
-              Best used on desktop or laptop
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">
-                Saved match context
-              </div>
-              <h2 className="mt-2 text-xl font-semibold text-foreground-strong">
-                {latestSummary ? latestSummary.title : "No saved matches"}
-              </h2>
-              <p className="mt-1 text-sm text-muted">
-                {latestSummary
-                  ? `${latestSummary.subtitle} - last saved ${latestSummary.updatedLabel}`
-                  : "Save a match from Capture to unlock Insights, Review, and Compare."}
-              </p>
-            </div>
-            <div className="grid w-full grid-cols-2 gap-3 xl:w-[620px] xl:grid-cols-4">
-              <ContextTile label="Saved" value={String(savedMatches.length)} />
-              <ContextTile
-                label="Latest events"
-                value={latestSummary ? String(latestSummary.resolvedEvents) : "0"}
-              />
-              <ContextTile
-                label="Open review"
-                value={latestSummary ? String(latestSummary.unresolvedReview) : "0"}
-              />
-              <ContextTile
-                label="Latest report"
-                value={latestSummary?.readyLabel || "Not ready"}
-                tone={latestSummary?.readyTone}
-              />
-            </div>
-          </div>
-        </div>
+        <p className="text-xs text-muted">
+          Saved matches sync to your account when cloud storage is reachable.
+          Best used on desktop or laptop.
+        </p>
 
         {sortedMatches.length === 0 ? (
-          <div className="rounded-2xl border border-border bg-panel p-6 shadow-[var(--shadow-soft)]">
-            <h2 className="text-lg font-semibold text-foreground-strong">
-              No saved matches yet
-            </h2>
-            <p className="mt-2 text-sm text-muted">
-              Save a match from Capture first, then it will appear here and sync to your coach account in the background.
-            </p>
-
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-              <div className="rounded-xl border border-border bg-panel-2 p-4">
-                <div className="text-sm font-medium text-foreground">1. Open Capture</div>
-                <div className="mt-1 text-sm text-muted">
-                  Add the team sheet, match details, and video.
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-border bg-panel-2 p-4">
-                <div className="text-sm font-medium text-foreground">2. Tag and review</div>
-                <div className="mt-1 text-sm text-muted">
-                  Log events, import transcript text, and resolve Needs Review items.
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-border bg-panel-2 p-4">
-                <div className="text-sm font-medium text-foreground">3. Save and reopen</div>
-                <div className="mt-1 text-sm text-muted">
-                  Save the match, then return here later to continue in the right screen.
-                </div>
-              </div>
-            </div>
-          </div>
+          <EmptyState
+            icon={Video}
+            title="No matches captured yet"
+            description="Save a match from Capture and it will appear here, synced to your account."
+            action={{ label: "Capture a match", href: "/coach/capture" }}
+            size="lg"
+          />
         ) : (
-          <div className="space-y-4">
-            {selectedMatchIds.length > 0 && (
-              <div className="sticky top-4 z-10 rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <div className="text-sm font-semibold text-foreground-strong">
-                      {selectedMatchIds.length} match
-                      {selectedMatchIds.length === 1 ? "" : "es"} selected
-                    </div>
-                    <div className="mt-1 text-xs text-muted">
-                      {selectedMatchIds.length < 2
-                        ? "Select at least one more match to enable comparison."
-                        : "Download a comparison report across selected rounds."}
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={clearSelection}
-                      className="rounded-xl border border-border bg-panel-2 px-4 py-2 text-sm font-medium text-foreground transition hover:bg-panel"
-                    >
-                      Clear selection
-                    </button>
-                    <button
-                      type="button"
-                      onClick={downloadComparison}
-                      disabled={selectedMatchIds.length < 2 || isGenerating}
-                      className="rounded-xl border border-border bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      {isGenerating
-                        ? "Generating…"
-                        : `↓ Compare Selected (.xlsx)`}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-            {sortedMatches.map((match: SavedMatchRecord) => {
+          <div className="overflow-hidden rounded-2xl border border-border bg-panel shadow-[var(--shadow-soft)]">
+            {sortedMatches.map((match: SavedMatchRecord, index: number) => {
               const confidence = buildMatchConfidenceSummary(match);
               const isSelected = selectedMatchIds.includes(match.id);
+              const isExpanded = expandedMatchId === match.id;
+              const isMenuOpen = menuOpenId === match.id;
+              const isLast = index === sortedMatches.length - 1;
 
               return (
                 <div
                   key={match.id}
-                  className={`rounded-2xl border bg-panel p-5 shadow-[var(--shadow-soft)] transition ${
-                    isSelected ? "border-accent" : "border-border"
+                  className={`${!isLast ? "border-b border-border" : ""} ${
+                    isSelected ? "bg-accent/5" : ""
                   }`}
                 >
-                  <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-panel-2 px-2.5 py-1 text-xs text-muted transition hover:bg-panel">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleSelected(match.id)}
-                            className="h-3.5 w-3.5 cursor-pointer accent-current"
-                          />
-                          <span>Compare</span>
-                        </label>
-                        <h2 className="text-lg font-semibold text-foreground-strong">
-                          {confidence.title}
-                        </h2>
-                        <span
-                          className={`rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] ${
-                            confidence.readyTone === "ready"
-                              ? "border-success/40 bg-success/10 text-success"
-                              : "border-warning/40 bg-warning/10 text-warning"
-                          }`}
-                        >
-                          {confidence.readyLabel}
-                        </span>
-                      </div>
-
-                      <p className="mt-1 text-sm text-muted">
-                        {confidence.subtitle}
-                      </p>
-
-                      <div className="mt-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-5">
-                        <div className="rounded-xl border border-border bg-panel-2 px-3 py-3">
-                          <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
-                            Updated
-                          </div>
-                          <div className="mt-1 text-sm text-foreground">{confidence.updatedLabel}</div>
-                        </div>
-
-                        <div className="rounded-xl border border-border bg-panel-2 px-3 py-3">
-                          <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
-                            Players
-                          </div>
-                          <div className="mt-1 text-sm text-foreground">
-                            {confidence.namedPlayers}/{confidence.totalPlayers}
-                          </div>
-                        </div>
-
-                        <div className="rounded-xl border border-border bg-panel-2 px-3 py-3">
-                          <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
-                            Events
-                          </div>
-                          <div className="mt-1 text-sm text-foreground">{confidence.resolvedEvents}</div>
-                        </div>
-
-                        <div className="rounded-xl border border-border bg-panel-2 px-3 py-3">
-                          <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
-                            Review
-                          </div>
-                          <div className="mt-1 text-sm text-foreground">{confidence.unresolvedReview}</div>
-                        </div>
-
-                        <div className="rounded-xl border border-border bg-panel-2 px-3 py-3">
-                          <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
-                            Notes
-                          </div>
-                          <div className="mt-1 text-sm text-foreground">{confidence.notes}</div>
-                        </div>
-                      </div>
+                  {/* Compact row */}
+                  <div
+                    className="flex cursor-pointer items-center gap-3 px-4 py-3 transition hover:bg-panel-2"
+                    onClick={() => toggleExpand(match.id)}
+                  >
+                    {/* Checkbox */}
+                    <div
+                      className="shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelected(match.id)}
+                        className="h-4 w-4 cursor-pointer rounded accent-current"
+                        aria-label={`Select ${confidence.title} for comparison`}
+                      />
                     </div>
 
-                    <div className="xl:w-[320px]">
-                      <div className="rounded-2xl border border-border bg-panel-2 p-3">
-                        <div className="mb-3 text-xs uppercase tracking-[0.12em] text-muted-2">
-                          Open in
-                        </div>
+                    {/* Primary info */}
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      <span className="truncate text-sm font-semibold text-foreground-strong">
+                        {confidence.title}
+                      </span>
+                      <span className="hidden shrink-0 text-xs text-muted sm:inline">
+                        {confidence.subtitle}
+                      </span>
+                      <span className="hidden shrink-0 text-xs text-muted md:inline">
+                        · {confidence.namedPlayers}/{confidence.totalPlayers}{" "}
+                        players · {confidence.resolvedEvents} events
+                      </span>
+                    </div>
 
-                        <div className="grid grid-cols-1 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openMatch(match.id, "/coach/capture")}
-                            className="rounded-xl border border-border bg-panel px-4 py-2.5 text-sm font-medium text-foreground"
-                          >
-                            Open Capture
-                          </button>
+                    {/* Score badge */}
+                    {typeof match.ourScore === "number" &&
+                      typeof match.opponentScore === "number" && (
+                        <span
+                          className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-bold tabular-nums ${
+                            match.ourScore > match.opponentScore
+                              ? "border-success/40 bg-success/10 text-success"
+                              : match.ourScore < match.opponentScore
+                                ? "border-danger/40 bg-danger/10 text-danger"
+                                : "border-border bg-panel-2 text-foreground"
+                          }`}
+                        >
+                          {match.ourScore} – {match.opponentScore}
+                        </span>
+                      )}
 
-                          <button
-                            type="button"
-                            onClick={() => openMatch(match.id, "/coach/review")}
-                            className="rounded-xl border border-border bg-panel px-4 py-2.5 text-sm font-medium text-foreground"
-                          >
-                            Open Review
-                          </button>
+                    {/* Status pill */}
+                    <div className="hidden shrink-0 sm:block">
+                      <StatusPill
+                        variant={
+                          confidence.readyTone === "ready"
+                            ? "success"
+                            : "warning"
+                        }
+                        size="sm"
+                        uppercase
+                      >
+                        {confidence.readyLabel}
+                      </StatusPill>
+                    </div>
 
-                          <button
-                            type="button"
-                            onClick={() => openMatch(match.id, "/coach/insights")}
-                            className="rounded-xl border border-border-light bg-panel-3 px-4 py-2.5 text-sm font-medium text-foreground"
-                          >
-                            Open Insights
-                          </button>
+                    {/* ••• menu */}
+                    <div
+                      className="relative shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleMenu(match.id)}
+                        className="rounded-lg border border-border bg-panel-2 p-1.5 text-muted transition hover:bg-panel hover:text-foreground"
+                        aria-label="Match actions"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </button>
 
+                      {isMenuOpen && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-10"
+                            onClick={closeMenu}
+                          />
+                          <div className="absolute right-0 z-20 mt-1 w-48 overflow-hidden rounded-xl border border-border bg-panel shadow-lg">
+                            <button
+                              type="button"
+                              className="flex w-full items-center px-4 py-2.5 text-sm text-foreground transition hover:bg-panel-2"
+                              onClick={() => {
+                                openMatch(match.id, "/coach/capture");
+                                closeMenu();
+                              }}
+                            >
+                              Open in Capture
+                            </button>
+                            <button
+                              type="button"
+                              className="flex w-full items-center px-4 py-2.5 text-sm text-foreground transition hover:bg-panel-2"
+                              onClick={() => {
+                                openMatch(match.id, "/coach/review");
+                                closeMenu();
+                              }}
+                            >
+                              Open in Review
+                            </button>
+                            <button
+                              type="button"
+                              className="flex w-full items-center px-4 py-2.5 text-sm text-foreground transition hover:bg-panel-2"
+                              onClick={() => {
+                                openMatch(match.id, "/coach/insights");
+                                closeMenu();
+                              }}
+                            >
+                              Open in Insights
+                            </button>
+                            <div className="my-1 border-t border-border" />
+                            <button
+                              type="button"
+                              className="flex w-full items-center px-4 py-2.5 text-sm text-danger transition hover:bg-panel-2"
+                              onClick={() => {
+                                deleteMatch(match.id);
+                                closeMenu();
+                              }}
+                            >
+                              Delete match
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Expand chevron */}
+                    <ChevronDown
+                      className={`h-4 w-4 shrink-0 text-muted transition-transform duration-200 ${
+                        isExpanded ? "rotate-180" : ""
+                      }`}
+                    />
+                  </div>
+
+                  {/* Expanded detail panel */}
+                  {isExpanded && (
+                    <div className="border-t border-border bg-panel-2 px-4 pb-4 pt-3">
+                      {/* Full title + subtitle */}
+                      <div className="mb-3">
+                        <p className="text-sm font-semibold text-foreground-strong">
+                          {confidence.title}
+                        </p>
+                        <p className="mt-0.5 text-sm text-muted">
+                          {confidence.subtitle}
+                        </p>
+                        {typeof match.ourScore === "number" &&
+                          typeof match.opponentScore === "number" && (
+                            <span
+                              className={`mt-1.5 inline-block rounded-full border px-2.5 py-1 text-sm font-bold tabular-nums ${
+                                match.ourScore > match.opponentScore
+                                  ? "border-success/40 bg-success/10 text-success"
+                                  : match.ourScore < match.opponentScore
+                                    ? "border-danger/40 bg-danger/10 text-danger"
+                                    : "border-border bg-panel text-foreground"
+                              }`}
+                            >
+                              {match.ourScore} – {match.opponentScore}
+                            </span>
+                          )}
+                      </div>
+
+                      {/* Status pill (visible on mobile in expanded view) */}
+                      <div className="mb-3 sm:hidden">
+                        <StatusPill
+                          variant={
+                            confidence.readyTone === "ready"
+                              ? "success"
+                              : "warning"
+                          }
+                          size="sm"
+                          uppercase
+                        >
+                          {confidence.readyLabel}
+                        </StatusPill>
+                      </div>
+
+                      {/* Metadata tiles */}
+                      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                        <DetailTile
+                          label="Updated"
+                          value={confidence.updatedLabel}
+                        />
+                        <DetailTile
+                          label="Players"
+                          value={`${confidence.namedPlayers}/${confidence.totalPlayers}`}
+                        />
+                        <DetailTile
+                          label="Events"
+                          value={String(confidence.resolvedEvents)}
+                        />
+                        <DetailTile
+                          label="Review"
+                          value={String(confidence.unresolvedReview)}
+                        />
+                        <DetailTile
+                          label="Notes"
+                          value={String(confidence.notes)}
+                        />
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openMatch(match.id, "/coach/capture")
+                          }
+                          className="rounded-xl border border-border bg-panel px-4 py-2 text-sm font-medium text-foreground transition hover:bg-panel-2"
+                        >
+                          Open Capture
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openMatch(match.id, "/coach/review")}
+                          className="rounded-xl border border-border bg-panel px-4 py-2 text-sm font-medium text-foreground transition hover:bg-panel-2"
+                        >
+                          Open Review
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openMatch(match.id, "/coach/insights")
+                          }
+                          className="rounded-xl border border-border bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                        >
+                          Open Insights
+                        </button>
+
+                        <div className="ml-auto">
                           <button
                             type="button"
                             onClick={() => deleteMatch(match.id)}
-                            className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground"
+                            className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-danger transition hover:bg-danger/10"
                           >
                             Delete match
                           </button>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* Sticky compare bar */}
+      {selectedCount > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-border bg-panel shadow-lg">
+          <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+            <div>
+              <span className="text-sm font-semibold text-foreground-strong">
+                {selectedCount} match{selectedCount === 1 ? "" : "es"} selected
+              </span>
+              {selectedCount < 2 && (
+                <span className="ml-2 text-xs text-muted">
+                  Select one more to enable comparison
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={clearSelection}
+                className="rounded-xl border border-border bg-panel-2 px-4 py-2 text-sm font-medium text-foreground transition hover:bg-panel"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={downloadComparison}
+                disabled={selectedCount < 2 || isGenerating}
+                className="rounded-xl border border-border bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {isGenerating ? "Generating…" : "Compare →"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
 
-function ContextTile({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone?: "ready" | "needs-work";
-}) {
-  const toneClass =
-    tone === "ready"
-      ? "text-success"
-      : tone === "needs-work"
-      ? "text-warning"
-      : "text-foreground";
-
+function DetailTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-border bg-panel-2 px-3 py-3">
+    <div className="rounded-xl border border-border bg-panel px-3 py-2">
       <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
         {label}
       </div>
-      <div className={`mt-1 text-sm font-semibold ${toneClass}`}>{value}</div>
+      <div className="mt-1 text-sm text-foreground">{value}</div>
     </div>
   );
 }

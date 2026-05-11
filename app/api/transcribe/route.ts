@@ -1,10 +1,11 @@
+import * as Sentry from "@sentry/nextjs";
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const client = Sentry.instrumentOpenAiClient(
+  new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+);
 
 type ParsedTag = {
   normalized_text: string;
@@ -198,7 +199,10 @@ Return:
       parsed,
     });
   } catch (error: unknown) {
-    console.error("Transcription error full:", error);
+    Sentry.captureException(error);
+    Sentry.logger.error("Transcription failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     const message =
       error instanceof Error ? error.message : "Failed to transcribe audio";
 

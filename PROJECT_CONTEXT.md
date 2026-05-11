@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** May 2026 — Coach Review Phases 1–3 shipped (Batches BI, BJ, BK): per-clip comments + J/K/L + frame-step + slow-mo + fullscreen + autosave badge; presentation mode + per-player auto-clip generation; player reactions + per-clip player notes + "new clips" badge + coach-side surfacing of player feedback. Pending Move 3 (`/coach/organisation` + team switcher).
+**Last updated:** 11 May 2026 — Added 15-slide Capture Walkthrough Modal (`app/components/CaptureWalkthroughModal.tsx`); auto-opens on first visit, persists progress in localStorage (`fynlwhistle-capture-walkthrough-progress`), re-openable via new "Walkthrough" button in Capture page header. Previous: Polished all empty states; added `EmptyState` and `VideoDropzone` components.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -25,7 +25,9 @@ It is currently a **coach-first MVP**, live at [fynlwhistle.com](https://fynlwhi
 - Next.js 16 (App Router, Turbopack)
 - React + TypeScript
 - Tailwind CSS v4 (custom design tokens via CSS variables in `globals.css`)
-- localStorage-first match persistence with Supabase cloud sync for saved match records and Cloudflare R2 video storage paths
+- **Supabase-first** match and team persistence — no localStorage for data; `TeamContext` and `MatchesContext` providers fetch on mount and keep an in-memory cache for synchronous reads
+- Cloudflare R2 for video storage paths
+- localStorage only for ephemeral/UI state: in-progress capture session (`STORAGE_KEY`), active match ID pointer, sidebar preferences, colour scheme
 - localStorage for browser-local colour scheme preference (`dark` / `bright`)
 - Anthropic API for voice transcription (`/api/transcribe`)
 - ExcelJS for `.xlsx` report generation
@@ -69,33 +71,36 @@ The app is split into four clearly separated layers with independent layouts and
 | `/coach/players` | Live | Player directory and coach-facing player analysis |
 | `/coach/players/[playerId]` | Live | Individual player drilldown |
 | `/coach/compare` | Live | Side-by-side saved match and player comparison with confidence cues |
-| `/coach/saved-matches` | Live | Reopen / delete saved matches, local storage context |
+| `/coach/saved-matches` | Live | Reopen / delete saved matches; sorted by `matchDate` descending (most recent game first) |
 | `/coach/settings` | Live | Browser-local coach settings, setup shortcuts, raw JSON export, guarded data management |
+| `/coach/organisation` | Live | Club admin only — org name, plan, status, billing date, active team count, coach seat count |
 
 ### Player platform
 | Route | Status | Purpose |
 |---|---|---|
 | `/player` | Live | Player dashboard — greeting + unanswered-response badge, inline availability picker with reason input, season stats strip, next game + last grade cards, coach feedback, targets this week, last-game stats table |
-| `/player/availability` | Live | Standalone availability picker for upcoming fixtures and training sessions |
+| `/player/availability` | Live | Standalone availability picker for upcoming fixtures and training sessions; each button click reads from `getTeam()` cache (not stale React state) so game + training selections both persist |
 | `/player/performance` | Live | Season averages, grade profile cards, season bests, trend charts vs team avg |
 | `/player/team-analytics` | Live | Read-only team analytics for players — shared stats only, no other-player grades/coaching comments |
 | `/player/compare` | Live | Read-only match and player comparison inside the player app — shared stats only except own-player coaching plan |
 | `/player/games` | Live | Match history |
 | `/player/games/[gameId]` | Live | Game detail: full-screen two-column layout — video player + stats + coaching plan (left, scrollable), involvement playlist sidebar (right, scrollable); Previous/Next clip navigation, current-clip card, active-clip highlight, set piece section |
-| `/player/review` | Live | Shared coach clips from film review with per-clip 👍 "Got it" / 🤔 "Question" reactions, optional question text, and a per-player free-text "Your note" field (debounced); marks all clips as seen on open |
+| `/player/review` | Live | Shared coach clips from film review; game selector pills at top (most recent auto-selected, only selected game shown); per-clip 👍 "Got it" / 🤔 "Question" reactions, optional question text, per-player free-text "Your note" (debounced); marks all clips as seen on open |
 | `/player/settings` | Live | Profile, identity switch, theme, local data snapshot, quick nav links |
 
-### Admin panel (internal only)
+### Admin panel (internal only — gated by `ADMIN_EMAILS` env var)
 | Route | Status | Purpose |
 |---|---|---|
-| `/admin` | Stub | Admin home |
-| `/admin/accounts` | Stub | User account management |
-| `/admin/organisations` | Stub | Organisation management |
-| `/admin/teams` | Stub | Team management |
-| `/admin/billing` | Stub | Billing and subscriptions |
-| `/admin/usage` | Stub | Platform usage metrics |
-| `/admin/issues` | Stub | Internal issue tracking |
-| `/admin/settings` | Stub | Admin settings |
+| `/admin` | Live | Platform overview: orgs by status, active teams, coach seats, new orgs (30 days) |
+| `/admin/accounts` | Live | All registered users — email, org, role, joined date (via Supabase auth admin API) |
+| `/admin/organisations` | Live | All orgs table — plan, status, team/seat counts, billing date; click to expand teams; Edit to change plan or override limits |
+| `/admin/teams` | Live | All teams — org name, status, member count, created date |
+| `/admin/billing` | Live | Orgs by plan, trialing orgs (soonest-expiry first, urgent ≤3 days in red), past-due list |
+| `/admin/usage` | Live | Total orgs/teams/members/matches; monthly bar charts for new orgs and saved matches (6 months) |
+| `/admin/issues` | Stub | Internal issue tracking (no backing data yet) |
+| `/admin/settings` | Stub | Admin settings (no backing data yet) |
+
+Admin login redirects straight to `/admin` (not `/coach`). Non-admin emails are redirected to `/coach` by the layout guard.
 
 ---
 
@@ -262,8 +267,8 @@ app/
     ThemeSchemeToggle.tsx             ← Shared dark / bright scheme toggle
 
   coach/
-    layout.tsx                        ← Coach layout: h-screen, sidebar + scrollable main
-    CoachSidebar.tsx                  ← Coach left sidebar (accent bar active state, logo mark)
+    layout.tsx                        ← Coach layout: gate (team_members OR org_members), isOrgAdminOnly banner, sidebar + scrollable main
+    CoachSidebar.tsx                  ← Coach left sidebar — team switcher dropdown, accent bar active state, Organisation nav item
     page.tsx                          ← Coach home (quick nav cards)
     OnboardingWizard.tsx              ← First-time setup wizard component
     onboarding/page.tsx               ← Dedicated onboarding route
@@ -276,6 +281,8 @@ app/
     saved-matches/page.tsx            ← Saved match management
     compare/page.tsx                  ← Saved match + player comparison
     settings/page.tsx                 ← Coach settings: local storage status, shortcuts, JSON export, guarded resets
+    organisation/page.tsx             ← Club admin only: org name, plan, status, billing date, team count, seat count; + "New team" button (creates team + head_coach membership)
+    organisation/CreateTeamButton.tsx ← Client component for inline team creation form
 
   player/
     layout.tsx                        ← Player layout: h-screen, sidebar + scrollable main (wraps PlayerProvider)
@@ -296,12 +303,23 @@ app/
     settings/page.tsx                 ← Profile card, identity switch, theme, local data snapshot, quick nav links
 
   admin/
-    layout.tsx                        ← Admin layout: h-screen, sidebar + scrollable main
+    layout.tsx                        ← Admin layout: guards via ADMIN_EMAILS env var
     AdminSidebar.tsx                  ← Admin left sidebar (text-only, accent bar)
-    page.tsx + all sub-pages          ← Internal stubs
+    page.tsx                          ← Platform overview stats
+    accounts/page.tsx                 ← All users (auth admin API + org/team membership join)
+    organisations/page.tsx            ← Org list server component
+    organisations/OrgTable.tsx        ← Client table with expand + Edit modal
+    organisations/OrgEditModal.tsx    ← Plan + limit override modal
+    teams/page.tsx                    ← All teams table
+    billing/page.tsx                  ← Subscription overview
+    usage/page.tsx                    ← Platform metrics + monthly bar charts
 
   api/
     stripe/checkout/route.ts          ← Stripe Checkout session endpoint for Team Launch and Club 5 subscriptions
+    admin/org/update/route.ts         ← POST: change org plan / override limits (admin only)
+    auth/redirect/route.ts            ← GET: returns /admin or /coach based on ADMIN_EMAILS after login
+    invite/link-account/route.ts      ← POST: directly link an existing auth account to a squad player slot
+    team/create/route.ts              ← POST: create a new team + add creator as head_coach (club_admin only)
 
   rugby-tagging/
     components/
@@ -419,6 +437,7 @@ Sidebar pattern:
 - Matchday roster panel with player minutes
 - Match milestone buttons (Kick Off, Half Time, Second Half KO, Full Time) — log at current timestamp
 - Bench bring-on flow — bench player selects position coming on at, logs substitution event, updates roster position
+- Final score input (Us / Them) above the Submit Match button — optional, persisted in match payload
 - Submit report flow → Save Match and Open Next Screen modal
 - Saved match flow (save/restore via localStorage)
 - First-load Help modal + Help button
@@ -444,10 +463,12 @@ Sidebar pattern:
 - Match context banner shows current match, local storage/video scope, note count, resolved event count, report readiness
 
 ### Saved Matches (/coach/saved-matches)
-- Reopen saved matches into Capture / Insights / Review
-- Delete saved matches
-- Local storage context panel
-- Per-match confidence cues: named players, resolved events, unresolved review items, notes, Ready for report / Needs review
+- Compact one-line rows (click to expand inline detail); one expanded row at a time
+- ••• menu per row: Open in Capture / Review / Insights / Delete match
+- Expanded row shows: full title/subtitle, score, metadata tiles (Updated / Players / Events / Review / Notes), action buttons + delete
+- Compare mode: checkbox on each row; sticky bar fixed at bottom when ≥1 selected; "Compare →" downloads .xlsx when ≥2 selected
+- Empty state: Video icon, "No matches captured yet", action → /coach/capture
+- Per-match confidence cues: named players, resolved events, unresolved review items, notes, Ready for report / Needs review (StatusPill)
 
 ### Coach Compare (/coach/compare)
 - Match comparison: two saved localStorage matches side by side
@@ -796,6 +817,8 @@ Double-tackle support: when `squadCandidates.length >= 2` and action is tackle, 
 - ✅ `/blog/[slug]` — individual post: breadcrumb nav, article header, JSX body, JSON-LD structured data, `generateStaticParams`, post-article CTA
 - ✅ Seed post 1: "Why We Built FYNL Whistle" — Sunday-evening spreadsheet problem, voice-tagging workflow, beta status
 - ✅ Seed post 2: "What Good Coaching Feedback Actually Looks Like" — Specific → Contextual → Forward-looking structure, callout examples, lineout example, data as enabler
+- ✅ Post 3 (May 2026): "The One Stat Club Coaches Over-Track (and the One They Under-Track)" — opinion post; penalty count vs turnover differential; tag: Analysis; slug: `the-one-stat-club-coaches-under-track`
+- ✅ Post 4 (May 2026): "How to Track Turnovers in Rugby (A Coach's Guide)" — reference post (SEO/search-led); what counts as a turnover, two-field logging method, benchmark table, internal link to post 3; tag: Reference; slug: `how-to-track-turnovers-in-rugby`
 
 ---
 
@@ -1466,35 +1489,167 @@ Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Str
 
 ---
 
+### Move 3 (May 2026) — Club admin access: `/coach/organisation` + team switcher
+
+- `/coach/organisation` route — club_admin read-only: org name, plan, status, billing date, active team count, coach seat count
+- Club_admin gate fix in `app/coach/layout.tsx` — accepts `organisation_members` as well as `team_members`
+- `isOrgAdminOnly` amber banner in coach layout — displayed when viewing as club admin without a coaching role on the active team
+- Team switcher in `CoachSidebar` — fetches all accessible teams, grouped by org, reactive via `ACTIVE_TEAM_CHANGED_EVENT`
+- `lib/serverTeamContext.ts` org-admin fallback — returns context with `isOrgAdminOnly: true` when no `team_members` row
+- Migration `20260506000000_move_3_org_access.sql` — org RLS policies, extended `can_read_team_data`, `resolve_active_team_id`, `set_active_team_id`
+
+---
+
+### Batch BM (May 2026) — Live Stripe prices + webhook production
+
+- ✅ Live-mode prices created in Stripe for Team Launch and Club 5 (monthly + yearly, multi-currency)
+- ✅ `pricingConfig.ts` updated with live price IDs
+- ✅ Live webhook endpoint registered: `https://www.fynlwhistle.com/api/stripe/webhook` (note: must use `www` — bare domain returns 307)
+- ✅ `STRIPE_SECRET_KEY=sk_live_...` and `STRIPE_WEBHOOK_SECRET=whsec_live_...` set in Vercel Production
+- ✅ End-to-end smoke test passed: checkout → org created (`plan=team_launch`, `status=trialing`, `trial_ends_at` 14 days out, live `stripe_customer_id`)
+- ✅ Stripe delivery log shows 200s on live endpoint
+- ✅ Test data cleaned up; `has_used_trial` reset
+
+**Key gotcha:** Stripe webhook endpoint must be `https://www.fynlwhistle.com/...` not `https://fynlwhistle.com/...` — the bare domain redirects (307) and Stripe does not follow redirects.
+
+---
+
+### Terms of Service + Privacy Policy (May 2026)
+
+- `/terms` and `/privacy` routes live — UK GDPR-compliant, covers all sub-processors
+- Footer links added to `app/(marketing)/layout.tsx`; legal disclaimer added to signup form
+
+---
+
+### Batch BO (May 2026) — Empty state polish + VideoDropzone
+
+- ✅ `lucide-react` installed as new dependency (tree-shaken per icon)
+- ✅ New shared component `app/components/EmptyState.tsx` — props: `icon` (LucideIcon), `title`, `description`, `action`, `secondaryAction`, `size` (sm/md/lg). Primary action renders as `<Link>` (href) or `<button>` (onClick). Uses design tokens throughout; both themes.
+- ✅ New shared component `app/components/VideoDropzone.tsx` — replaces native `<input type="file">` on Capture. Full drag-and-drop (onDragOver/Enter/Leave/Drop), click-to-browse via hidden input, drag-over orange accent border state, upload progress bar (amber), success/error tone states. Props: `onFileSelected`, `isUploading`, `uploadProgress`, `uploadTone`, `uploadStatus`, `maxFileSizeLabel`.
+- ✅ 21 empty states migrated across 11 pages — all existing logic/conditions unchanged; only visual treatment replaced:
+  - `/coach/saved-matches` — FolderOpen, "No saved matches yet", CTA → Capture
+  - `/coach/compare` — GitCompareArrows, two states (0 matches / <2 matches); local EmptyState function deleted
+  - `/coach` dashboard — Video, "No matches captured yet", CTA → Capture
+  - `/coach/review` — Scissors (no clips) / Filter (filtered empty)
+  - `/player/review` — Film, "No review content yet"
+  - `/player` home — Trophy, "Your stats will show here"
+  - `/coach/insights` — LineChart (Season Trends locked state) + Award + AlertTriangle + Lightbulb + Users; local EmptyState function deleted
+  - `/coach/players` — Activity (no involvements) + User (no player selected)
+  - `/coach/team` — Users, "No team members yet"
+  - `/coach/team-setup` — User, "Add your first player"
+  - `/coach/capture` — VideoDropzone replaces the native file input + progress block; VideoPlayer emptyState prop upgraded to `<EmptyState icon={Video} ...>`; all upload state vars and handlers untouched
+
+---
+
+### Batch BN (May 2026) — Custom VideoPlayer component
+
+- ✅ New shared component `app/components/VideoPlayer.tsx` — `React.forwardRef<HTMLVideoElement>` so all imperative `.currentTime`, `.play()`, `.playbackRate` calls in parent pages continue to work unchanged
+- ✅ Custom seek bar: drag-to-seek, hover tooltip (time preview), orange accent fill, scrubber thumb
+- ✅ Controls overlay: Play/Pause, time display, volume (icon + vertical slider on hover), -5s/+5s (opt-in), playback rates 0.25x–2x (opt-in), fullscreen (opt-in)
+- ✅ J/K/L keyboard shortcuts + ArrowLeft/Right frame-step (opt-in via `enableJKL` / `enableFrameStep`) — spacebar never bound by the component; each page keeps its own spacebar handler
+- ✅ `isTypingTarget` guard prevents shortcuts firing in inputs/textareas
+- ✅ Styled empty state (placeholder) and loading state (spinner + hint text) when `src` is null — no more black boxes
+- ✅ Both dark and bright themes via CSS custom property tokens only — no hardcoded colours
+- ✅ `/player/games/[gameId]` — replaced `<video controls>` with `<VideoPlayer ref={videoRef} src={videoUrl} enableFullscreen />`. `seekToEvent()` unchanged
+- ✅ `/coach/review` — replaced video + standalone fullscreen button + rate buttons + skip buttons with `<VideoPlayer enableFrameStep enableJKL enableFullscreen enableSkipButtons enablePlaybackRates />`. Annotation canvas passed as `overlay` prop. Presentation mode overlay kept as sibling with `z-20`. Page keyboard handler reduced to spacebar + presentation shortcuts only
+- ✅ `/coach/capture` — targeted only: added `videoSrc` state, wired `setVideoSrc()` at all 3 src set/clear points (file upload, cloud load, session reset), replaced `<video>` with `<VideoPlayer enableFullscreen enableSkipButtons />`. Spacebar push-to-talk handler, upload input, and upload progress UI untouched
+- ✅ Fixed pre-existing `PlayerContext.tsx` build error (`team` possibly null after `await`) by capturing `teamId` before the async function
+
+### Batch BP (May 2026) — Shared PageHeader component
+
+- ✅ New shared component `app/components/PageHeader.tsx` — `title`, `subtitle`, `status`, `primaryAction`, `secondaryAction`, `helpButton`, `belowHeader`, `className` props; pure presentational, no `"use client"`, works in Server Components
+- ✅ Visual spec: flex row (title left, status+actions right), `border-b border-border pb-6 mb-6` separator, `flex-wrap` for narrow viewports, `belowHeader` renders below the border line
+- ✅ Migrated all 21 coach + player pages in scope — `app/coach/page.tsx`, `app/coach/insights/page.tsx`, `app/coach/review/page.tsx`, `app/coach/players/page.tsx`, `app/coach/players/[playerId]/page.tsx`, `app/coach/compare/page.tsx`, `app/coach/saved-matches/page.tsx`, `app/coach/team/page.tsx`, `app/coach/organisation/page.tsx`, `app/coach/settings/page.tsx`, `app/coach/team-setup/page.tsx`, `app/coach/capture/page.tsx`, `app/player/page.tsx`, `app/player/availability/page.tsx`, `app/player/performance/page.tsx`, `app/player/team-analytics/page.tsx`, `app/player/compare/page.tsx`, `app/player/games/page.tsx`, `app/player/games/[gameId]/page.tsx`, `app/player/review/page.tsx`, `app/player/settings/page.tsx`
+- ✅ Match selectors moved to `belowHeader` on insights, players, and player/team-analytics pages
+- ✅ `app/coach/onboarding/page.tsx` skipped (wizard component, no standard header); marketing + auth pages out of scope
+- ✅ `app/coach/capture/page.tsx` — targeted find/replace only; 6-card status grid left as page content; Help button → `secondaryAction`, Start New Match → `primaryAction`
+- ✅ Back link on `player/games/[gameId]` stays above PageHeader, not inside it
+- ✅ TypeScript strict, zero new lint errors, build passes
+
+---
+
 ## Next — what's left to do
 
-### Move 3 — Read-only `/coach/organisation` display + team switcher
-- Build `/coach/organisation` route (read-only org details: name, plan, team count, member count)
-- Build team switcher in coach/player sidebars (groups by org, shows current team name, dropdown of all memberships)
-- Server-side `last_active_team_id` sync via `user_profiles` for cross-device consistency
-- Visually distinct UI when club_admin views a team they don't coach (read-only banner)
+### Move 3 — ✅ Shipped (May 2026)
+- `/coach/organisation` — club_admin read-only: org name, plan, status, billing date, team count, coach seat count
+- Club_admin gate fix in `app/coach/layout.tsx` — accepts `organisation_members` as well as `team_members`
+- `isOrgAdminOnly` banner in coach layout — amber strip when viewing as club admin
+- Team switcher in `CoachSidebar` — fetches all accessible teams, grouped by org, reactive via `ACTIVE_TEAM_CHANGED_EVENT`
+- `lib/serverTeamContext.ts` org-admin fallback — returns context with `isOrgAdminOnly: true` when no `team_members` row
+- Migration `20260506000000_move_3_org_access.sql` — org RLS policies, extended `can_read_team_data`, `resolve_active_team_id`, `set_active_team_id`
 
-### Near-term
+### Pre-launch checklist — do these before sharing with any club
 
-1. **Coach Review Phase 4 — close the question loop**
-   - Coach-reply textarea on each player question; mark question as answered
-   - "N questions" header badge becomes "N unanswered questions" (filters out resolved)
-   - Notify the player that their question has a reply (in-app first, server-side push later)
-   - Quick-jump visual scrubber timeline with event markers
-   - Export clip list as PDF for team presentations
+**1. Live Stripe prices** ✅ Done (Batch BM, May 2026)
+- Live prices, webhook endpoint (`www.fynlwhistle.com`), `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` in Vercel — all confirmed working end-to-end
 
-2. **Complete email delivery** — manual Resend/Vercel/Supabase task
-   - Resend: verify `fynlwhistle.com` domain status is `verified`
-   - Vercel DNS: add missing `_dmarc` TXT record `v=DMARC1; p=none;`
-   - Supabase Auth SMTP: route signup/reset emails through Resend SMTP with sender `FYNL Whistle <noreply@fynlwhistle.com>`
+**2. Sentry error monitoring** ✅ Done (May 2026)
+- `@sentry/nextjs` v10 installed; EU data region (Frankfurt) — `fynl-whistle.sentry.io`
+- `instrumentation-client.ts` (browser), `sentry.server.config.ts` (Node), `sentry.edge.config.ts` (edge), `instrumentation.ts` (server startup + `onRequestError`), `app/global-error.tsx` (unhandled layout errors)
+- `next.config.ts` wrapped with `withSentryConfig` — sourcemaps upload on every production build
+- Structured logging enabled (`enableLogs: true`); server auto-captures `console.error`/`console.warn` as structured logs
+- OpenAI client instrumented with `instrumentOpenAiClient` in both `/api/transcribe` and `/api/help-chat` — Whisper + GPT-4o-mini calls traced in Sentry AI Monitoring
+- All 5 env vars set in Vercel Production: `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG=fynl-whistle`, `SENTRY_PROJECT=fynl-whistle`
+- Deployed and live
 
-3. **Live Stripe prices** — create live-mode prices, swap IDs in `pricingConfig.ts`, switch `STRIPE_SECRET_KEY` to `sk_live_...`
+**3. Email delivery** ✅ Done (May 2026)
+- ✅ DNS: SPF (`send.fynlwhistle.com`), DKIM (`resend._domainkey.fynlwhistle.com`), DMARC (`_dmarc.fynlwhistle.com` → `v=DMARC1; p=none;`)
+- ✅ `RESEND_API_KEY` active in `.env.local` and Vercel Production
+- ✅ `fynlwhistle.com` verified in Resend dashboard
+- ✅ Supabase Custom SMTP: `smtp.resend.com:465`, sender `FYNL Whistle <noreply@fynlwhistle.com>`
+- All email flows live: signup confirmation, password reset, invite resend, availability reminders
 
-4. **Clip sharing** — export or share individual video clips externally
+- ✅ **Final score input on match submission** (8 May 2026) — Two numeric inputs (Us / Them) in `TranscriptPanel` above the Submit Match button. `ourScore` / `opponentScore` optional fields added to `SavedMatchRecord`; stored in JSONB payload, no DB migration. Old matches restore with empty inputs.
+- ✅ **team-setup page migrated to `useTeam()` hook** (8 May 2026) — Removed manual `TEAM_CHANGED_EVENT` listener; `useTeam()` reactive state drives local profile sync.
 
-5. **Wire up the contact form** — connect `app/(marketing)/contact/page.tsx` to Resend or CRM
+**4. Terms of Service + Privacy Policy** ✅ Done (May 2026)
+- `/terms` and `/privacy` live — UK GDPR-compliant, covers all sub-processors
+- Footer links added to marketing layout; legal disclaimer added to signup form
+- GDPR note: if targeting UK/EU clubs, consider switching Supabase project region to EU (can be done in project settings before you have real data)
 
-6. **Add OG images and brand assets to `public/`** — needed for social sharing previews
+---
+### ✅ READY TO SHARE WITH CLUBS — after the four items above are done
+
+At this point: a club can discover the product, sign up, pay with a real card, receive a confirmation email, log in, and use the full coach app. The backend is complete and resilient.
+
+**Confidence checklist before first outreach:**
+- Know how to do a Vercel rollback (Deployments tab → find last working deploy → Redeploy). Practice it once.
+- Bookmark Stripe dashboard → Developers → Webhooks → your live endpoint. Failed deliveries show here; one click to retry.
+- Sentry is alerting to your email. Test it by deliberately triggering a 404.
+
+---
+### Post-launch — internal tooling
+
+**5. Move 4 — Business admin panel** (`/admin/organisations`, `/admin/billing`)
+- Internal visibility layer: customer list, MRR, subscription status, plan breakdown
+- Data source: `organisations` table — status/plan/current_period_end kept in sync by webhooks
+- Scope: read-only internal tool, no customer-facing UI
+- Replaces the current admin stubs
+
+**6. Stripe Customer Portal**
+- Lets customers manage their own billing (cancel, upgrade, update card) without a custom billing UI
+- One serverless function: create a Billing Portal session and redirect
+- Until this exists, cancellations and card updates come to you manually — fine at low volume
+
+### Post-launch — product
+
+**7. Coach Review Phase 4 — close the question loop**
+- Coach-reply textarea on each player question; mark question as answered
+- "N questions" header badge becomes "N unanswered questions" (filters out resolved)
+- Notify the player that their question has a reply (in-app first, server-side push later)
+- Quick-jump visual scrubber timeline with event markers
+- Export clip list as PDF for team presentations
+
+**8. Wire up the contact form** — connect `app/(marketing)/contact/page.tsx` to Resend or CRM
+
+### Around launch — quick marketing and UI wins
+These are low-effort, high-signal for early clubs:
+
+- **OG images** — add to `public/` so links shared in WhatsApp/Twitter show a branded preview card instead of a blank
+- **Status page** — Instatus free tier, ~10 min setup. Clubs can check themselves if the app is slow rather than messaging you. Link it in the footer.
+- **Early adopter framing on pricing page** — make sure the early adopter yearly offer messaging is current and compelling; first clubs respond to feeling like insiders
+- **Simple welcome message** — even a plain-text email you send manually to the first 5–10 signups goes a long way; personal touch matters at this stage
+- **Changelog or "what's new"** — a simple Notion page (or a `/updates` route) linked from the sidebar so early users feel the product is moving; clubs that can see active development stay engaged
 
 ### Longer-term
 
@@ -1503,7 +1658,7 @@ Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Str
 - Cross-match player trends backed by cloud data
 - Shared team analysis links
 - Advanced video annotation / telestration
-- Production-grade multi-team/member permissions and audit trail
+- Plan limit enforcement (schema ready, code enforcement not yet built)
 - Automated test suite (start with data transformation and export utilities)
 
 ---

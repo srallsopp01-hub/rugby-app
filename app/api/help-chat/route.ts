@@ -1,9 +1,10 @@
+import * as Sentry from "@sentry/nextjs";
 import OpenAI from "openai";
 import { createClient } from "@/lib/supabase/server";
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const client = Sentry.instrumentOpenAiClient(
+  new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+);
 
 const SYSTEM_PROMPT = `You are a helpful assistant built into FYNL Whistle, a rugby coaching and performance analysis platform. Help coaches and players understand how to use the app effectively.
 
@@ -125,6 +126,10 @@ export async function POST(req: Request) {
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   } catch (error: unknown) {
+    Sentry.captureException(error);
+    Sentry.logger.error("Help chat failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     const message = error instanceof Error ? error.message : "Failed to get response";
     return new Response(JSON.stringify({ error: message }), {
       status: 500,

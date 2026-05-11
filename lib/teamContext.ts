@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 
-export type TeamRole = "head_coach" | "assistant_coach" | "player";
+export type TeamRole = "head_coach" | "assistant_coach" | "player" | "club_admin";
 
 export type MyTeamContext = {
   role: TeamRole;
@@ -12,6 +12,13 @@ export type MyTeamContext = {
   /** teams.created_by_user_id for the active team — kept for R2 video path compatibility. */
   ownerUserId: string;
   canManageTeam: boolean;
+  isOrgAdminOnly: boolean;
+  /** True when the user has a club_admin row in organisation_members (may also have a team role). */
+  isClubAdmin: boolean;
+  /** The organisation ID the user administers, or null if not a club_admin. */
+  orgId: string | null;
+  /** True when user is a club_admin but has no teams yet — org page is the only useful destination. */
+  hasNoTeams?: boolean;
 };
 
 export const ACTIVE_TEAM_CHANGED_EVENT = "fynlwhistle-active-team-changed";
@@ -19,7 +26,7 @@ export const ACTIVE_TEAM_CHANGED_EVENT = "fynlwhistle-active-team-changed";
 export const ACTIVE_TEAM_ID_KEY = "fynlwhistle-active-team-id";
 
 // Bump this when the shape changes so stale caches invalidate on deploy.
-const CACHE_VERSION = 3;
+const CACHE_VERSION = 4;
 
 type CachedContext = MyTeamContext & { _v: number; _userId: string };
 let cachedContext: CachedContext | null | undefined = undefined;
@@ -118,6 +125,9 @@ export async function getMyTeamContext(): Promise<MyTeamContext | null> {
       currentTeamId: teamId,
       ownerUserId: (team?.created_by_user_id as string) ?? user.id,
       canManageTeam: membership.role === "head_coach",
+      isOrgAdminOnly: false,
+      isClubAdmin: false,
+      orgId: null,
       _v: CACHE_VERSION,
       _userId: user.id,
     };

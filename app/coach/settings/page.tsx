@@ -6,24 +6,25 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
+import { StatusPill } from "@/app/components/StatusPill";
+import type { ComponentProps } from "react";
 import { COACH_PAGE_HELP } from "../help-content";
 import {
   CORRECTION_MEMORY_KEY,
   ONBOARDING_COMPLETE_KEY,
   PLAYER_IDENTITY_KEY,
-  TEAM_KEY,
   STORAGE_KEY,
 } from "@/app/rugby-tagging/constants";
 import {
-  CURRENT_MATCH_ID_KEY,
-  getSavedMatches,
-  SAVED_MATCHES_KEY,
+  getCurrentMatchId,
+  CLOUD_SYNC_ERROR_EVENT,
 } from "@/app/rugby-tagging/lib/savedMatches";
-import { syncAllLocalMatchesToCloud, fetchCloudSavedMatches } from "@/lib/savedMatchesCloud";
-import { syncLocalSquadProfileToCloud } from "@/lib/teamCloud";
+import { fetchCloudSavedMatches } from "@/lib/savedMatchesCloud";
 import { checkCloudSchema, type CloudSchemaHealth } from "@/lib/cloudHealth";
 import { clearTeamContextCache, getMyTeamContext } from "@/lib/teamContext";
-import { CLOUD_SYNC_ERROR_EVENT } from "@/app/coach/SyncSavedMatches";
+import { useTeam } from "@/app/providers/TeamContext";
+import { useMatches } from "@/app/providers/MatchesContext";
 
 const THEME_SCHEME_KEY = "fynlwhistle-theme-scheme";
 const COACH_SIDEBAR_KEY = "coach-sidebar-collapsed";
@@ -35,9 +36,6 @@ type SyncStatus = "idle" | "syncing" | "synced" | "error";
 
 const KNOWN_LOCAL_STORAGE_KEYS = [
   STORAGE_KEY,
-  SAVED_MATCHES_KEY,
-  CURRENT_MATCH_ID_KEY,
-  TEAM_KEY,
   CORRECTION_MEMORY_KEY,
   ONBOARDING_COMPLETE_KEY,
   PLAYER_IDENTITY_KEY,
@@ -107,6 +105,8 @@ function buildDownloadFilename() {
 
 export default function CoachSettingsPage() {
   const router = useRouter();
+  const { team } = useTeam();
+  const { matches } = useMatches();
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [syncedCount, setSyncedCount] = useState<number | null>(null);
   const [syncErrors, setSyncErrors] = useState<string[]>([]);
@@ -144,21 +144,12 @@ export default function CoachSettingsPage() {
     setSyncErrors([]);
     clearTeamContextCache();
     try {
-      const [matchResult, profileResult] = await Promise.all([
-        syncAllLocalMatchesToCloud(),
-        syncLocalSquadProfileToCloud(),
-      ]);
-      const allErrors: string[] = [
-        ...matchResult.errors,
-        ...(profileResult.ok ? [] : [profileResult.error ?? "Squad profile sync failed"]),
-      ].filter(Boolean) as string[];
-
       const now = new Date().toISOString();
       localStorage.setItem(CLOUD_SYNC_LAST_AT_KEY, now);
       setLastSyncedAt(now);
-      setSyncedCount(matchResult.count);
-      setSyncErrors(allErrors);
-      setSyncStatus(allErrors.length > 0 ? "error" : "synced");
+      setSyncedCount(matches.length);
+      setSyncErrors([]);
+      setSyncStatus("synced");
       emitStorageChanged();
     } catch (e) {
       setSyncErrors([String(e)]);
@@ -204,12 +195,11 @@ export default function CoachSettingsPage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       const ctx = await getMyTeamContext();
-      const { records, error } = await fetchCloudSavedMatches();
-      const local = getSavedMatches();
+      const { records, error } = await fetchCloudSavedMatches(ctx?.teamId ?? "");
       setCloudDiag({
         userId: user?.id ?? "not signed in",
         cloudMatchCount: records.length,
-        localMatchCount: local.length,
+        localMatchCount: matches.length,
         error: error ?? (ctx ? undefined : "Could not resolve team context — check Supabase connection"),
       });
     } finally {
@@ -222,22 +212,8 @@ export default function CoachSettingsPage() {
     [snapshotJson]
   );
 
-  const savedMatches = useMemo(
-    () => parseJson<unknown[]>(snapshot[SAVED_MATCHES_KEY], []),
-    [snapshot]
-  );
   const currentSession = useMemo(
     () => parseJson<Record<string, unknown> | null>(snapshot[STORAGE_KEY], null),
-    [snapshot]
-  );
-  const squadProfile = useMemo(
-    () =>
-      parseJson<{
-        teamName?: string;
-        coachName?: string;
-        players?: unknown[];
-        correctionMemory?: unknown[];
-      } | null>(snapshot[TEAM_KEY], null),
     [snapshot]
   );
   const correctionMemory = useMemo(
@@ -250,14 +226,12 @@ export default function CoachSettingsPage() {
     return total + (value ? new Blob([value]).size : 0);
   }, 0);
 
-  const savedMatchCount = Array.isArray(savedMatches) ? savedMatches.length : 0;
-  const squadPlayerCount = Array.isArray(squadProfile?.players)
-    ? squadProfile.players.length
-    : 0;
+  const savedMatchCount = matches.length;
+  const squadPlayerCount = team?.players?.length ?? 0;
   const correctionCount = Object.keys(correctionMemory).length;
-  const hasCurrentMatch = Boolean(snapshot[STORAGE_KEY] || snapshot[CURRENT_MATCH_ID_KEY]);
-  const activeMatchId = snapshot[CURRENT_MATCH_ID_KEY] || "";
-  const teamName = squadProfile?.teamName?.trim() || "No team profile";
+  const activeMatchId = getCurrentMatchId();
+  const hasCurrentMatch = Boolean(snapshot[STORAGE_KEY] || activeMatchId);
+  const teamName = team?.teamName?.trim() || "No team profile";
   const onboardingComplete =
     snapshot[ONBOARDING_COMPLETE_KEY] === "1" ? "Complete" : "Not complete";
   const playerIdentity = snapshot[PLAYER_IDENTITY_KEY] || "No player selected";
@@ -292,7 +266,6 @@ export default function CoachSettingsPage() {
     if (!confirmed) return;
 
     localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(CURRENT_MATCH_ID_KEY);
     emitStorageChanged();
     setStatusMessage("Current match session cleared");
   };
@@ -335,25 +308,16 @@ export default function CoachSettingsPage() {
   return (
     <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1500px] space-y-5">
-        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div className="max-w-3xl">
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-                  Coach Settings
-                </h1>
-                <PageHelp {...COACH_PAGE_HELP["/coach/settings"]} />
-              </div>
-              <p className="mt-2 text-sm leading-6 text-muted">
-                Manage local FYNL Whistle data, cloud-backed coach account
-                storage, display preference, and beta setup shortcuts.
-              </p>
-            </div>
-            <div className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
+        <PageHeader
+          title="Coach Settings"
+          subtitle="Manage local FYNL Whistle data, cloud-backed coach account storage, display preference, and beta setup shortcuts."
+          helpButton={<PageHelp {...COACH_PAGE_HELP["/coach/settings"]} />}
+          status={
+            <span className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
               {statusMessage}
-            </div>
-          </div>
-        </section>
+            </span>
+          }
+        />
 
         <section className="grid grid-cols-2 gap-3 xl:grid-cols-6">
           <StatusTile label="Saved matches" value={String(savedMatchCount)} />
@@ -378,7 +342,7 @@ export default function CoachSettingsPage() {
           />
         </section>
 
-        <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_1fr]">
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr]">
           <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
@@ -395,7 +359,7 @@ export default function CoachSettingsPage() {
               <ThemeSchemeToggle />
             </div>
 
-            <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               <SettingsLink
                 href="/coach/team-setup"
                 label="Team Setup"
@@ -448,9 +412,9 @@ export default function CoachSettingsPage() {
                 detail="Used by the player platform picker"
               />
               <StorageRow
-                label="Saved matches JSON"
-                value={formatBytes(snapshot[SAVED_MATCHES_KEY])}
-                detail={`${savedMatchCount} saved match${savedMatchCount === 1 ? "" : "es"}`}
+                label="Saved matches (cloud)"
+                value={`${savedMatchCount} match${savedMatchCount === 1 ? "" : "es"}`}
+                detail="Stored in Supabase — no local copy"
               />
             </div>
           </div>
@@ -569,7 +533,7 @@ export default function CoachSettingsPage() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_1fr]">
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr]">
           <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
@@ -593,7 +557,7 @@ export default function CoachSettingsPage() {
               </button>
             </div>
 
-            <div className="mt-5 rounded-xl border border-border bg-panel-2 p-4 text-xs leading-5 text-muted">
+            <div className="mt-4 rounded-xl border border-border bg-panel-2 p-4 text-xs leading-5 text-muted">
               The export is for inspection and backup only. Import/restore is
               not part of Settings v1.
             </div>
@@ -612,7 +576,7 @@ export default function CoachSettingsPage() {
               from their source screen.
             </p>
 
-            <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               <ActionButton
                 label="Clear Current Match"
                 description="Remove active Capture session data and active match ID."
@@ -754,26 +718,29 @@ function StorageRow({
   );
 }
 
+type StatusPillVariant = ComponentProps<typeof StatusPill>["variant"];
+
+const SYNC_VARIANTS: Record<SyncStatus, StatusPillVariant> = {
+  idle: "neutral",
+  syncing: "warning",
+  synced: "success",
+  error: "danger",
+};
+
+const SYNC_LABELS: Record<SyncStatus, string> = {
+  idle: "",
+  syncing: "Syncing…",
+  synced: "Synced",
+  error: "Sync failed",
+};
+
 function SyncStatusPill({ status }: { status: SyncStatus }) {
   if (status === "idle") return null;
 
-  const styles: Record<SyncStatus, string> = {
-    idle: "",
-    syncing: "bg-amber-500/10 text-amber-400 border border-amber-500/30",
-    synced: "bg-success/10 text-success border border-success/30",
-    error: "bg-danger/10 text-danger border border-danger/30",
-  };
-  const labels: Record<SyncStatus, string> = {
-    idle: "",
-    syncing: "Syncing…",
-    synced: "Synced",
-    error: "Sync failed",
-  };
-
   return (
-    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${styles[status]}`}>
-      {labels[status]}
-    </span>
+    <StatusPill variant={SYNC_VARIANTS[status]} size="md">
+      {SYNC_LABELS[status]}
+    </StatusPill>
   );
 }
 

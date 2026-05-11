@@ -2,8 +2,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import PlayerSidebar from "./PlayerSidebar";
 import { PlayerProvider } from "./PlayerContext";
-import { SyncPlayerData } from "./SyncPlayerData";
 import { FloatingHelpChat } from "@/app/components/FloatingHelpChat";
+import { TeamProvider } from "@/app/providers/TeamContext";
+import { MatchesProvider } from "@/app/providers/MatchesContext";
 
 export default async function PlayerLayout({
   children,
@@ -31,13 +32,16 @@ export default async function PlayerLayout({
   }
 
   return (
-    <PlayerProvider>
-      <SyncPlayerData />
-      <div className="flex h-screen overflow-hidden">
-        <PlayerSidebar />
-        <main className="flex-1 overflow-auto">{children}</main>
-        <FloatingHelpChat />
-      </div>
-    </PlayerProvider>
+    <TeamProvider>
+      <MatchesProvider>
+        <PlayerProvider>
+          <div className="flex h-screen overflow-hidden">
+            <PlayerSidebar />
+            <main className="flex-1 overflow-auto">{children}</main>
+            <FloatingHelpChat />
+          </div>
+        </PlayerProvider>
+      </MatchesProvider>
+    </TeamProvider>
   );
 }

@@ -5,39 +5,20 @@ import Link from "next/link";
 import { usePlayer } from "./PlayerContext";
 import { PlayerPicker } from "./PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
-import { SAVED_MATCHES_KEY, subscribeSavedMatchesChanged } from "@/app/rugby-tagging/lib/savedMatches";
-import { SQUAD_PROFILE_KEY } from "@/app/rugby-tagging/constants";
-import { saveSquadProfile, SQUAD_PROFILE_CHANGED_EVENT } from "@/app/rugby-tagging/lib/team";
+import { StatusPill } from "@/app/components/StatusPill";
+import { PageHeader } from "@/app/components/PageHeader";
+import { saveSquadProfile } from "@/app/rugby-tagging/lib/team";
 import { buildReportRowsFromMatch, gradeToScore } from "@/app/rugby-tagging/helpers";
 import { buildPlayerCoachingPlan } from "./playerCoachingPlan";
 import { countUnseenClips } from "./lib/unseenClips";
 import { getLastSeenAt, subscribeReviewSeenChanged } from "./lib/reviewSeen";
+import { useTeam } from "@/app/providers/TeamContext";
+import { useMatches } from "@/app/providers/MatchesContext";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { ReportRow, AvailabilityResponse, Fixture, TrainingSession, TrainingSessionDayOfWeek } from "@/app/rugby-tagging/types";
-import type { SquadPlayer, SquadProfile } from "@/app/rugby-tagging/lib/team";
-
-// ---------------------------------------------------------------------------
-// Storage helpers
-// ---------------------------------------------------------------------------
-
-function subscribeSquadProfile(cb: () => void) {
-  window.addEventListener(SQUAD_PROFILE_CHANGED_EVENT, cb);
-  return () => window.removeEventListener(SQUAD_PROFILE_CHANGED_EVENT, cb);
-}
-
-function getSquadProfileSnapshot(): string {
-  if (typeof window === "undefined") return "{}";
-  return localStorage.getItem(SQUAD_PROFILE_KEY) || "{}";
-}
-
-function parseProfile(snapshot: string): SquadProfile | null {
-  try {
-    const parsed = JSON.parse(snapshot);
-    return parsed && typeof parsed === "object" ? (parsed as SquadProfile) : null;
-  } catch {
-    return null;
-  }
-}
+import type { SquadPlayer } from "@/app/rugby-tagging/lib/team";
+import { EmptyState } from "@/app/components/EmptyState";
+import { Trophy } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -159,13 +140,13 @@ function FixtureRow({
         <div>
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-foreground-strong">vs {fixture.opponent}</span>
-            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${
-              fixture.homeOrAway === "home"
-                ? "border-success/30 bg-success/10 text-success"
-                : "border-border bg-panel-3 text-muted"
-            }`}>
+            <StatusPill
+              variant={fixture.homeOrAway === "home" ? "success" : "neutral"}
+              size="sm"
+              uppercase
+            >
               {fixture.homeOrAway}
-            </span>
+            </StatusPill>
           </div>
           <div className="mt-0.5 text-xs text-muted">
             {formatDate(fixture.date)}
@@ -349,29 +330,15 @@ function TrainingRow({
 
 export default function PlayerHomePage() {
   const { currentPlayer, ready } = usePlayer();
-
-  const matchesRaw = useSyncExternalStore(
-    subscribeSavedMatchesChanged,
-    () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
-    () => "[]"
-  );
-
-  const profileSnapshot = useSyncExternalStore(
-    subscribeSquadProfile,
-    getSquadProfileSnapshot,
-    () => "{}"
-  );
-
-  const profile = useMemo(() => parseProfile(profileSnapshot), [profileSnapshot]);
+  const { team: profile } = useTeam();
+  const { matches: allMatches } = useMatches();
 
   const playerMatches = useMemo<SavedMatchRecord[]>(() => {
     if (!currentPlayer) return [];
-    let all: SavedMatchRecord[];
-    try { all = JSON.parse(matchesRaw); } catch { return []; }
-    return getPlayerMatches(all, currentPlayer).sort(
+    return getPlayerMatches(allMatches, currentPlayer).sort(
       (a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
     );
-  }, [matchesRaw, currentPlayer]);
+  }, [allMatches, currentPlayer]);
 
   const playerRows = useMemo<ReportRow[]>(() => {
     if (!currentPlayer) return [];
@@ -473,10 +440,8 @@ export default function PlayerHomePage() {
 
   const unseenClipCount = useMemo(() => {
     if (!currentPlayer) return 0;
-    let all: SavedMatchRecord[];
-    try { all = JSON.parse(matchesRaw); } catch { return 0; }
-    return countUnseenClips(all, currentPlayer, lastSeenAt);
-  }, [matchesRaw, currentPlayer, lastSeenAt]);
+    return countUnseenClips(allMatches, currentPlayer, lastSeenAt);
+  }, [allMatches, currentPlayer, lastSeenAt]);
 
   const unansweredCount = useMemo(() => {
     if (!currentPlayer) return 0;
@@ -524,33 +489,29 @@ export default function PlayerHomePage() {
       <div className="mx-auto max-w-[800px] space-y-5">
 
         {/* Header */}
-        <section className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-              {getGreeting()}, {currentPlayer.preferredName || currentPlayer.fullName}
-            </h1>
-            <p className="mt-1 text-sm text-muted">
-              {teamName && <span className="font-medium text-foreground">{teamName}</span>}
-              {teamName && currentPlayer.primaryPosition && " · "}
-              {currentPlayer.primaryPosition}
-            </p>
-          </div>
-          <div className="flex shrink-0 flex-col items-end gap-1.5">
-            {unansweredCount > 0 && (
-              <span className="rounded-full border border-warning/30 bg-warning/10 px-3 py-1.5 text-xs font-semibold text-warning">
-                {unansweredCount} response{unansweredCount !== 1 ? "s" : ""} needed
-              </span>
-            )}
-            {unseenClipCount > 0 && (
-              <Link
-                href="/player/review"
-                className="rounded-full border border-warning/30 bg-warning/10 px-3 py-1.5 text-xs font-semibold text-warning hover:border-warning/60 transition-colors"
-              >
-                {unseenClipCount} new clip{unseenClipCount !== 1 ? "s" : ""} from your coach
-              </Link>
-            )}
-          </div>
-        </section>
+        <PageHeader
+          title={`${getGreeting()}, ${currentPlayer.preferredName || currentPlayer.fullName}`}
+          subtitle={[teamName, currentPlayer.primaryPosition].filter(Boolean).join(" · ")}
+          status={
+            (unansweredCount > 0 || unseenClipCount > 0) ? (
+              <div className="flex flex-col items-end gap-1.5">
+                {unansweredCount > 0 && (
+                  <StatusPill variant="warning" size="md">
+                    {unansweredCount} response{unansweredCount !== 1 ? "s" : ""} needed
+                  </StatusPill>
+                )}
+                {unseenClipCount > 0 && (
+                  <Link
+                    href="/player/review"
+                    className="inline-flex items-center rounded-full border border-warning/30 bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning hover:border-warning/60 transition-colors"
+                  >
+                    {unseenClipCount} new clip{unseenClipCount !== 1 ? "s" : ""} from your coach
+                  </Link>
+                )}
+              </div>
+            ) : undefined
+          }
+        />
 
         {/* Availability */}
         <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
@@ -767,10 +728,11 @@ export default function PlayerHomePage() {
 
         {/* Empty state — no matches */}
         {!latestRow && (
-          <section className="rounded-2xl border border-dashed border-border p-8 text-center">
-            <p className="text-sm text-muted">No matches tagged yet.</p>
-            <p className="mt-1 text-xs text-muted-2">Ask your coach to tag you in a game.</p>
-          </section>
+          <EmptyState
+            icon={Trophy}
+            title="Your stats will show here"
+            description="Once your coach tags a match you played in, your performance will appear here."
+          />
         )}
 
       </div>

@@ -1,15 +1,13 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState } from "react";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
 import { PLAYER_PAGE_HELP } from "../help-content";
 import { PlayerPicker } from "../PlayerPicker";
 import { usePlayer } from "../PlayerContext";
-import {
-  SAVED_MATCHES_KEY,
-  subscribeSavedMatchesChanged,
-  type SavedMatchRecord,
-} from "@/app/rugby-tagging/lib/savedMatches";
+import { useMatches } from "@/app/providers/MatchesContext";
+import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import {
   buildReportRowsFromMatch,
   buildSetPieceSummary,
@@ -46,15 +44,6 @@ type Metric = {
   format: "number" | "percent" | "rate";
   lowerIsBetter?: boolean;
 };
-
-function parseMatches(snapshot: string): SavedMatchRecord[] {
-  try {
-    const parsed = JSON.parse(snapshot);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
 
 function sortMatches(matches: SavedMatchRecord[]) {
   return [...matches].sort((a, b) => {
@@ -298,16 +287,11 @@ export default function PlayerComparePage() {
   const [leftPlayerChoice, setLeftPlayerChoice] = useState("");
   const [rightPlayerChoice, setRightPlayerChoice] = useState("");
 
-  const matchesRaw = useSyncExternalStore(
-    subscribeSavedMatchesChanged,
-    () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
-    () => "[]"
-  );
+  const { matches } = useMatches();
 
   const snapshots = useMemo(() => {
-    const matches = sortMatches(parseMatches(matchesRaw));
-    return matches.map((match, index) => buildSnapshot(match, index));
-  }, [matchesRaw]);
+    return sortMatches(matches).map((match, index) => buildSnapshot(match, index));
+  }, [matches]);
 
   if (!ready) return null;
   if (!currentPlayer) return <PlayerPicker />;
@@ -363,15 +347,11 @@ export default function PlayerComparePage() {
   return (
     <main className="min-h-screen bg-background p-6 text-foreground">
       <div className="mx-auto max-w-[1500px] space-y-5">
-        <header className="rounded-xl border border-border bg-panel p-5">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold text-foreground-strong">Compare</h1>
-            <PageHelp {...PLAYER_PAGE_HELP["/player/compare"]} />
-          </div>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-            Compare saved matches or player output from the same read-only match data coaches use.
-          </p>
-        </header>
+        <PageHeader
+          title="Compare"
+          subtitle="Compare saved matches or player output from the same read-only match data coaches use."
+          helpButton={<PageHelp {...PLAYER_PAGE_HELP["/player/compare"]} />}
+        />
 
         {snapshots.length < 2 ? (
           <section className="rounded-xl border border-dashed border-border bg-panel p-8 text-center">

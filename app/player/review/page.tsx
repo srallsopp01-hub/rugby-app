@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PageHeader } from "@/app/components/PageHeader";
 import { usePlayer } from "../PlayerContext";
 import { PageHelp } from "@/app/components/PageHelp";
 import { PLAYER_PAGE_HELP } from "../help-content";
 import { PlayerPicker } from "../PlayerPicker";
+import { useMatches } from "@/app/providers/MatchesContext";
 import {
-  SAVED_MATCHES_KEY,
-  subscribeSavedMatchesChanged,
   getSavedMatchById,
   upsertSavedMatch,
 } from "@/app/rugby-tagging/lib/savedMatches";
@@ -23,6 +23,8 @@ import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { ClipAnnotation, ClipPlayerNote, ClipReaction } from "@/app/rugby-tagging/types";
 import { getMatchVideoSignedUrl, refreshVideoSignedUrl, SIGNED_URL_EXPIRY_SECONDS } from "@/lib/matchVideoCloud";
 import { markReviewAsSeen } from "../lib/reviewSeen";
+import { EmptyState } from "@/app/components/EmptyState";
+import { Film } from "lucide-react";
 
 type ClipGroup = {
   match: SavedMatchRecord;
@@ -213,6 +215,7 @@ export default function ReviewPage() {
   // Per-match video blob URLs and active clip indices
   const [videoUrls, setVideoUrls] = useState<Record<string, string>>({});
   const [videoLoading, setVideoLoading] = useState<Record<string, boolean>>({});
+  const videoRetryCounts = useRef<Record<string, number>>({});
   const [activeClipIdx, setActiveClipIdx] = useState<Record<string, number | null>>({});
   const [setPieceTypeFilter, setSetPieceTypeFilter] = useState<SetPieceTypeFilter>("All");
   const [setPieceSideFilters, setSetPieceSideFilters] = useState<SetPieceSideFilters>({
@@ -221,20 +224,15 @@ export default function ReviewPage() {
   });
   // Track which match's video is currently in the video element
   const [activeVideoMatchId, setActiveVideoMatchId] = useState<string | null>(null);
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
 
-  const matchesRaw = useSyncExternalStore(
-    subscribeSavedMatchesChanged,
-    () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
-    () => "[]"
-  );
+  const { matches } = useMatches();
 
   const { clipGroups, totalClips, totalSetPieces } = useMemo(() => {
-    let all: SavedMatchRecord[];
-    try { all = JSON.parse(matchesRaw); } catch { return { clipGroups: [], totalClips: 0, totalSetPieces: 0 }; }
     const clipResult: ClipGroup[] = [];
     let totalC = 0;
     let totalS = 0;
-    for (const match of all) {
+    for (const match of matches) {
       const clips = [...(match.clips ?? [])].sort((a, b) => a.startTime - b.startTime);
       const setPieceMoments = buildSetPieceReviewMoments(match.events ?? []);
       if (clips.length > 0 || setPieceMoments.length > 0) {
@@ -243,8 +241,13 @@ export default function ReviewPage() {
         totalS += setPieceMoments.length;
       }
     }
+    clipResult.sort((a, b) => {
+      const aDate = a.match.matchDate || a.match.updatedAt;
+      const bDate = b.match.matchDate || b.match.updatedAt;
+      return bDate.localeCompare(aDate);
+    });
     return { clipGroups: clipResult, totalClips: totalC, totalSetPieces: totalS };
-  }, [matchesRaw]);
+  }, [matches]);
 
   // Revoke all blob URLs on unmount
   useEffect(() => {
@@ -253,6 +256,13 @@ export default function ReviewPage() {
       Object.values(urls).forEach((u) => URL.revokeObjectURL(u));
     };
   }, [videoUrls]);
+
+  // Auto-select the most recent game when clip groups first load or change
+  useEffect(() => {
+    if (clipGroups.length > 0 && (selectedMatchId === null || !clipGroups.find(g => g.match.id === selectedMatchId))) {
+      setSelectedMatchId(clipGroups[0].match.id);
+    }
+  }, [clipGroups, selectedMatchId]);
 
   // Mark review as seen on mount so unseen-clip badges clear.
   useEffect(() => {
@@ -365,40 +375,61 @@ export default function ReviewPage() {
   if (!ready) return null;
   if (!currentPlayer) return <PlayerPicker />;
 
+  const selectedGroup = clipGroups.find(g => g.match.id === selectedMatchId) ?? clipGroups[0] ?? null;
+
   return (
-    <div className="p-8 max-w-3xl space-y-10">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold text-foreground-strong">Review</h1>
-          <PageHelp {...PLAYER_PAGE_HELP["/player/review"]} />
-        </div>
-        <p className="mt-1 text-sm text-muted">
-          {totalClips > 0 || totalSetPieces > 0
-            ? `${totalClips} ${totalClips === 1 ? "clip" : "clips"} and ${totalSetPieces} set-piece ${totalSetPieces === 1 ? "tag" : "tags"} from review`
-            : "Coach clips from film review"}
-        </p>
-      </div>
+    <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[800px] space-y-5">
+        {/* Header */}
+        <PageHeader
+          title="Review"
+          subtitle={
+            totalClips > 0 || totalSetPieces > 0
+              ? `${totalClips} ${totalClips === 1 ? "clip" : "clips"} and ${totalSetPieces} set-piece ${totalSetPieces === 1 ? "tag" : "tags"} from review`
+              : "Coach clips from film review"
+          }
+          helpButton={<PageHelp {...PLAYER_PAGE_HELP["/player/review"]} />}
+        />
 
-      {/* ── Clips section ── */}
-      {clipGroups.length > 0 && (
-        <section className="space-y-5">
-          <h2 className="text-sm font-semibold text-foreground-strong uppercase tracking-widest">
-            Review Moments
-          </h2>
+        {/* Game selector + match content */}
+        {clipGroups.length > 0 && selectedGroup && (() => {
+          const { match, clips, setPieceMoments } = selectedGroup;
+          const videoUrl = videoUrls[match.id];
+          const isActiveMatch = activeVideoMatchId === match.id;
+          const currentIdx = activeClipIdx[match.id] ?? null;
+          const filteredSetPieceMoments = filterSetPieceReviewMoments(
+            setPieceMoments,
+            setPieceTypeFilter,
+            setPieceSideFilters
+          );
 
-          {clipGroups.map(({ match, clips, setPieceMoments }) => {
-            const videoUrl = videoUrls[match.id];
-            const isActiveMatch = activeVideoMatchId === match.id;
-            const currentIdx = activeClipIdx[match.id] ?? null;
-            const filteredSetPieceMoments = filterSetPieceReviewMoments(
-              setPieceMoments,
-              setPieceTypeFilter,
-              setPieceSideFilters
-            );
-
-            return (
-              <div key={match.id} className="rounded-xl border border-border bg-panel overflow-hidden">
+          return (
+            <>
+              {clipGroups.length > 1 && (
+                <section className="rounded-2xl border border-border bg-panel p-4 shadow-[var(--shadow-soft)]">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-2">Select Game</p>
+                  <div className="flex flex-wrap gap-2">
+                    {clipGroups.map(({ match: m }) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setSelectedMatchId(m.id)}
+                        className={`rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
+                          selectedMatchId === m.id
+                            ? "border-border-light bg-panel-3 text-foreground-strong"
+                            : "border-border bg-panel-2 text-muted hover:border-border-light hover:text-foreground"
+                        }`}
+                      >
+                        vs {m.opponent || m.matchTitle || "Game"}
+                        {m.matchDate && (
+                          <span className="ml-1.5 text-xs font-normal text-muted-2">{m.matchDate}</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+              <div className="rounded-xl border border-border bg-panel overflow-hidden">
                 {/* Match header */}
                 <div className="flex items-center justify-between px-5 py-3.5 bg-panel-2 border-b border-border">
                   <div>
@@ -455,11 +486,11 @@ export default function ReviewPage() {
                         onError={() => {
                           if (!videoUrl || videoUrl.startsWith("blob:")) return;
                           if (!match.videoStoragePath) return;
-                          setVideoUrls((prev) => { const n = { ...prev }; delete n[match.id]; return n; });
-                          setVideoLoading((prev) => ({ ...prev, [match.id]: true }));
+                          const retries = videoRetryCounts.current[match.id] ?? 0;
+                          if (retries >= 1) return;
+                          videoRetryCounts.current[match.id] = retries + 1;
                           void refreshVideoSignedUrl(match.videoStoragePath).then((freshUrl) => {
                             if (freshUrl) setVideoUrls((prev) => ({ ...prev, [match.id]: freshUrl }));
-                            setVideoLoading((prev) => ({ ...prev, [match.id]: false }));
                           });
                         }}
                       />
@@ -597,28 +628,19 @@ export default function ReviewPage() {
                   </div>
                 )}
               </div>
-            );
-          })}
-        </section>
-      )}
+            </>
+          );
+        })()}
 
-      {/* Empty state — nothing at all */}
-      {clipGroups.length === 0 && (
-        <div className="rounded-xl border border-dashed border-border p-12 text-center space-y-3">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-panel-3">
-            <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
-              <rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.25" className="text-muted-2" />
-              <path d="M6.5 6.5l4 2-4 2V6.5z" fill="currentColor" className="text-muted-2" />
-            </svg>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-foreground">No review content yet</p>
-            <p className="mt-1 text-xs text-muted">
-              Your coach hasn&apos;t created shared clips yet.
-            </p>
-          </div>
-        </div>
-      )}
-    </div>
+        {/* Empty state — nothing at all */}
+        {clipGroups.length === 0 && (
+          <EmptyState
+            icon={Film}
+            title="No review content yet"
+            description="When your coach saves clips from this match, they'll appear here for review."
+          />
+        )}
+      </div>
+    </main>
   );
 }

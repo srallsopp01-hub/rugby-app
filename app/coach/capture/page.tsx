@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
+import { CLOUD_SYNC_ERROR_EVENT } from "@/app/rugby-tagging/lib/savedMatches";
 import { useRouter } from "next/navigation";
 import TeamSheetModal from "@/app/rugby-tagging/components/TeamSheetModal";
 import MatchdayRosterPanel from "@/app/rugby-tagging/components/MatchdayRosterPanel";
@@ -16,7 +17,13 @@ import TeamEventsPanel from "@/app/rugby-tagging/components/TeamEventsPanel";
 import MatchMilestonesPanel from "@/app/rugby-tagging/components/MatchMilestonesPanel";
 import PendingResolutionPanel from "@/app/rugby-tagging/components/PendingResolutionPanel";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
+import CaptureWalkthroughModal, { hasSeenCaptureWalkthrough } from "@/app/components/CaptureWalkthroughModal";
 import { COACH_PAGE_HELP } from "../help-content";
+import { VideoPlayer } from "@/app/components/VideoPlayer";
+import { VideoDropzone } from "@/app/components/VideoDropzone";
+import { EmptyState } from "@/app/components/EmptyState";
+import { Video } from "lucide-react";
 import {
   clearMatchVideoSession,
   setMatchVideoFile,
@@ -26,6 +33,7 @@ import {
   createMatchId,
   getCurrentMatchId,
   getSavedMatchById,
+  getSavedMatches,
   setCurrentMatchId as persistCurrentMatchId,
   upsertSavedMatch,
   type SavedMatchRecord,
@@ -50,6 +58,7 @@ import {
   DEFAULT_ROSTER_ROWS,
   STORAGE_KEY,
 } from "@/app/rugby-tagging/constants";
+import { ACTIVE_TEAM_ID_KEY } from "@/lib/teamContext";
 import {
   blurActiveElement,
   buildBasicStats,
@@ -95,6 +104,7 @@ import type {
   UnitSummaryRow,
   VoiceResponse,
 } from "@/app/rugby-tagging/types";
+import { StatusPill } from "@/app/components/StatusPill";
 
 type AppMode = "stat" | "game-review";
 
@@ -106,6 +116,21 @@ type CoachReviewNote = {
 };
 
 const HELP_DISMISSED_KEY = "rugby-tagging-help-dismissed";
+
+// Return team-scoped localStorage keys so capture sessions and correction
+// memory never bleed between teams when a coach switches team context.
+function getScopedStorageKey(): string {
+  try {
+    const t = localStorage.getItem(ACTIVE_TEAM_ID_KEY) ?? "";
+    return t ? `${STORAGE_KEY}-${t}` : STORAGE_KEY;
+  } catch { return STORAGE_KEY; }
+}
+function getScopedCorrectionKey(): string {
+  try {
+    const t = localStorage.getItem(ACTIVE_TEAM_ID_KEY) ?? "";
+    return t ? `${CORRECTION_MEMORY_KEY}-${t}` : CORRECTION_MEMORY_KEY;
+  } catch { return CORRECTION_MEMORY_KEY; }
+}
 
 export default function RugbyVoiceTaggingMVP() {
   const router = useRouter();
@@ -137,6 +162,15 @@ export default function RugbyVoiceTaggingMVP() {
   const [teamSheetPaste, setTeamSheetPaste] = useState("");
   const [showReportSetupModal, setShowReportSetupModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
+
+  // Auto-open walkthrough on first visit to Capture
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!hasSeenCaptureWalkthrough()) {
+      setShowWalkthrough(true);
+    }
+  }, []);
   const [transcriptImportText, setTranscriptImportText] = useState("");
   const [cleanedTranscriptText, setCleanedTranscriptText] = useState("");
   const [cleanedTranscriptItems, setCleanedTranscriptItems] = useState<
@@ -157,6 +191,7 @@ export default function RugbyVoiceTaggingMVP() {
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [videoSrc, setVideoSrc] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState("Ready");
   const [showRawTranscript, setShowRawTranscript] = useState(true);
   const [videoLoaded, setVideoLoaded] = useState(false);
@@ -196,6 +231,9 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
   const [matchSubmitStatus, setMatchSubmitStatus] =
     useState<"idle" | "submitting" | "submitted" | "error">("idle");
   const [matchSubmitError, setMatchSubmitError] = useState("");
+  const [cloudSyncError, setCloudSyncError] = useState("");
+  const [ourScore, setOurScore] = useState<number | "">("");
+  const [opponentScore, setOpponentScore] = useState<number | "">("");
   const videoUploadLabel =
     videoUploadPercent >= 100
       ? "Finalising cloud save..."
@@ -512,7 +550,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
 
     if (setPieceSummary.eastsScrums.length > 0) {
       lines.push(
-        `Scrum: Easts success was ${setPieceSummary.eastsScrumSuccessPct.toFixed(
+        `Scrum: ${squadProfile?.teamName ?? "Own team"} success was ${setPieceSummary.eastsScrumSuccessPct.toFixed(
           0
         )}% from ${setPieceSummary.eastsScrums.length} logged scrums.`
       );
@@ -690,9 +728,11 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
               : true
           );
           setVideoStoragePath(savedMatch.videoStoragePath || "");
+          setOurScore(typeof savedMatch.ourScore === "number" ? savedMatch.ourScore : "");
+          setOpponentScore(typeof savedMatch.opponentScore === "number" ? savedMatch.opponentScore : "");
 
           localStorage.setItem(
-            STORAGE_KEY,
+            getScopedStorageKey(),
             JSON.stringify({
               activeMode:
                 savedMatch.activeMode === "game-review" ? "game-review" : "stat",
@@ -721,7 +761,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
         }
       }
 
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(getScopedStorageKey());
       if (!raw) return;
 
       const saved = JSON.parse(raw);
@@ -746,6 +786,8 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
           : true
       );
       setVideoStoragePath(saved.videoStoragePath || "");
+      setOurScore(typeof saved.ourScore === "number" ? saved.ourScore : "");
+      setOpponentScore(typeof saved.opponentScore === "number" ? saved.opponentScore : "");
     } catch (error) {
       console.error("Failed to load saved session", error);
     }
@@ -753,7 +795,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(CORRECTION_MEMORY_KEY);
+      const raw = localStorage.getItem(getScopedCorrectionKey());
       if (!raw) {
         setLearnedCorrections({});
       } else {
@@ -779,7 +821,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
   useEffect(() => {
     try {
       localStorage.setItem(
-        CORRECTION_MEMORY_KEY,
+        getScopedCorrectionKey(),
         JSON.stringify(learnedCorrections)
       );
     } catch (error) {
@@ -790,11 +832,11 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
   useEffect(() => {
     try {
       const persistedEvents = events.filter((event) => !event.isPending);
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(getScopedStorageKey());
       const existingSession = raw ? JSON.parse(raw) : {};
 
       localStorage.setItem(
-        STORAGE_KEY,
+        getScopedStorageKey(),
         JSON.stringify({
           activeMode,
           matchTitle,
@@ -844,6 +886,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
       videoRef.current.src = url;
       videoRef.current.playbackRate = playbackRate;
       videoRef.current.load();
+      setVideoSrc(url);
       setStatusMessage("Cloud video loaded");
     });
 
@@ -867,6 +910,24 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
         window.clearTimeout(stopTimeoutRef.current);
       }
     };
+  }, []);
+
+  // Warn the coach before navigating away while a video upload is in progress.
+  useEffect(() => {
+    if (videoUploadStatus !== "uploading") return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [videoUploadStatus]);
+
+  // Surface cloud sync failures so the coach knows the match didn't reach the cloud.
+  useEffect(() => {
+    const handler = () => setCloudSyncError("Match saved locally but not synced to cloud. Check your connection.");
+    window.addEventListener(CLOUD_SYNC_ERROR_EVENT, handler);
+    return () => window.removeEventListener(CLOUD_SYNC_ERROR_EVENT, handler);
   }, []);
 
   useLayoutEffect(() => {
@@ -912,6 +973,19 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
       })
     );
   };
+
+  const selectPlayer = useCallback(
+    (number: number, playerId: string, playerName: string) => {
+      setRosterRows((prev) =>
+        prev.map((row) =>
+          row.number === number
+            ? { ...row, name: playerName, playerId: playerId || undefined }
+            : row
+        )
+      );
+    },
+    []
+  );
 
   const applyPastedTeamSheet = () => {
     if (!teamSheetPaste.trim()) return;
@@ -971,8 +1045,9 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
       videoRef.current.removeAttribute("src");
       videoRef.current.load();
     }
+    setVideoSrc(null);
 
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(getScopedStorageKey());
     sessionStorage.removeItem("rugby-tagging-video-src");
 
     setActiveMode("stat");
@@ -1446,6 +1521,8 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
       coachNotes,
       showRawTranscript,
       videoStoragePath: nextVideoStoragePath || videoStoragePath || existing?.videoStoragePath,
+      ourScore: ourScore === "" ? undefined : ourScore,
+      opponentScore: opponentScore === "" ? undefined : opponentScore,
     };
   };
 
@@ -2548,13 +2625,14 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     >
       <TeamSheetModal
         show={showTeamSheetModal}
-        teamSheetPaste={teamSheetPaste}
         rosterRows={rosterRows}
-        onTeamSheetPasteChange={setTeamSheetPaste}
         onUpdateRosterRow={updateRosterRow}
-        onApplyPastedTeamSheet={applyPastedTeamSheet}
+        onSelectPlayer={selectPlayer}
         onSubmitTeamSheet={submitTeamSheet}
         onSkip={() => setShowTeamSheetModal(false)}
+        savedMatches={getSavedMatches()}
+        onLoadFromMatch={(rows) => setRosterRows(hydrateRosterRows(rows))}
+        squadPlayers={squadProfile?.players}
       />
 
       <MatchReportModal
@@ -2708,6 +2786,11 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
         }}
       />
 
+      <CaptureWalkthroughModal
+        open={showWalkthrough}
+        onClose={() => setShowWalkthrough(false)}
+      />
+
       {showReportSetupModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-border bg-panel p-6 shadow-[var(--shadow-soft)]">
@@ -2766,7 +2849,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
               </button>
               <button
                 onClick={openTeamReview}
-                className="rounded-xl border border-border px-5 py-2.5 text-sm font-medium text-foreground"
+                className="rounded-xl border border-border bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
               >
                 Open Team Review
               </button>
@@ -2783,30 +2866,29 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
 
       <div className="mx-auto max-w-[1900px] space-y-5">
         <div className="overflow-hidden rounded-2xl border border-border bg-panel shadow-[var(--shadow-soft)]">
-          <div className="border-b border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0))] px-5 py-4">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-              <div className="max-w-3xl">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-semibold tracking-tight text-foreground-strong md:text-3xl">
-                    Capture
-                  </h1>
-                  <PageHelp {...COACH_PAGE_HELP["/coach/capture"]} />
-                </div>
-                <p className="mt-2 text-sm leading-6 text-muted md:text-base">
-                  Tag stats in Stat Mode, switch to Game Review Mode for
-                  timestamped coaching notes, and build a cleaner match analysis
-                  workflow from the same match file.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={reopenHelpModal}
-                  className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground"
-                >
-                  Help
-                </button>
-
+          <div className="bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0))] px-5 pt-4">
+            <PageHeader
+              title="Capture"
+              subtitle="Tag stats in Stat Mode, switch to Game Review Mode for timestamped coaching notes, and build a cleaner match analysis workflow from the same match file."
+              helpButton={<PageHelp {...COACH_PAGE_HELP["/coach/capture"]} />}
+              secondaryAction={
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowWalkthrough(true)}
+                    className="text-xs text-muted hover:text-foreground-strong border border-border hover:border-border-light rounded-md px-3 py-1.5 transition-colors"
+                  >
+                    Walkthrough
+                  </button>
+                  <button
+                    onClick={reopenHelpModal}
+                    className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground"
+                  >
+                    Help
+                  </button>
+                </>
+              }
+              primaryAction={
                 <button
                   type="button"
                   onClick={startNewMatch}
@@ -2814,10 +2896,10 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
                 >
                   Start New Match
                 </button>
-              </div>
-            </div>
+              }
+            />
 
-            <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-6">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
               <div className="rounded-xl border border-border bg-panel-2 px-3 py-3 text-sm text-muted">
                 <div className="text-[11px] uppercase tracking-[0.14em] text-muted-2">
                   Screen
@@ -3049,110 +3131,82 @@ Ellie missed tackle"
                 <label className="mb-2 block text-sm font-medium text-foreground">
                   Match video
                 </label>
-                <div className="rounded-xl border border-dashed border-border-light bg-panel-2 px-4 py-4">
-                  <input
-                    type="file"
-                    accept="video/*"
-                    className="block w-full cursor-pointer text-sm text-muted file:mr-4 file:rounded-lg file:border file:border-border-light file:bg-panel-3 file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file && videoRef.current) {
-                        if (videoRef.current.src?.startsWith("blob:")) {
-                          URL.revokeObjectURL(videoRef.current.src);
-                        }
-                        const nextVideoSrc = setMatchVideoFile(file);
-                        videoRef.current.src = nextVideoSrc;
-                        sessionStorage.setItem("rugby-tagging-video-src", nextVideoSrc);
-                        videoRef.current.playbackRate = 1;
-                        setPlaybackRate(1);
-                        setCurrentTime(0);
-                        setVideoLoaded(true);
-                        setIsVideoPlaying(false);
-                        setVideoDuration(0);
-                        setVideoUploadStatus("idle");
-                        setVideoUploadPercent(0);
-                        setVideoUploadError("");
-                        setMatchSubmitStatus("idle");
-                        setMatchSubmitError("");
-                        setStatusMessage("Video loaded");
-                        pendingVideoFileRef.current = file;
-                        // Upload immediately if match is already saved, otherwise queue
-                        if (currentMatchId) {
-                          void triggerVideoUpload(file, currentMatchId);
-                        }
-                      } else {
-                        setVideoLoaded(false);
-                        setIsVideoPlaying(false);
-                        setVideoDuration(0);
-                        setPlaybackRate(1);
-                        setVideoUploadStatus("idle");
-                        setVideoUploadError("");
-                        setMatchSubmitStatus("idle");
-                        setMatchSubmitError("");
-                        pendingVideoFileRef.current = null;
-                        sessionStorage.removeItem("rugby-tagging-video-src");
-                      }
-                    }}
-                  />
-                  {videoUploadStatus !== "idle" && (
-                    <div className="mt-2 flex items-center gap-2 text-xs">
-                      {videoUploadStatus === "uploading" && (
-                        <>
-                          <span className="text-amber-400">{videoUploadLabel}</span>
-                          <div className="h-1 flex-1 overflow-hidden rounded-full bg-border">
-                            <div
-                              className="h-full rounded-full bg-amber-400 transition-all"
-                              style={{ width: `${videoUploadPercent}%` }}
-                            />
-                          </div>
-                        </>
-                      )}
-                      {videoUploadStatus === "uploaded" && (
-                        <span className="text-success">Synced to cloud</span>
-                      )}
-                      {videoUploadStatus === "error" && (
-                        <span className="text-danger">
-                          Upload failed - {videoUploadError || "video not saved to cloud"}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="overflow-hidden rounded-2xl border border-border bg-black shadow-[var(--shadow-panel)]">
-                <video
-                  ref={videoRef}
-                  className="aspect-video min-h-[340px] w-full cursor-pointer bg-black object-contain xl:min-h-[460px] 2xl:min-h-[560px]"
-                  onLoadedData={() => {
-                    setVideoLoaded(true);
+                <VideoDropzone
+                  onFileSelected={(file) => {
                     if (videoRef.current) {
-                      videoRef.current.playbackRate = playbackRate;
+                      if (videoRef.current.src?.startsWith("blob:")) {
+                        URL.revokeObjectURL(videoRef.current.src);
+                      }
+                      const nextVideoSrc = setMatchVideoFile(file);
+                      videoRef.current.src = nextVideoSrc;
+                      setVideoSrc(nextVideoSrc);
+                      sessionStorage.setItem("rugby-tagging-video-src", nextVideoSrc);
+                      videoRef.current.playbackRate = 1;
+                      setPlaybackRate(1);
+                      setCurrentTime(0);
+                      setVideoLoaded(true);
+                      setIsVideoPlaying(false);
+                      setVideoDuration(0);
+                      setVideoUploadStatus("idle");
+                      setVideoUploadPercent(0);
+                      setVideoUploadError("");
+                      setMatchSubmitStatus("idle");
+                      setMatchSubmitError("");
+                      setStatusMessage("Video loaded");
+                      pendingVideoFileRef.current = file;
+                      if (currentMatchId) {
+                        void triggerVideoUpload(file, currentMatchId);
+                      }
                     }
                   }}
-                  onLoadedMetadata={() => {
-                    setVideoDuration(videoRef.current?.duration || 0);
-                  }}
-                  onTimeUpdate={() =>
-                    setCurrentTime(videoRef.current?.currentTime || 0)
+                  isUploading={videoUploadStatus === "uploading"}
+                  uploadProgress={videoUploadPercent}
+                  uploadTone={
+                    videoUploadStatus === "uploaded" ? "success" :
+                    videoUploadStatus === "uploading" ? "uploading" :
+                    videoUploadStatus === "error" ? "error" :
+                    "idle"
                   }
-                  onPlay={() => setIsVideoPlaying(true)}
-                  onPause={() => setIsVideoPlaying(false)}
-                  onError={() => {
-                    if (!videoStoragePath || videoRef.current?.src?.startsWith("blob:")) return;
-                    void refreshVideoSignedUrl(videoStoragePath).then((url) => {
-                      if (!url || !videoRef.current) {
-                        setStatusMessage("Could not refresh match video from cloud");
-                        return;
-                      }
-                      videoRef.current.src = url;
-                      videoRef.current.load();
-                      setStatusMessage("Cloud video refreshed");
-                    });
-                  }}
-                  onClick={toggleVideoPlayback}
+                  uploadStatus={
+                    videoUploadStatus === "uploading" ? videoUploadLabel :
+                    videoUploadStatus === "uploaded" ? "Synced to cloud" :
+                    videoUploadStatus === "error" ? `Upload failed – ${videoUploadError || "video not saved to cloud"}` :
+                    undefined
+                  }
+                  maxFileSizeLabel="Up to 5 GB · mp4, mov, m4v"
                 />
               </div>
+
+              <VideoPlayer
+                ref={videoRef}
+                src={videoSrc}
+                className="min-h-[340px] xl:min-h-[460px] 2xl:min-h-[560px] border border-border shadow-[var(--shadow-panel)]"
+                videoClassName="min-h-[340px] xl:min-h-[460px] 2xl:min-h-[560px]"
+                enableFullscreen
+                enableSkipButtons
+                onLoadedData={() => {
+                  setVideoLoaded(true);
+                  if (videoRef.current) {
+                    videoRef.current.playbackRate = playbackRate;
+                  }
+                }}
+                onLoadedMetadata={(d) => setVideoDuration(d)}
+                onTimeUpdate={(t) => setCurrentTime(t)}
+                onPlay={() => setIsVideoPlaying(true)}
+                onPause={() => setIsVideoPlaying(false)}
+                onError={() => {
+                  if (!videoStoragePath || videoRef.current?.src?.startsWith("blob:")) return;
+                  setStatusMessage("Could not load match video from cloud");
+                }}
+                emptyState={
+                  <EmptyState
+                    icon={Video}
+                    title="Load a match video"
+                    description="Choose a file above to begin tagging."
+                    size="sm"
+                  />
+                }
+              />
 
               <div className="mt-4 rounded-2xl border border-border bg-panel-2 p-4">
                 <div className="mb-4 flex flex-col gap-3 rounded-xl border border-border bg-panel px-4 py-3">
@@ -3323,24 +3377,24 @@ Ellie missed tackle"
                       !recording &&
                       !transcribing &&
                       !pendingResolution && (
-                        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[13px] text-emerald-300">
+                        <StatusPill variant="success" size="md">
                           Ready to tag
-                        </span>
+                        </StatusPill>
                       )}
                     {recording && (
-                      <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-[13px] text-rose-300">
+                      <StatusPill variant="danger" size="md">
                         Recording
-                      </span>
+                      </StatusPill>
                     )}
                     {transcribing && (
-                      <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-[13px] text-blue-300">
+                      <StatusPill variant="neutral" size="md">
                         Processing last tag
-                      </span>
+                      </StatusPill>
                     )}
                     {pendingResolution && (
-                      <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[13px] text-amber-300">
+                      <StatusPill variant="warning" size="md">
                         Confirm player
-                      </span>
+                      </StatusPill>
                     )}
                   </div>
                 )}
@@ -3504,9 +3558,21 @@ Ellie missed tackle"
                   submitMatchDisabled={matchSubmitStatus === "submitting"}
                   submitMatchStatus={matchSubmitStatus}
                   submitMatchError={matchSubmitError}
+                  ourScore={ourScore}
+                  opponentScore={opponentScore}
+                  onOurScoreChange={setOurScore}
+                  onOpponentScoreChange={setOpponentScore}
                 />
 
+                {cloudSyncError && (
+                  <div className="mx-4 mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 flex items-center justify-between gap-3">
+                    <span className="text-xs text-amber-300">{cloudSyncError}</span>
+                    <button type="button" onClick={() => setCloudSyncError("")} className="text-xs text-amber-400 hover:text-amber-200">Dismiss</button>
+                  </div>
+                )}
+
                 <TeamSnapshotPanel
+                  teamName={squadProfile?.teamName ?? "Our Team"}
                   tackles={teamTotals.tackles}
                   missed={teamTotals.missed}
                   tacklePct={teamTacklePct}
@@ -3537,6 +3603,7 @@ Ellie missed tackle"
                 />
 
                 <TeamSnapshotPanel
+                  teamName={squadProfile?.teamName ?? "Our Team"}
                   tackles={teamTotals.tackles}
                   missed={teamTotals.missed}
                   tacklePct={teamTacklePct}

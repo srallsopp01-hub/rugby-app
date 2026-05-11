@@ -19,6 +19,19 @@ export const metadata: Metadata = {
   },
   description:
     "Coach-first rugby match tagging, review, and analysis.",
+  openGraph: {
+    title: "FYNL Whistle",
+    description: "Coach-first rugby match tagging, review, and analysis.",
+    siteName: "FYNL Whistle",
+    url: "https://fynlwhistle.com",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "FYNL Whistle",
+    description: "Coach-first rugby match tagging, review, and analysis.",
+  },
+  metadataBase: new URL("https://fynlwhistle.com"),
 };
 
 export default function RootLayout({

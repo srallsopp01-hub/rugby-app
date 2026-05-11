@@ -4,6 +4,7 @@ export type PlanKey = "teamLaunch" | "club5" | "organisation";
 
 export type PlanPrice = {
   monthly: number;
+  monthlyFounder: number;
   yearly: number;
   yearlyPromo: number;
   from?: boolean;
@@ -35,16 +36,19 @@ export const pricing: Record<CurrencyCode, CurrencyPricing> = {
     plans: {
       teamLaunch: {
         monthly: 89,
+        monthlyFounder: 45,
         yearly: 890,
         yearlyPromo: 669,
       },
       club5: {
         monthly: 299,
+        monthlyFounder: 149,
         yearly: 2990,
         yearlyPromo: 2249,
       },
       organisation: {
         monthly: 1999,
+        monthlyFounder: 999,
         yearly: 19990,
         yearlyPromo: 14999,
         from: true,
@@ -57,16 +61,19 @@ export const pricing: Record<CurrencyCode, CurrencyPricing> = {
     plans: {
       teamLaunch: {
         monthly: 69,
+        monthlyFounder: 35,
         yearly: 690,
         yearlyPromo: 519,
       },
       club5: {
         monthly: 229,
+        monthlyFounder: 115,
         yearly: 2290,
         yearlyPromo: 1719,
       },
       organisation: {
         monthly: 1499,
+        monthlyFounder: 749,
         yearly: 14990,
         yearlyPromo: 11249,
         from: true,
@@ -79,16 +86,19 @@ export const pricing: Record<CurrencyCode, CurrencyPricing> = {
     plans: {
       teamLaunch: {
         monthly: 139,
+        monthlyFounder: 69,
         yearly: 1390,
         yearlyPromo: 1049,
       },
       club5: {
         monthly: 459,
+        monthlyFounder: 229,
         yearly: 4590,
         yearlyPromo: 3449,
       },
       organisation: {
         monthly: 2999,
+        monthlyFounder: 1499,
         yearly: 29990,
         yearlyPromo: 22499,
         from: true,
@@ -101,16 +111,19 @@ export const pricing: Record<CurrencyCode, CurrencyPricing> = {
     plans: {
       teamLaunch: {
         monthly: 79,
+        monthlyFounder: 40,
         yearly: 790,
         yearlyPromo: 599,
       },
       club5: {
         monthly: 269,
+        monthlyFounder: 135,
         yearly: 2690,
         yearlyPromo: 2019,
       },
       organisation: {
         monthly: 1799,
+        monthlyFounder: 899,
         yearly: 17990,
         yearlyPromo: 13499,
         from: true,
@@ -122,34 +135,34 @@ export const pricing: Record<CurrencyCode, CurrencyPricing> = {
 // Stripe prices include manual currency options for USD, AUD, EUR, and GBP.
 export const stripePriceIds: Record<CurrencyCode, Record<string, string>> = {
   USD: {
-    teamLaunchMonthly: "price_1TRsWbQL0gCVdJZirakOuwQY",
-    teamLaunchYearly: "price_1TRsZDQL0gCVdJZit1TBHsuS",
-    club5Monthly: "price_1TRsb9QL0gCVdJZiCwAZYVx2",
-    club5Yearly: "price_1TRsbAQL0gCVdJZiMeFb2sv0",
+    teamLaunchMonthly: "price_1TUOdFKy7NR9PRIvvTTthE4T",
+    teamLaunchYearly: "price_1TUOdEKy7NR9PRIvQCIyrhDh",
+    club5Monthly: "price_1TUOdJKy7NR9PRIvVBAu2FCX",
+    club5Yearly: "price_1TUOdIKy7NR9PRIvagh5XiGR",
     organisationMonthly: "price_TODO",
     organisationYearly: "price_TODO",
   },
   GBP: {
-    teamLaunchMonthly: "price_1TRsWbQL0gCVdJZirakOuwQY",
-    teamLaunchYearly: "price_1TRsZDQL0gCVdJZit1TBHsuS",
-    club5Monthly: "price_1TRsb9QL0gCVdJZiCwAZYVx2",
-    club5Yearly: "price_1TRsbAQL0gCVdJZiMeFb2sv0",
+    teamLaunchMonthly: "price_1TUOdFKy7NR9PRIvvTTthE4T",
+    teamLaunchYearly: "price_1TUOdEKy7NR9PRIvQCIyrhDh",
+    club5Monthly: "price_1TUOdJKy7NR9PRIvVBAu2FCX",
+    club5Yearly: "price_1TUOdIKy7NR9PRIvagh5XiGR",
     organisationMonthly: "price_TODO",
     organisationYearly: "price_TODO",
   },
   AUD: {
-    teamLaunchMonthly: "price_1TRsWbQL0gCVdJZirakOuwQY",
-    teamLaunchYearly: "price_1TRsZDQL0gCVdJZit1TBHsuS",
-    club5Monthly: "price_1TRsb9QL0gCVdJZiCwAZYVx2",
-    club5Yearly: "price_1TRsbAQL0gCVdJZiMeFb2sv0",
+    teamLaunchMonthly: "price_1TUOdFKy7NR9PRIvvTTthE4T",
+    teamLaunchYearly: "price_1TUOdEKy7NR9PRIvQCIyrhDh",
+    club5Monthly: "price_1TUOdJKy7NR9PRIvVBAu2FCX",
+    club5Yearly: "price_1TUOdIKy7NR9PRIvagh5XiGR",
     organisationMonthly: "price_TODO",
     organisationYearly: "price_TODO",
   },
   EUR: {
-    teamLaunchMonthly: "price_1TRsWbQL0gCVdJZirakOuwQY",
-    teamLaunchYearly: "price_1TRsZDQL0gCVdJZit1TBHsuS",
-    club5Monthly: "price_1TRsb9QL0gCVdJZiCwAZYVx2",
-    club5Yearly: "price_1TRsbAQL0gCVdJZiMeFb2sv0",
+    teamLaunchMonthly: "price_1TUOdFKy7NR9PRIvvTTthE4T",
+    teamLaunchYearly: "price_1TUOdEKy7NR9PRIvQCIyrhDh",
+    club5Monthly: "price_1TUOdJKy7NR9PRIvVBAu2FCX",
+    club5Yearly: "price_1TUOdIKy7NR9PRIvagh5XiGR",
     organisationMonthly: "price_TODO",
     organisationYearly: "price_TODO",
   },

@@ -1,4 +1,3 @@
-import { SQUAD_PROFILE_KEY, TEAM_KEY } from "../constants";
 import { levenshtein } from "../helpers";
 import type { Fixture, TrainingSession, AvailabilityResponse, SessionLog } from "../types";
 
@@ -90,6 +89,13 @@ export type Team = {
   updatedAt: string;
 };
 
+// In-memory cache — populated by TeamContext after fetching from Supabase.
+// Synchronous reads throughout the app use this cache.
+let _teamCache: Team | null = null;
+
+export function getTeam(): Team | null { return _teamCache; }
+export function setTeamCache(team: Team | null): void { _teamCache = team; }
+
 export function createPlayerId(): string {
   return `player_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -124,57 +130,20 @@ export function createDefaultTeam(): Team {
   };
 }
 
-// Migrates localStorage data from the old SQUAD_PROFILE_KEY to the new TEAM_KEY.
-// Runs once per session on first read; safe to call repeatedly.
-function migrateTeamLocalStorageKey(): void {
-  if (typeof window === "undefined") return;
-  if (localStorage.getItem(TEAM_KEY) !== null) return; // already migrated
-
-  const oldRaw = localStorage.getItem(SQUAD_PROFILE_KEY);
-  if (!oldRaw) return;
-
-  try {
-    // Preserve the raw data as-is under the new key. The cloud sync step will
-    // reconcile the old profileId (squad_...) with the DB UUID after first sync.
-    localStorage.setItem(TEAM_KEY, oldRaw);
-    localStorage.removeItem(SQUAD_PROFILE_KEY);
-  } catch {
-    // If storage write fails, leave old key in place — next read will retry.
-  }
-}
-
-export function getTeam(): Team | null {
-  if (typeof window === "undefined") return null;
-
-  migrateTeamLocalStorageKey();
-
-  try {
-    const raw = localStorage.getItem(TEAM_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return null;
-    // Ensure the profileId field exists on data migrated from the old format
-    if (!parsed.profileId && parsed.id && typeof parsed.id === "string" && !parsed.id.match(/^[0-9a-f-]{36}$/)) {
-      parsed.profileId = parsed.id;
-    }
-    return parsed as Team;
-  } catch {
-    return null;
-  }
-}
-
 export function saveTeam(team: Team): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(TEAM_KEY, JSON.stringify(team));
-  window.dispatchEvent(new Event(TEAM_CHANGED_EVENT));
+  // Update in-memory cache immediately so synchronous readers see fresh data.
+  setTeamCache(team);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(TEAM_CHANGED_EVENT));
+  }
+  // Persist to Supabase asynchronously.
   import("@/lib/teamCloud")
-    .then(({ upsertCloudTeam }) => void upsertCloudTeam(team))
+    .then(({ upsertCloudTeam }) => upsertCloudTeam(team))
     .catch(() => {});
 }
 
 export function clearTeam(): void {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem(TEAM_KEY);
+  // No-op — team data lives in Supabase; use the Supabase client to delete.
 }
 
 export function upsertSquadPlayer(
@@ -280,27 +249,14 @@ export function addVoiceSample(
 }
 
 // ---------------------------------------------------------------------------
-// Backwards-compatibility aliases — remove in Move 2.5
+// Backwards-compatibility aliases
 // ---------------------------------------------------------------------------
 
 /** @deprecated Use Team */
 export type SquadProfile = Team;
-/** @deprecated Use TEAM_CHANGED_EVENT */
-export const SQUAD_PROFILE_CHANGED_EVENT = TEAM_CHANGED_EVENT;
 /** @deprecated Use getTeam */
 export const getSquadProfile = getTeam;
 /** @deprecated Use saveTeam */
 export const saveSquadProfile = saveTeam;
-/** @deprecated Use clearTeam */
-export const clearSquadProfile = clearTeam;
 /** @deprecated Use createDefaultTeam */
 export const createDefaultSquadProfile = createDefaultTeam;
-/** @deprecated Use upsertSquadPlayer (signature unchanged) */
-// upsertSquadPlayer already works for both Team and SquadProfile since they're the same type.
-// @deprecated Use resolvePlayerName */
-// resolvePlayerName already works for both.
-
-/** @deprecated Generates a legacy squad_ id — prefer crypto.randomUUID() */
-export function createSquadProfileId(): string {
-  return `squad_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}

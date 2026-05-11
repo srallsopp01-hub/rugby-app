@@ -7,17 +7,21 @@ import {
   createFixtureId,
   createPlayerId,
   createTrainingSessionId,
-  getSquadProfile,
   removeSquadPlayer,
   saveSquadProfile,
   upsertSquadPlayer,
   type SquadPlayer,
   type SquadProfile,
 } from "@/app/rugby-tagging/lib/team";
+import { useTeam } from "@/app/providers/TeamContext";
 import type { Fixture, TrainingSession, TrainingSessionDayOfWeek } from "@/app/rugby-tagging/types";
 import { KpiTargetsSection } from "./KpiTargetsSection";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
+import { StatusPill } from "@/app/components/StatusPill";
 import { COACH_PAGE_HELP } from "../help-content";
+import { EmptyState } from "@/app/components/EmptyState";
+import { User } from "lucide-react";
 
 function PositionMultiSelect({
   selected,
@@ -154,15 +158,21 @@ function formatSessionLabel(session: TrainingSession): string {
 }
 
 export default function TeamSetupPage() {
-  const [profile, setProfile] = useState<SquadProfile | null>(() => {
-    const loaded = getSquadProfile();
-    return loaded ?? createDefaultSquadProfile();
-  });
+  const { team: liveTeam, isLoading } = useTeam();
+  const [profile, setProfile] = useState<SquadProfile | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Initialise and keep local profile in sync with TeamContext.
+  // Start as null so we never persist a blank default before real data arrives.
+  useEffect(() => {
+    if (liveTeam) setProfile(liveTeam);
+  }, [liveTeam]);
+
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(BLANK_FORM);
 
   const persist = (updated: SquadProfile) => {
+    if (isLoading) return;
     saveSquadProfile(updated);
     setProfile(updated);
   };
@@ -369,7 +379,9 @@ export default function TeamSetupPage() {
     });
   };
 
-  if (!profile) return null;
+  if (!profile || isLoading) return (
+    <div className="flex min-h-full items-center justify-center text-muted text-sm">Loading…</div>
+  );
 
   const sortedPlayers = [...profile.players].sort((a, b) => {
     const ai = POSITION_OPTIONS.indexOf(a.primaryPosition);
@@ -384,17 +396,11 @@ export default function TeamSetupPage() {
       <div className="mx-auto max-w-[1600px] space-y-5">
 
         {/* Header */}
-        <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold text-foreground-strong md:text-3xl">
-              Team Setup
-            </h1>
-            <PageHelp {...COACH_PAGE_HELP["/coach/team-setup"]} />
-          </div>
-          <p className="mt-2 text-sm text-muted">
-            Manage your squad — names, positions, and voice recognition settings. This data persists across all matches.
-          </p>
-        </div>
+        <PageHeader
+          title="Team Setup"
+          subtitle="Manage your squad — names, positions, and voice recognition settings. This data persists across all matches."
+          helpButton={<PageHelp {...COACH_PAGE_HELP["/coach/team-setup"]} />}
+        />
 
         {/* Team details */}
         <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
@@ -468,7 +474,7 @@ export default function TeamSetupPage() {
               <button
                 type="button"
                 onClick={openAdd}
-                className="rounded-xl border border-border bg-panel-2 px-4 py-2.5 text-sm font-medium text-foreground"
+                className="rounded-xl border border-border bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
               >
                 + Add player
               </button>
@@ -509,17 +515,18 @@ export default function TeamSetupPage() {
                         )}
                       </td>
                       <td className="p-3">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[11px] ${
+                        <StatusPill
+                          variant={
                             player.status === "active"
-                              ? "bg-emerald-500/10 text-emerald-300"
+                              ? "success"
                               : player.status === "injured"
-                              ? "bg-rose-500/10 text-rose-300"
-                              : "bg-amber-500/10 text-amber-300"
-                          }`}
+                              ? "danger"
+                              : "warning"
+                          }
+                          size="sm"
                         >
                           {player.status}
-                        </span>
+                        </StatusPill>
                       </td>
                       <td className="p-3">
                         <div className="flex justify-end gap-3">
@@ -547,11 +554,12 @@ export default function TeamSetupPage() {
           )}
 
           {sortedPlayers.length === 0 && !showForm && (
-            <div className="mt-4 rounded-xl border border-dashed border-border p-6 text-center">
-              <p className="text-sm text-muted">
-                No players added yet. Click &quot;+ Add player&quot; to get started.
-              </p>
-            </div>
+            <EmptyState
+              icon={User}
+              title="Add your first player"
+              description='Click "+ Add player" to start building your squad roster.'
+              size="sm"
+            />
           )}
         </div>
 
@@ -626,12 +634,12 @@ export default function TeamSetupPage() {
               </div>
             </div>
 
-            <div className="mt-5 flex items-center gap-4">
+            <div className="mt-4 flex items-center gap-4">
               <button
                 type="button"
                 onClick={savePlayer}
                 disabled={!form.fullName.trim()}
-                className="rounded-xl border border-border-light bg-panel-3 px-5 py-2.5 text-sm font-medium text-foreground disabled:opacity-40"
+                className="rounded-xl border border-border bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-40"
               >
                 {editingId ? "Save changes" : "Add to squad"}
               </button>
@@ -662,7 +670,7 @@ export default function TeamSetupPage() {
               <button
                 type="button"
                 onClick={(e) => { openAddFixture(); e.currentTarget.blur(); }}
-                className="rounded-xl border border-border bg-panel-2 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-panel-3"
+                className="rounded-xl border border-border bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
               >
                 + Add fixture
               </button>
@@ -670,7 +678,7 @@ export default function TeamSetupPage() {
           </div>
 
           {showFixtureForm && (
-            <div className="mt-5 rounded-xl border border-border bg-panel-2 p-5">
+            <div className="mt-4 rounded-xl border border-border bg-panel-2 p-5">
               <h3 className="mb-4 text-sm font-semibold text-foreground-strong">
                 {editingFixtureId ? "Edit fixture" : "Add fixture"}
               </h3>
@@ -740,12 +748,12 @@ export default function TeamSetupPage() {
                   />
                 </div>
               </div>
-              <div className="mt-5 flex items-center gap-4">
+              <div className="mt-4 flex items-center gap-4">
                 <button
                   type="button"
                   onClick={(e) => { saveFixture(); e.currentTarget.blur(); }}
                   disabled={!fixtureForm.opponent.trim() || !fixtureForm.date}
-                  className="rounded-xl border border-border-light bg-panel-3 px-5 py-2.5 text-sm font-medium text-foreground disabled:opacity-40"
+                  className="rounded-xl border border-border bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-40"
                 >
                   {editingFixtureId ? "Save changes" : "Add fixture"}
                 </button>
@@ -779,20 +787,20 @@ export default function TeamSetupPage() {
                       <td className="p-3 text-muted">{fixture.date}</td>
                       <td className="p-3 font-medium text-foreground">vs {fixture.opponent}</td>
                       <td className="p-3">
-                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                          fixture.homeOrAway === "home"
-                            ? "border-success/30 bg-success/10 text-success"
-                            : "border-border bg-panel-2 text-muted"
-                        }`}>
+                        <StatusPill
+                          variant={fixture.homeOrAway === "home" ? "success" : "neutral"}
+                          size="sm"
+                          uppercase
+                        >
                           {fixture.homeOrAway}
-                        </span>
+                        </StatusPill>
                       </td>
                       <td className="p-3 text-muted">{fixture.round ?? "—"}</td>
                       <td className="p-3">
                         <button
                           type="button"
                           onClick={(e) => { toggleAvailabilityRequested(fixture.id); e.currentTarget.blur(); }}
-                          className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold transition ${
+                          className={`rounded-full border px-2 py-0.5 text-[11px] font-medium transition ${
                             fixture.availabilityRequested
                               ? "border-success/30 bg-success/10 text-success"
                               : "border-border bg-panel-2 text-muted hover:text-foreground"
@@ -840,7 +848,7 @@ export default function TeamSetupPage() {
               <button
                 type="button"
                 onClick={(e) => { setShowSessionForm(true); e.currentTarget.blur(); }}
-                className="rounded-xl border border-border bg-panel-2 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-panel-3"
+                className="rounded-xl border border-border bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
               >
                 + Add session
               </button>
@@ -848,7 +856,7 @@ export default function TeamSetupPage() {
           </div>
 
           {showSessionForm && (
-            <div className="mt-5 rounded-xl border border-border bg-panel-2 p-5">
+            <div className="mt-4 rounded-xl border border-border bg-panel-2 p-5">
               <h3 className="mb-4 text-sm font-semibold text-foreground-strong">
                 {editingSessionId ? "Edit training session" : "Add training session"}
               </h3>
@@ -915,12 +923,12 @@ export default function TeamSetupPage() {
                   />
                 </div>
               </div>
-              <div className="mt-5 flex items-center gap-4">
+              <div className="mt-4 flex items-center gap-4">
                 <button
                   type="button"
                   onClick={(e) => { saveSession(); e.currentTarget.blur(); }}
                   disabled={!sessionForm.time || (sessionForm.sessionType === "oneOff" && !sessionForm.oneOffDate)}
-                  className="rounded-xl border border-border-light bg-panel-3 px-5 py-2.5 text-sm font-medium text-foreground disabled:opacity-40"
+                  className="rounded-xl border border-border bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-40"
                 >
                   {editingSessionId ? "Save changes" : "Add session"}
                 </button>
@@ -969,7 +977,7 @@ export default function TeamSetupPage() {
                           <button
                             type="button"
                             onClick={(e) => { toggleSessionAvailabilityRequested(session.id); e.currentTarget.blur(); }}
-                            className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold transition ${
+                            className={`rounded-full border px-2 py-0.5 text-[11px] font-medium transition ${
                               session.availabilityRequested
                                 ? "border-success/30 bg-success/10 text-success"
                                 : "border-border bg-panel-2 text-muted hover:text-foreground"

@@ -1,13 +1,15 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { usePlayer } from "../PlayerContext";
 import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
 import { PLAYER_PAGE_HELP } from "../help-content";
 import { PlayerPicker } from "../PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
-import { SAVED_MATCHES_KEY, subscribeSavedMatchesChanged } from "@/app/rugby-tagging/lib/savedMatches";
+import { StatusPill } from "@/app/components/StatusPill";
+import { useMatches } from "@/app/providers/MatchesContext";
 import { buildReportRowsFromMatch } from "@/app/rugby-tagging/helpers";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { ReportRow } from "@/app/rugby-tagging/types";
@@ -51,41 +53,32 @@ function formatDate(dateStr: string): string {
 
 export default function GamesPage() {
   const { currentPlayer, ready } = usePlayer();
-
-  const matchesRaw = useSyncExternalStore(
-    subscribeSavedMatchesChanged,
-    () => localStorage.getItem(SAVED_MATCHES_KEY) ?? "[]",
-    () => "[]"
-  );
+  const { matches } = useMatches();
 
   const entries = useMemo<{ match: SavedMatchRecord; row: ReportRow }[]>(() => {
     if (!currentPlayer) return [];
-    let all: SavedMatchRecord[];
-    try { all = JSON.parse(matchesRaw); } catch { return []; }
-    return getPlayerMatches(all, currentPlayer)
+    return getPlayerMatches(matches, currentPlayer)
       .map((m) => ({ match: m, row: getPlayerRow(m, currentPlayer) }))
       .filter((p): p is { match: SavedMatchRecord; row: ReportRow } => p.row !== null);
-  }, [matchesRaw, currentPlayer]);
+  }, [matches, currentPlayer]);
 
   if (!ready) return null;
   if (!currentPlayer) return <PlayerPicker />;
 
   return (
     <div className="p-8 max-w-2xl space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold text-foreground-strong">Your Games</h1>
-            <PageHelp {...PLAYER_PAGE_HELP["/player/games"]} />
-          </div>
-          <p className="mt-1 text-sm text-muted">Every match you&apos;ve been tagged in</p>
-        </div>
-        {entries.length > 0 && (
-          <span className="rounded-full border border-border bg-panel-2 px-3 py-1 text-xs font-semibold text-muted">
-            {entries.length} {entries.length === 1 ? "game" : "games"}
-          </span>
-        )}
-      </div>
+      <PageHeader
+        title="Your Games"
+        subtitle="Every match you've been tagged in"
+        helpButton={<PageHelp {...PLAYER_PAGE_HELP["/player/games"]} />}
+        status={
+          entries.length > 0 ? (
+            <StatusPill size="md">
+              {entries.length} {entries.length === 1 ? "game" : "games"}
+            </StatusPill>
+          ) : undefined
+        }
+      />
 
       {entries.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-10 text-center">
