@@ -43,10 +43,14 @@ export function MatchesProvider({ children }: { children: React.ReactNode }) {
     };
 
     // When upsertSavedMatch/deleteSavedMatch update the cache and fire
-    // SAVED_MATCHES_CHANGED_EVENT, sync React state from the event detail — do NOT
-    // re-fetch (that would cause an infinite loop).
+    // SAVED_MATCHES_CHANGED_EVENT with a CustomEvent detail, sync React state.
+    // Plain Events (dispatched by fetchMatches after a cloud fetch) have no detail
+    // and must be ignored here — state is already set via setMatches(records) above.
     const handleSave = (e: Event) => {
-      setMatches((e as CustomEvent<SavedMatchRecord[]>).detail);
+      const detail = (e as CustomEvent<SavedMatchRecord[]>).detail;
+      if (Array.isArray(detail)) {
+        setMatches(detail);
+      }
     };
 
     document.addEventListener("visibilitychange", handleVisibility);
