@@ -12,9 +12,24 @@ type Slide = {
   title: string;
   bullets: string[];
   tip?: string;
-  imageSrc?: string;
-  imageAlt?: string;
+  icon: React.ReactNode;
 };
+
+// Dot-grid background used behind every illustration
+const IllustrationShell = ({ children }: { children: React.ReactNode }) => (
+  <div className="w-full h-full flex items-center justify-center relative" style={{ minHeight: 280 }}>
+    {/* subtle dot grid */}
+    <svg className="absolute inset-0 w-full h-full opacity-[0.07]" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+          <circle cx="1.5" cy="1.5" r="1.5" fill="currentColor" />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#dots)" />
+    </svg>
+    <div className="relative z-10">{children}</div>
+  </div>
+);
 
 const SLIDES: Slide[] = [
   {
@@ -26,8 +41,22 @@ const SLIDES: Slide[] = [
       "This walkthrough takes about 4 minutes. You can skip ahead or come back to it any time.",
     ],
     tip: "You don't have to do everything live. Many coaches tag the whole match later from the recording — Capture works the same way.",
-    imageSrc: "/walkthrough/capture/01-welcome.png",
-    imageAlt: "Capture screen overview",
+    icon: (
+      <IllustrationShell>
+        <svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* outer ring */}
+          <circle cx="80" cy="80" r="72" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4 4" className="text-border" />
+          {/* rugby ball */}
+          <ellipse cx="80" cy="80" rx="32" ry="20" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-accent" />
+          <line x1="48" y1="80" x2="112" y2="80" stroke="currentColor" strokeWidth="1.5" className="text-accent" strokeDasharray="3 3" />
+          <path d="M68 65 Q80 80 68 95" stroke="currentColor" strokeWidth="1.5" className="text-accent" fill="none" />
+          <path d="M92 65 Q80 80 92 95" stroke="currentColor" strokeWidth="1.5" className="text-accent" fill="none" />
+          {/* pulse rings */}
+          <circle cx="80" cy="80" r="48" stroke="currentColor" strokeWidth="1" opacity="0.3" className="text-accent" />
+          <circle cx="80" cy="80" r="60" stroke="currentColor" strokeWidth="1" opacity="0.15" className="text-accent" />
+        </svg>
+      </IllustrationShell>
+    ),
   },
   {
     phase: "Setup",
@@ -38,8 +67,29 @@ const SLIDES: Slide[] = [
       "You can edit these later if you forget — but it's faster to get them right up front.",
     ],
     tip: "Use a consistent format across matches. It makes browsing Saved Matches a lot easier later.",
-    imageSrc: "/walkthrough/capture/02-match-details.png",
-    imageAlt: "Match details fields",
+    icon: (
+      <IllustrationShell>
+        <svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* clipboard body */}
+          <rect x="36" y="30" width="88" height="108" rx="6" stroke="currentColor" strokeWidth="2" className="text-border" />
+          {/* clip at top */}
+          <rect x="56" y="22" width="48" height="16" rx="4" stroke="currentColor" strokeWidth="2" className="text-accent" />
+          {/* field lines */}
+          <line x1="52" y1="60" x2="108" y2="60" stroke="currentColor" strokeWidth="2" className="text-accent" strokeLinecap="round" />
+          <line x1="52" y1="60" x2="108" y2="60" stroke="currentColor" strokeWidth="2" className="text-accent" strokeLinecap="round" />
+          <rect x="52" y="58" width="56" height="3" rx="1.5" className="fill-accent" opacity="0.8" />
+          {/* placeholder rows */}
+          <rect x="52" y="80" width="40" height="2.5" rx="1.25" fill="currentColor" className="text-muted" opacity="0.5" />
+          <rect x="52" y="92" width="56" height="2.5" rx="1.25" fill="currentColor" className="text-muted" opacity="0.5" />
+          <rect x="52" y="104" width="32" height="2.5" rx="1.25" fill="currentColor" className="text-muted" opacity="0.5" />
+          {/* pencil */}
+          <g transform="translate(96, 108) rotate(-40)">
+            <rect x="-5" y="-20" width="10" height="28" rx="2" stroke="currentColor" strokeWidth="2" className="text-accent" />
+            <polygon points="0,-24 -5,-20 5,-20" fill="currentColor" className="text-accent" />
+          </g>
+        </svg>
+      </IllustrationShell>
+    ),
   },
   {
     phase: "Setup",
@@ -50,8 +100,28 @@ const SLIDES: Slide[] = [
       "The team sheet is what tells the app who's playing — voice tagging matches voices to these names.",
     ],
     tip: "Set up your full squad in Team Setup first. Then loading a team sheet is just selecting who's playing this week.",
-    imageSrc: "/walkthrough/capture/03-team-sheet.png",
-    imageAlt: "Team sheet modal",
+    icon: (
+      <IllustrationShell>
+        <svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* three player rows */}
+          {[0, 1, 2].map((i) => (
+            <g key={i} transform={`translate(0, ${i * 34})`}>
+              {/* avatar circle */}
+              <circle cx="46" cy="61" r="12" stroke="currentColor" strokeWidth="2" className={i === 0 ? "text-accent" : "text-border"} />
+              <circle cx="46" cy="57" r="4" fill="currentColor" className={i === 0 ? "text-accent" : "text-muted"} opacity={i === 0 ? 1 : 0.5} />
+              <path d="M34 69 Q46 64 58 69" stroke="currentColor" strokeWidth="1.5" fill="none" className={i === 0 ? "text-accent" : "text-muted"} opacity={i === 0 ? 1 : 0.5} />
+              {/* name bar */}
+              <rect x="68" y="55" width={i === 0 ? 52 : i === 1 ? 40 : 44} height="3" rx="1.5" fill="currentColor" className={i === 0 ? "text-accent" : "text-muted"} opacity={i === 0 ? 0.9 : 0.4} />
+              {/* position tag */}
+              <rect x="68" y="64" width="22" height="3" rx="1.5" fill="currentColor" className="text-muted" opacity="0.3" />
+            </g>
+          ))}
+          {/* jersey number badge on first row */}
+          <circle cx="46" cy="35" r="6" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-accent" />
+          <text x="46" y="39" textAnchor="middle" fontSize="7" fill="currentColor" className="text-accent" fontWeight="bold">7</text>
+        </svg>
+      </IllustrationShell>
+    ),
   },
   {
     phase: "Setup",
@@ -62,8 +132,27 @@ const SLIDES: Slide[] = [
       "You can tag a match without video too, but having it makes voice tagging and review much more powerful.",
     ],
     tip: "Most phones export rugby footage as .mp4. Files up to a few GB are fine — uploads continue in the background while you tag.",
-    imageSrc: "/walkthrough/capture/04-video-upload.png",
-    imageAlt: "Video upload area",
+    icon: (
+      <IllustrationShell>
+        <svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* video frame */}
+          <rect x="24" y="44" width="112" height="72" rx="8" stroke="currentColor" strokeWidth="2" className="text-border" />
+          {/* film strip notches */}
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <rect key={i} x={32 + i * 16} y="44" width="8" height="8" rx="1" fill="currentColor" className="text-border" opacity="0.6" />
+          ))}
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <rect key={i} x={32 + i * 16} y="108" width="8" height="8" rx="1" fill="currentColor" className="text-border" opacity="0.6" />
+          ))}
+          {/* upload arrow */}
+          <line x1="80" y1="92" x2="80" y2="68" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-accent" />
+          <polyline points="68,76 80,64 92,76" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" className="text-accent" />
+          {/* progress bar */}
+          <rect x="44" y="96" width="72" height="4" rx="2" fill="currentColor" className="text-border" opacity="0.4" />
+          <rect x="44" y="96" width="44" height="4" rx="2" className="fill-accent" />
+        </svg>
+      </IllustrationShell>
+    ),
   },
   {
     phase: "Live tagging",
@@ -74,8 +163,32 @@ const SLIDES: Slide[] = [
       "Each milestone logs at the current video timestamp, so press them as the moment happens.",
     ],
     tip: "Even if you forget one mid-match, you can still press it later from the right point in the video — the timestamp is what matters.",
-    imageSrc: "/walkthrough/capture/05-milestones.png",
-    imageAlt: "Match milestone buttons",
+    icon: (
+      <IllustrationShell>
+        <svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* timeline line */}
+          <line x1="28" y1="80" x2="132" y2="80" stroke="currentColor" strokeWidth="2" className="text-border" strokeLinecap="round" />
+          {/* milestones */}
+          {[
+            { x: 28, label: "KO", active: true },
+            { x: 66, label: "HT", active: true },
+            { x: 100, label: "KO", active: false },
+            { x: 132, label: "FT", active: false },
+          ].map(({ x, label, active }) => (
+            <g key={x}>
+              <circle cx={x} cy="80" r="8" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" className={active ? "text-accent" : "text-border"} />
+              {active && <circle cx={x} cy="80" r="3" fill="white" />}
+              <text x={x} y="100" textAnchor="middle" fontSize="8" fill="currentColor" className={active ? "text-accent" : "text-muted"} fontWeight="600">{label}</text>
+              <line x1={x} y1="68" x2={x} y2="60" stroke="currentColor" strokeWidth="1.5" strokeDasharray="2 2" className={active ? "text-accent" : "text-border"} />
+            </g>
+          ))}
+          {/* stopwatch */}
+          <circle cx="100" cy="42" r="14" stroke="currentColor" strokeWidth="1.5" className="text-border" />
+          <line x1="100" y1="42" x2="100" y2="34" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-accent" />
+          <line x1="100" y1="42" x2="106" y2="46" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-accent" />
+        </svg>
+      </IllustrationShell>
+    ),
   },
   {
     phase: "Live tagging",
@@ -86,8 +199,30 @@ const SLIDES: Slide[] = [
       "The video keeps playing while you record — you don't have to pause.",
     ],
     tip: "Use preferred names or nicknames. The app learns: if you usually call James Smith \"Smithy\", set that as a nickname in Team Setup and it'll resolve correctly every time.",
-    imageSrc: "/walkthrough/capture/06-voice-tagging.png",
-    imageAlt: "Voice tagging in action",
+    icon: (
+      <IllustrationShell>
+        <svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* microphone body */}
+          <rect x="68" y="28" width="24" height="44" rx="12" stroke="currentColor" strokeWidth="2.5" className="text-accent" />
+          {/* mic stand arc */}
+          <path d="M52 68 Q52 96 80 96 Q108 96 108 68" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" className="text-accent" />
+          <line x1="80" y1="96" x2="80" y2="116" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-accent" />
+          <line x1="64" y1="116" x2="96" y2="116" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-accent" />
+          {/* sound waves */}
+          {[1, 2, 3].map((i) => (
+            <g key={i}>
+              <path d={`M${80 - 16 - i * 10} ${50 - i * 4} Q${80 - 20 - i * 8} 50 ${80 - 16 - i * 10} ${50 + i * 4}`}
+                stroke="currentColor" strokeWidth="1.5" fill="none" className="text-accent" opacity={1 - i * 0.25} />
+              <path d={`M${80 + 16 + i * 10} ${50 - i * 4} Q${80 + 20 + i * 8} 50 ${80 + 16 + i * 10} ${50 + i * 4}`}
+                stroke="currentColor" strokeWidth="1.5" fill="none" className="text-accent" opacity={1 - i * 0.25} />
+            </g>
+          ))}
+          {/* spacebar key */}
+          <rect x="44" y="122" width="72" height="20" rx="4" stroke="currentColor" strokeWidth="1.5" className="text-border" />
+          <rect x="56" y="126" width="48" height="6" rx="2" fill="currentColor" className="text-border" opacity="0.4" />
+        </svg>
+      </IllustrationShell>
+    ),
   },
   {
     phase: "Live tagging",
@@ -98,8 +233,38 @@ const SLIDES: Slide[] = [
       "Useful when you're in a noisy environment or reviewing footage on mute.",
     ],
     tip: "Quick tags and voice tags can be mixed in the same match. Use whichever is fastest in the moment.",
-    imageSrc: "/walkthrough/capture/07-quick-tags.png",
-    imageAlt: "Quick tag buttons",
+    icon: (
+      <IllustrationShell>
+        <svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* player avatar */}
+          <circle cx="56" cy="60" r="14" stroke="currentColor" strokeWidth="2" className="text-border" />
+          <circle cx="56" cy="56" r="5" fill="currentColor" className="text-muted" opacity="0.6" />
+          <path d="M42 72 Q56 66 70 72" stroke="currentColor" strokeWidth="1.5" fill="none" className="text-muted" opacity="0.6" />
+          {/* arrow pointing right */}
+          <line x1="76" y1="60" x2="94" y2="60" stroke="currentColor" strokeWidth="2" className="text-accent" strokeLinecap="round" />
+          <polyline points="88,54 94,60 88,66" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" className="text-accent" />
+          {/* action buttons */}
+          {[
+            { y: 44, label: "Tackle", active: true },
+            { y: 64, label: "Carry", active: false },
+            { y: 84, label: "Turnover", active: false },
+          ].map(({ y, label, active }) => (
+            <g key={label}>
+              <rect x="100" y={y} width="44" height="14" rx="4"
+                fill={active ? "currentColor" : "none"}
+                stroke="currentColor" strokeWidth="1.5"
+                className={active ? "text-accent" : "text-border"} />
+              <text x="122" y={y + 10} textAnchor="middle" fontSize="7.5"
+                fill={active ? "white" : "currentColor"}
+                className={active ? "" : "text-muted"}
+                fontWeight="600">{label}</text>
+            </g>
+          ))}
+          {/* lightning bolt for quick */}
+          <polygon points="56,88 50,104 57,100 52,116 68,98 60,102" fill="currentColor" className="text-accent" opacity="0.8" />
+        </svg>
+      </IllustrationShell>
+    ),
   },
   {
     phase: "Live tagging",
@@ -110,8 +275,31 @@ const SLIDES: Slide[] = [
       "These drive your discipline stats and try-difference numbers in the report.",
     ],
     tip: "Tag penalties as they happen, not at the end. Trying to remember 12 penalties from memory after the match is brutal.",
-    imageSrc: "/walkthrough/capture/08-team-events.png",
-    imageAlt: "Team event buttons",
+    icon: (
+      <IllustrationShell>
+        <svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* scoreboard frame */}
+          <rect x="24" y="40" width="112" height="60" rx="8" stroke="currentColor" strokeWidth="2" className="text-border" />
+          {/* score numbers */}
+          <text x="60" y="82" textAnchor="middle" fontSize="28" fontWeight="700" fill="currentColor" className="text-accent">3</text>
+          <text x="80" y="82" textAnchor="middle" fontSize="20" fontWeight="400" fill="currentColor" className="text-muted">–</text>
+          <text x="100" y="82" textAnchor="middle" fontSize="28" fontWeight="700" fill="currentColor" className="text-border">1</text>
+          {/* label */}
+          <text x="80" y="56" textAnchor="middle" fontSize="8" fill="currentColor" className="text-muted" fontWeight="600" letterSpacing="1">SCORE</text>
+          {/* rugby posts below */}
+          <line x1="72" y1="116" x2="72" y2="136" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-border" />
+          <line x1="88" y1="116" x2="88" y2="136" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-border" />
+          <line x1="80" y1="114" x2="80" y2="122" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-border" />
+          <line x1="65" y1="116" x2="95" y2="116" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-border" />
+          {/* TRY tag */}
+          <rect x="28" y="108" width="28" height="12" rx="3" className="fill-accent" />
+          <text x="42" y="118" textAnchor="middle" fontSize="7" fill="white" fontWeight="700">TRY</text>
+          {/* PEN tag */}
+          <rect x="104" y="108" width="28" height="12" rx="3" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-border" />
+          <text x="118" y="118" textAnchor="middle" fontSize="7" fill="currentColor" className="text-muted" fontWeight="600">PEN</text>
+        </svg>
+      </IllustrationShell>
+    ),
   },
   {
     phase: "Set pieces & subs",
@@ -122,8 +310,30 @@ const SLIDES: Slide[] = [
       "The live success % shows up next to the section header once you've logged a few.",
     ],
     tip: "Logging lineout calls takes a few extra seconds but pays off — the report shows which calls work and which don't.",
-    imageSrc: "/walkthrough/capture/09-set-piece.png",
-    imageAlt: "Set piece logging panel",
+    icon: (
+      <IllustrationShell>
+        <svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* lineout players (two lines facing each other) */}
+          {[0, 1, 2, 3].map((i) => (
+            <g key={i}>
+              {/* left team */}
+              <circle cx="56" cy={44 + i * 22} r="9" stroke="currentColor" strokeWidth="2" className="text-accent" />
+              {/* right team */}
+              <circle cx="104" cy={44 + i * 22} r="9" stroke="currentColor" strokeWidth="2" className="text-border" />
+            </g>
+          ))}
+          {/* ball being thrown */}
+          <ellipse cx="80" cy="56" rx="8" ry="5" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent" />
+          {/* throw arc */}
+          <path d="M62 56 Q80 44 98 56" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" fill="none" className="text-accent" />
+          {/* success badge */}
+          <circle cx="80" cy="130" r="14" className="fill-accent" />
+          <polyline points="72,130 78,136 90,122" stroke="white" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          {/* gap line */}
+          <line x1="80" y1="38" x2="80" y2="122" stroke="currentColor" strokeWidth="1" strokeDasharray="2 4" className="text-border" opacity="0.5" />
+        </svg>
+      </IllustrationShell>
+    ),
   },
   {
     phase: "Set pieces & subs",
@@ -134,8 +344,34 @@ const SLIDES: Slide[] = [
       "The app logs the substitution event and updates minutes for both players.",
     ],
     tip: "Substitutions affect minutes-per-player stats. If they're wrong, you can fix them by editing the substitution event in the transcript panel.",
-    imageSrc: "/walkthrough/capture/10-bench.png",
-    imageAlt: "Bench bring-on flow",
+    icon: (
+      <IllustrationShell>
+        <svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* player going off (left, faded) */}
+          <circle cx="44" cy="60" r="14" stroke="currentColor" strokeWidth="2" className="text-border" opacity="0.5" />
+          <circle cx="44" cy="55" r="5" fill="currentColor" className="text-muted" opacity="0.4" />
+          <path d="M30 72 Q44 67 58 72" stroke="currentColor" strokeWidth="1.5" fill="none" className="text-muted" opacity="0.4" />
+          {/* arrow down-left (off) */}
+          <line x1="44" y1="80" x2="44" y2="100" stroke="currentColor" strokeWidth="2" className="text-border" opacity="0.5" strokeLinecap="round" />
+          <polyline points="36,92 44,100 52,92" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" className="text-border" opacity="0.5" />
+          {/* player coming on (right, vivid) */}
+          <circle cx="116" cy="60" r="14" stroke="currentColor" strokeWidth="2" className="text-accent" />
+          <circle cx="116" cy="55" r="5" fill="currentColor" className="text-accent" />
+          <path d="M102 72 Q116 67 130 72" stroke="currentColor" strokeWidth="1.5" fill="none" className="text-accent" />
+          {/* arrow up-right (on) */}
+          <line x1="116" y1="100" x2="116" y2="80" stroke="currentColor" strokeWidth="2" className="text-accent" strokeLinecap="round" />
+          <polyline points="108,88 116,80 124,88" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" className="text-accent" />
+          {/* swap arrows in center */}
+          <path d="M66 54 Q80 44 94 54" stroke="currentColor" strokeWidth="2" fill="none" className="text-accent" strokeLinecap="round" />
+          <polyline points="86,48 94,54 88,62" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" className="text-accent" />
+          <path d="M94 70 Q80 80 66 70" stroke="currentColor" strokeWidth="2" fill="none" className="text-border" strokeLinecap="round" opacity="0.5" />
+          <polyline points="74,76 66,70 72,62" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" className="text-border" opacity="0.5" />
+          {/* bench label */}
+          <rect x="60" y="108" width="40" height="16" rx="4" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-border" opacity="0.4" />
+          <text x="80" y="120" textAnchor="middle" fontSize="8" fill="currentColor" className="text-muted" fontWeight="600">BENCH</text>
+        </svg>
+      </IllustrationShell>
+    ),
   },
   {
     phase: "Handling uncertainty",
@@ -146,8 +382,32 @@ const SLIDES: Slide[] = [
       "Click any item to fix the player, action, or both — or delete it if it was a mis-tag.",
     ],
     tip: "Don't panic if you see a few items here mid-match. Resolve them at half time or full time — your report waits until you're done.",
-    imageSrc: "/walkthrough/capture/11-needs-review.png",
-    imageAlt: "Needs Review queue",
+    icon: (
+      <IllustrationShell>
+        <svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* queue rows */}
+          {[0, 1, 2].map((i) => (
+            <g key={i}>
+              <rect x="32" y={44 + i * 28} width="96" height="20" rx="5" fill="none" stroke="currentColor" strokeWidth="1.5" className={i === 0 ? "text-accent" : "text-border"} opacity={i === 0 ? 1 : 0.5} />
+              {/* warning dot */}
+              <circle cx="48" cy={54 + i * 28} r="5" fill={i === 0 ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5" className={i === 0 ? "text-accent" : "text-border"} opacity={i === 0 ? 1 : 0.5} />
+              {i === 0 && <text x="48" y="58" textAnchor="middle" fontSize="7" fill="white" fontWeight="800">!</text>}
+              {/* text placeholder */}
+              <rect x="60" y={50 + i * 28} width={i === 0 ? 44 : i === 1 ? 36 : 40} height="3" rx="1.5" fill="currentColor" className={i === 0 ? "text-accent" : "text-muted"} opacity={i === 0 ? 0.8 : 0.35} />
+              <rect x="60" y={56 + i * 28} width="24" height="2.5" rx="1.25" fill="currentColor" className="text-muted" opacity="0.25" />
+            </g>
+          ))}
+          {/* edit icon on first row */}
+          <g transform="translate(114, 54)">
+            <path d="M-4 4 L4 -4 L8 0 L0 8 Z" stroke="currentColor" strokeWidth="1.5" className="text-accent" fill="none" />
+            <line x1="-4" y1="4" x2="-8" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="text-accent" />
+          </g>
+          {/* badge count */}
+          <circle cx="128" cy="40" r="12" className="fill-accent" />
+          <text x="128" y="44" textAnchor="middle" fontSize="10" fill="white" fontWeight="700">3</text>
+        </svg>
+      </IllustrationShell>
+    ),
   },
   {
     phase: "Handling uncertainty",
@@ -158,8 +418,25 @@ const SLIDES: Slide[] = [
       "Double tackles work here too — pick a second player if it was a combined hit.",
     ],
     tip: "The more you use it, the better it gets. The app remembers your patterns and asks less often.",
-    imageSrc: "/walkthrough/capture/12-pending-resolution.png",
-    imageAlt: "Pending Resolution prompt",
+    icon: (
+      <IllustrationShell>
+        <svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* question bubble */}
+          <rect x="32" y="28" width="96" height="52" rx="10" stroke="currentColor" strokeWidth="2" className="text-border" />
+          <path d="M60 80 L56 92 L72 80" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" className="text-border" />
+          <text x="80" y="60" textAnchor="middle" fontSize="22" fontWeight="700" fill="currentColor" className="text-accent">?</text>
+          {/* two choice buttons */}
+          <rect x="28" y="100" width="44" height="24" rx="6" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-border" />
+          <text x="50" y="116" textAnchor="middle" fontSize="8" fill="currentColor" className="text-muted" fontWeight="600">Smith</text>
+          <rect x="88" y="100" width="44" height="24" rx="6" className="fill-accent" />
+          <text x="110" y="116" textAnchor="middle" fontSize="8" fill="white" fontWeight="700">Jones</text>
+          {/* checkmark on chosen */}
+          <polyline points="100,112 106,118 120,104" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          {/* arrow from bubble to buttons */}
+          <line x1="80" y1="80" x2="80" y2="98" stroke="currentColor" strokeWidth="1.5" strokeDasharray="2 2" className="text-border" />
+        </svg>
+      </IllustrationShell>
+    ),
   },
   {
     phase: "Handling uncertainty",
@@ -170,8 +447,32 @@ const SLIDES: Slide[] = [
       "You can reset correction memory in Coach Settings if it ever picks up a wrong pattern.",
     ],
     tip: "First match takes the most corrections. By match three, voice tagging usually feels effortless.",
-    imageSrc: "/walkthrough/capture/13-correction-memory.png",
-    imageAlt: "Correction memory in action",
+    icon: (
+      <IllustrationShell>
+        <svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* cycle arrows (learn loop) */}
+          <path d="M80 36 A44 44 0 1 1 36 80" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" className="text-accent" />
+          <polyline points="36,64 36,80 52,80" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" className="text-accent" />
+          {/* match count indicators */}
+          {[1, 2, 3].map((m) => {
+            const angle = (m - 1) * 120 - 90;
+            const rad = (angle * Math.PI) / 180;
+            const cx = 80 + 44 * Math.cos(rad);
+            const cy = 80 + 44 * Math.sin(rad);
+            return (
+              <circle key={m} cx={cx} cy={cy} r="10"
+                fill={m <= 2 ? "currentColor" : "none"}
+                stroke="currentColor" strokeWidth="2"
+                className={m <= 2 ? "text-accent" : "text-border"} />
+            );
+          })}
+          {/* sparkles inside */}
+          <text x="80" y="84" textAnchor="middle" fontSize="18" className="text-accent" fill="currentColor">✦</text>
+          {/* match labels */}
+          <text x="80" y="136" textAnchor="middle" fontSize="8" fill="currentColor" className="text-muted" fontWeight="500">learns with every match</text>
+        </svg>
+      </IllustrationShell>
+    ),
   },
   {
     phase: "After the match",
@@ -182,8 +483,23 @@ const SLIDES: Slide[] = [
       "From there you can jump straight into Insights, Review, or just close and come back later.",
     ],
     tip: "The match auto-saves continuously while you tag. Submitting just marks it as complete — nothing is ever lost if your laptop dies mid-match.",
-    imageSrc: "/walkthrough/capture/14-submit.png",
-    imageAlt: "Final score and submit",
+    icon: (
+      <IllustrationShell>
+        <svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* score row */}
+          <rect x="28" y="40" width="104" height="36" rx="8" stroke="currentColor" strokeWidth="1.5" className="text-border" />
+          <text x="60" y="64" textAnchor="middle" fontSize="22" fontWeight="700" fill="currentColor" className="text-accent">24</text>
+          <text x="80" y="64" textAnchor="middle" fontSize="16" fill="currentColor" className="text-muted">–</text>
+          <text x="100" y="64" textAnchor="middle" fontSize="22" fontWeight="700" fill="currentColor" className="text-border">18</text>
+          {/* submit button */}
+          <rect x="40" y="92" width="80" height="32" rx="8" className="fill-accent" />
+          <text x="80" y="112" textAnchor="middle" fontSize="11" fill="white" fontWeight="700">Submit Match</text>
+          {/* big checkmark underneath */}
+          <circle cx="80" cy="142" r="10" className="fill-accent" opacity="0.2" />
+          <polyline points="73,142 78,148 90,134" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" className="text-accent" />
+        </svg>
+      </IllustrationShell>
+    ),
   },
   {
     phase: "After the match",
@@ -194,8 +510,33 @@ const SLIDES: Slide[] = [
       "Saved Matches — every match you've tagged, ready to reopen, compare, or share.",
     ],
     tip: "Players logged into your team see their own stats, grades, and any clips you share with them. Worth setting up — it changes how players engage with feedback.",
-    imageSrc: "/walkthrough/capture/15-whats-next.png",
-    imageAlt: "Next steps after submitting",
+    icon: (
+      <IllustrationShell>
+        <svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* three destination cards */}
+          {/* Insights */}
+          <rect x="20" y="52" width="36" height="56" rx="6" stroke="currentColor" strokeWidth="1.5" className="text-accent" />
+          <rect x="28" y="84" width="6" height="16" rx="2" className="fill-accent" opacity="0.8" />
+          <rect x="36" y="76" width="6" height="24" rx="2" className="fill-accent" />
+          <rect x="44" y="80" width="6" height="20" rx="2" className="fill-accent" opacity="0.6" />
+          <text x="38" y="68" textAnchor="middle" fontSize="6.5" fill="currentColor" className="text-accent" fontWeight="600">INSIGHTS</text>
+          {/* Review */}
+          <rect x="62" y="40" width="36" height="56" rx="6" stroke="currentColor" strokeWidth="1.5" className="text-border" />
+          <polygon points="80,56 80,84 96,70" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" className="text-border" />
+          <text x="80" y="108" textAnchor="middle" fontSize="6.5" fill="currentColor" className="text-muted" fontWeight="600">REVIEW</text>
+          {/* Saved */}
+          <rect x="104" y="52" width="36" height="56" rx="6" stroke="currentColor" strokeWidth="1.5" className="text-border" />
+          <rect x="112" y="64" width="20" height="3" rx="1.5" fill="currentColor" className="text-muted" opacity="0.5" />
+          <rect x="112" y="72" width="20" height="3" rx="1.5" fill="currentColor" className="text-muted" opacity="0.5" />
+          <rect x="112" y="80" width="14" height="3" rx="1.5" fill="currentColor" className="text-muted" opacity="0.5" />
+          <text x="122" y="118" textAnchor="middle" fontSize="6.5" fill="currentColor" className="text-muted" fontWeight="600">SAVED</text>
+          {/* arrow from left edge */}
+          <line x1="20" y1="130" x2="140" y2="130" stroke="currentColor" strokeWidth="1.5" className="text-border" opacity="0.3" strokeDasharray="3 3" />
+          <circle cx="20" cy="130" r="4" className="fill-accent" />
+          <polyline points="132,124 140,130 132,136" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" className="text-accent" />
+        </svg>
+      </IllustrationShell>
+    ),
   },
 ];
 
@@ -353,19 +694,7 @@ export default function CaptureWalkthroughModal({ open, onClose }: Props) {
           <div className="grid md:grid-cols-2 gap-6 p-6">
             {/* Visual */}
             <div className="bg-panel-2 border border-border rounded-xl overflow-hidden flex items-center justify-center min-h-[280px] md:min-h-[360px]">
-              {slide.imageSrc ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={slide.imageSrc}
-                  alt={slide.imageAlt ?? ""}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = "none";
-                  }}
-                />
-              ) : (
-                <div className="text-muted-2 text-sm">Screenshot coming soon</div>
-              )}
+              {slide.icon}
             </div>
 
             {/* Text */}

@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 11 May 2026 — Coach player admin improvements: position field removed from player join form, invalid positions auto-cleared on edit, "Map to existing" option on pending approvals. Previous: Capture Walkthrough Modal (15-slide onboarding); Saved Matches compact row redesign.
+**Last updated:** 11 May 2026 — Walkthrough illustrations: replaced raw screenshots in CaptureWalkthroughModal with per-slide SVG illustrations (accent-coloured, theme-aware). Previous: Coach player admin improvements; Capture Walkthrough Modal (15-slide onboarding); Saved Matches compact row redesign.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -1578,7 +1578,7 @@ Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Str
 - ✅ `app/components/CaptureWalkthroughModal.tsx` — 15-slide illustrated walkthrough for new coaches; auto-opens on first visit to `/coach/capture` (keyed off `fynlwhistle-capture-walkthrough-progress` in localStorage)
 - ✅ Progress persists across sessions so returning coaches don't see it again; dismissible at any point
 - ✅ Re-openable via a "Walkthrough" button added to the Capture page header (`secondaryAction`)
-- ✅ Slide images stored in `public/walkthrough/capture/` (01-welcome.png … 15-whats-next.png)
+- ✅ Slide images stored in `public/walkthrough/capture/` (01-welcome.png … 15-whats-next.png) — **replaced (May 2026)** with inline SVG illustrations; screenshots no longer used
 
 ---
 
