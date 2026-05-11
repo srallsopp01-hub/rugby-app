@@ -3154,9 +3154,13 @@ Ellie missed tackle"
                       setMatchSubmitError("");
                       setStatusMessage("Video loaded");
                       pendingVideoFileRef.current = file;
-                      if (currentMatchId) {
-                        void triggerVideoUpload(file, currentMatchId);
+                      let matchIdForUpload = currentMatchId;
+                      if (!matchIdForUpload) {
+                        matchIdForUpload = createMatchId();
+                        persistCurrentMatchId(matchIdForUpload);
+                        setCurrentMatchId(matchIdForUpload);
                       }
+                      void triggerVideoUpload(file, matchIdForUpload);
                     }
                   }}
                   isUploading={videoUploadStatus === "uploading"}
