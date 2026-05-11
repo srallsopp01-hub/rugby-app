@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSyncExternalStore, useEffect, useState, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
+import { FynlMark, FynlLockup } from "@/app/components/FynlLogo";
 import { createClient } from "@/lib/supabase/client";
 import {
   ACTIVE_TEAM_ID_KEY,
@@ -326,24 +327,13 @@ export default function CoachSidebar({
       {/* Logo / product name */}
       <div
         className={`pt-5 pb-4 border-b border-border flex items-center ${
-          collapsed ? "justify-center px-0" : "gap-2.5 px-5"
+          collapsed ? "justify-center px-0" : "px-4"
         }`}
       >
-        <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-foreground-strong shrink-0">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <ellipse cx="7" cy="7" rx="5.5" ry="3.5" stroke="#0b0c0f" strokeWidth="1.5"/>
-            <path d="M1.5 7h11M7 1.5c-1.5 1.5-2 3.5-2 5.5s.5 4 2 5.5" stroke="#0b0c0f" strokeWidth="1.25" strokeLinecap="round"/>
-          </svg>
-        </div>
-        {!collapsed && (
-          <div>
-            <span className="text-xs font-semibold tracking-tight text-foreground-strong leading-none block">
-              FYNL Whistle
-            </span>
-            <span className="text-[10px] text-muted-2 leading-none mt-0.5 block">
-              Coach platform
-            </span>
-          </div>
+        {collapsed ? (
+          <FynlMark size={28} />
+        ) : (
+          <FynlLockup size={28} />
         )}
       </div>
 

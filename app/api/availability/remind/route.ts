@@ -82,7 +82,7 @@ export async function POST(req: Request) {
           <p>Hey ${name}, your coach needs to know if you can make it to:</p>
           <p style="font-size:18px;font-weight:600;margin:16px 0">vs ${fixture.opponent} &mdash; ${fixtureDate}</p>
           <p>Take 5 seconds to let them know:</p>
-          <a href="${appUrl}/player/availability" style="display:inline-block;margin:16px 0;padding:12px 24px;background:#ed6a1f;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
+          <a href="${appUrl}/player/availability" style="display:inline-block;margin:16px 0;padding:12px 24px;background:#ff5a1f;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
             Update my availability
           </a>
           <p style="color:#888;font-size:12px">You&apos;re receiving this because you&apos;re part of a FYNL Whistle team.</p>

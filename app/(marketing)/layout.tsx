@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
 import LoginDropdown from "./LoginDropdown";
+import { FynlLockup } from "@/app/components/FynlLogo";
 
 export default function MarketingLayout({
   children,
@@ -11,30 +12,8 @@ export default function MarketingLayout({
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-6 px-5 py-4 sm:px-8 lg:px-12">
-          <Link href="/" className="group flex items-center gap-3">
-            <div className="grid h-9 w-9 place-items-center rounded-lg bg-foreground-strong text-background transition-opacity group-hover:opacity-90">
-              <svg width="18" height="18" viewBox="0 0 14 14" fill="none">
-                <ellipse
-                  cx="7"
-                  cy="7"
-                  rx="5.5"
-                  ry="3.5"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                />
-                <path
-                  d="M1.5 7h11M7 1.5c-1.5 1.5-2 3.5-2 5.5s.5 4 2 5.5"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeWidth="1.25"
-                />
-              </svg>
-            </div>
-            <div>
-              <div className="text-base font-black uppercase text-foreground-strong">
-                FYNL Whistle
-              </div>
-            </div>
+          <Link href="/" className="transition-opacity hover:opacity-80">
+            <FynlLockup size={36} />
           </Link>
 
           <nav className="flex items-center gap-5 sm:gap-7">
@@ -65,10 +44,8 @@ export default function MarketingLayout({
       <footer className="border-t border-border bg-panel py-10">
         <div className="mx-auto flex max-w-[1400px] flex-col gap-6 px-5 text-xs text-muted-2 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-12">
           <div>
-            <div className="text-sm font-black uppercase text-foreground-strong">
-              FYNL Whistle
-            </div>
-            <p className="mt-2 max-w-md leading-5">
+            <FynlLockup size={28} />
+            <p className="mt-3 max-w-md leading-5">
               Match analysis for coaches who tag, review, grade, and brief the
               team from one desktop-first rugby workspace.
             </p>
