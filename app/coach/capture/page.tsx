@@ -901,21 +901,22 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
 
   useEffect(() => {
     if (!videoStoragePath || videoLoaded) return;
-    const video = videoRef.current;
-    if (!video || video.src?.startsWith("blob:")) return;
+    // Don't overwrite a freshly-uploaded local file (blob: URL) with the cloud URL.
+    if (videoSrc?.startsWith("blob:")) return;
 
     let cancelled = false;
     setStatusMessage("Loading match video from cloud...");
 
     void getMatchVideoSignedUrlWithResult(videoStoragePath, SIGNED_URL_EXPIRY_SECONDS).then(({ url, error }) => {
-      if (cancelled || !url || !videoRef.current) {
+      if (cancelled || !url) {
         if (!url) setStatusMessage(error ? `Could not load video: ${error}` : "Could not load match video from cloud");
         return;
       }
-
-      videoRef.current.src = url;
-      videoRef.current.playbackRate = playbackRate;
-      videoRef.current.load();
+      // setVideoSrc triggers React to render <VideoPlayer src={url}>, which
+      // mounts the inner <video>. The browser auto-loads from src, so no
+      // manual videoRef manipulation is needed here. playbackRate is
+      // reapplied by VideoPlayer.onLoadedData and by the dedicated
+      // rate-change effect.
       setVideoSrc(url);
       setStatusMessage("Cloud video loaded");
     });
@@ -923,7 +924,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     return () => {
       cancelled = true;
     };
-  }, [playbackRate, videoLoaded, videoStoragePath]);
+  }, [videoLoaded, videoSrc, videoStoragePath]);
 
   useEffect(() => {
     if (playersReady) {

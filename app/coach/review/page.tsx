@@ -28,6 +28,7 @@ import {
   type SetPieceTypeFilter,
 } from "@/app/rugby-tagging/lib/setPieceReview";
 import { getMatchVideoSignedUrl, refreshVideoSignedUrl, SIGNED_URL_EXPIRY_SECONDS } from "@/lib/matchVideoCloud";
+import { useMatches } from "@/app/providers/MatchesContext";
 import type { ClipAnnotation, EventItem, RosterRow, VideoAnnotation } from "@/app/rugby-tagging/types";
 import { VideoPlayer } from "@/app/components/VideoPlayer";
 import { EmptyState } from "@/app/components/EmptyState";
@@ -194,6 +195,7 @@ function buildEventSummary(event: EventItem) {
 }
 
 export default function ReviewPage() {
+  const { isLoading: isMatchesLoading } = useMatches();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -484,9 +486,12 @@ export default function ReviewPage() {
     if (draftAnnotation) drawAnnotation(ctx, draftAnnotation, width, height);
   }, [clips, currentTime, draftAnnotation, drawAnnotation]);
 
-  // Load video from cloud if no local session video is available
+  // Load video from cloud if no local session video is available.
+  // Re-runs once isMatchesLoading flips false so we don't race the
+  // MatchesProvider Supabase fetch on a hard-reload of /coach/review.
   useEffect(() => {
     if (videoSrc) return;
+    if (isMatchesLoading) return;
     const matchId = getCurrentMatchId();
     if (!matchId) return;
     const match = getSavedMatchById(matchId);
@@ -501,8 +506,7 @@ export default function ReviewPage() {
         setVideoCloudStatus("unavailable");
       }
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isMatchesLoading, videoSrc]);
 
   // Proactively refresh the signed URL 5 minutes before it expires (at 55 min)
   // so coaches reviewing long matches never hit a 403.
