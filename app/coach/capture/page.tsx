@@ -142,6 +142,7 @@ export default function RugbyVoiceTaggingMVP() {
   const transcriptListRef = useRef<HTMLDivElement | null>(null);
   const pageShellRef = useRef<HTMLDivElement | null>(null);
   const spacebarHeldRef = useRef(false);
+  const preSlomoRateRef = useRef<number>(1);
   const pendingVideoFileRef = useRef<File | null>(null);
   const videoUploadPromiseRef = useRef<Promise<VideoUploadResult> | null>(null);
   // Tracks which match (or "" for in-progress localStorage session) the
@@ -201,6 +202,7 @@ export default function RugbyVoiceTaggingMVP() {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [videoDuration, setVideoDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [slomoActive, setSlomoActive] = useState(false);
   const [showReportBuilder, setShowReportBuilder] = useState(false);
   const [showPlayerDrilldownModal, setShowPlayerDrilldownModal] = useState(false);
   const [drilldownPlayerName, setDrilldownPlayerName] = useState("");
@@ -1699,6 +1701,23 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     setStatusMessage(
       seconds < 0 ? "Skipped back 5 seconds" : "Skipped forward 5 seconds"
     );
+  };
+
+  const handleSlomoStart = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    preSlomoRateRef.current = video.playbackRate;
+    video.playbackRate = 0.5;
+    setPlaybackRate(0.5);
+    setSlomoActive(true);
+  };
+
+  const handleSlomoEnd = () => {
+    const video = videoRef.current;
+    if (!video || !slomoActive) return;
+    video.playbackRate = preSlomoRateRef.current;
+    setPlaybackRate(preSlomoRateRef.current);
+    setSlomoActive(false);
   };
 
   const changePlaybackRate = (nextRate: number) => {
@@ -3252,6 +3271,22 @@ Ellie missed tackle"
                       {isVideoPlaying ? "⏸" : "▶"}
                     </button>
 
+                    <button
+                      type="button"
+                      onPointerDown={(e) => { handleSlomoStart(); e.currentTarget.blur(); }}
+                      onPointerUp={handleSlomoEnd}
+                      onPointerLeave={handleSlomoEnd}
+                      disabled={!videoLoaded}
+                      className={`select-none rounded-xl border px-4 py-2.5 text-sm font-medium disabled:opacity-50 ${
+                        slomoActive
+                          ? "border-border-light bg-panel-3 text-foreground"
+                          : "border-border text-foreground"
+                      }`}
+                      aria-label="Hold for slow motion"
+                    >
+                      🐢
+                    </button>
+
                     <div className="h-6 w-px bg-border" />
 
                     <button
@@ -3520,7 +3555,7 @@ Ellie missed tackle"
                 />
 
                 <TeamEventsPanel
-                  squad={squadProfile?.players ?? []}
+                  rosterRows={rosterRows}
                   onAddPenaltyFor={() => addTeamEvent("penalty for")}
                   onAddPenaltyConceded={(name) => addTeamEvent("penalty conceded", name)}
                   onAddTryScored={(name) => addTeamEvent("try scored", name)}
