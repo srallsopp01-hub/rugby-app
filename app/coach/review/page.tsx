@@ -490,7 +490,10 @@ export default function ReviewPage() {
   // Re-runs once isMatchesLoading flips false so we don't race the
   // MatchesProvider Supabase fetch on a hard-reload of /coach/review.
   useEffect(() => {
-    if (videoSrc) return;
+    // A stale blob: URL may persist in the matchVideoSession module from a
+    // prior /coach/capture session — don't treat it as "already loaded" here;
+    // review's canonical source is the cloud signed URL.
+    if (videoSrc && !videoSrc.startsWith("blob:")) return;
     if (isMatchesLoading) return;
     const matchId = getCurrentMatchId();
     if (!matchId) return;
