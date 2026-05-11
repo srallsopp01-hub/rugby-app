@@ -111,6 +111,34 @@ export async function upsertCloudTeam(
 
     const resolvedTeamId = teamId ?? ctx.teamId;
     const supabase = createClient();
+
+    // Safety net: never overwrite a populated cloud row with an empty payload.
+    // A blank team from onboarding initialisation would otherwise destroy a
+    // real team if a merge bug lets it reach this far.
+    if (!isTeamPopulated(team)) {
+      const { data: existing } = await supabase
+        .from("teams")
+        .select("name, players, fixtures, training_sessions, kpi_targets, action_samples")
+        .eq("id", resolvedTeamId)
+        .maybeSingle();
+
+      if (existing) {
+        const existingPopulated =
+          (existing.name?.trim().length ?? 0) > 0 ||
+          (existing.players?.length ?? 0) > 0 ||
+          (existing.fixtures?.length ?? 0) > 0 ||
+          (existing.training_sessions?.length ?? 0) > 0 ||
+          (existing.kpi_targets?.length ?? 0) > 0 ||
+          (existing.action_samples?.length ?? 0) > 0;
+
+        if (existingPopulated) {
+          const msg = `Refusing to overwrite populated team ${resolvedTeamId} with empty payload`;
+          console.error(msg, { team });
+          return { ok: false, error: msg };
+        }
+      }
+    }
+
     const payload = teamToUpsertPayload(team, resolvedTeamId);
 
     const { error } = await supabase
@@ -166,6 +194,17 @@ export async function syncLocalTeamToCloud(teamId?: string): Promise<{
   return { ok: true };
 }
 
+function isTeamPopulated(t: Team): boolean {
+  return (
+    t.teamName.trim().length > 0 ||
+    t.players.length > 0 ||
+    (t.fixtures?.length ?? 0) > 0 ||
+    (t.trainingSessions?.length ?? 0) > 0 ||
+    (t.kpiTargets?.length ?? 0) > 0 ||
+    (t.actionSamples?.length ?? 0) > 0
+  );
+}
+
 export function mergeTeams(
   cloud: Team | null,
   local: Team | null
@@ -173,6 +212,14 @@ export function mergeTeams(
   if (!cloud && !local) return null;
   if (!cloud) return local;
   if (!local) return cloud;
+
+  // A freshly-initialised blank team always has a "now" timestamp, so the raw
+  // timestamp comparison below would let it overwrite a real team. Anything
+  // populated beats anything empty regardless of when it was last touched.
+  const cloudPop = isTeamPopulated(cloud);
+  const localPop = isTeamPopulated(local);
+  if (cloudPop && !localPop) return cloud;
+  if (localPop && !cloudPop) return local;
 
   const cloudTime = new Date(cloud.updatedAt).getTime();
   const localTime = new Date(local.updatedAt).getTime();

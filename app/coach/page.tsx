@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { shouldStartCoachOnboarding } from "@/app/rugby-tagging/lib/onboarding";
+import { markOnboardingComplete, shouldStartCoachOnboarding } from "@/app/rugby-tagging/lib/onboarding";
+import { fetchCloudTeam } from "@/lib/teamCloud";
 import {
   SAVED_MATCHES_KEY,
   type SavedMatchRecord,
@@ -360,7 +361,33 @@ export default function CoachDashboardPage() {
   }, [checkoutSuccess]);
 
   useEffect(() => {
-    if (shouldStartCoachOnboarding()) router.replace("/coach/onboarding");
+    if (!shouldStartCoachOnboarding()) return;
+
+    // Local says we need onboarding, but the cloud may still have the team.
+    // Defer the redirect until we've confirmed the cloud is also empty — this
+    // stops the wizard from mounting over a populated cloud team and wiping it.
+    let cancelled = false;
+    void fetchCloudTeam().then(({ team }) => {
+      if (cancelled) return;
+      const cloudHasTeam =
+        !!team &&
+        (team.teamName.trim().length > 0 ||
+          team.players.length > 0 ||
+          (team.fixtures?.length ?? 0) > 0 ||
+          (team.trainingSessions?.length ?? 0) > 0 ||
+          (team.kpiTargets?.length ?? 0) > 0 ||
+          (team.actionSamples?.length ?? 0) > 0);
+
+      if (cloudHasTeam) {
+        markOnboardingComplete();
+        return;
+      }
+      router.replace("/coach/onboarding");
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   const [notifyRequestCount, setNotifyRequestCount] = useState(0);
