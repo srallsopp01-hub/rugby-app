@@ -3133,35 +3133,35 @@ Ellie missed tackle"
                 </label>
                 <VideoDropzone
                   onFileSelected={(file) => {
-                    if (videoRef.current) {
-                      if (videoRef.current.src?.startsWith("blob:")) {
-                        URL.revokeObjectURL(videoRef.current.src);
-                      }
-                      const nextVideoSrc = setMatchVideoFile(file);
-                      videoRef.current.src = nextVideoSrc;
-                      setVideoSrc(nextVideoSrc);
-                      sessionStorage.setItem("rugby-tagging-video-src", nextVideoSrc);
-                      videoRef.current.playbackRate = 1;
-                      setPlaybackRate(1);
-                      setCurrentTime(0);
-                      setVideoLoaded(true);
-                      setIsVideoPlaying(false);
-                      setVideoDuration(0);
-                      setVideoUploadStatus("idle");
-                      setVideoUploadPercent(0);
-                      setVideoUploadError("");
-                      setMatchSubmitStatus("idle");
-                      setMatchSubmitError("");
-                      setStatusMessage("Video loaded");
-                      pendingVideoFileRef.current = file;
-                      let matchIdForUpload = currentMatchId;
-                      if (!matchIdForUpload) {
-                        matchIdForUpload = createMatchId();
-                        persistCurrentMatchId(matchIdForUpload);
-                        setCurrentMatchId(matchIdForUpload);
-                      }
-                      void triggerVideoUpload(file, matchIdForUpload);
+                    if (videoRef.current?.src?.startsWith("blob:")) {
+                      URL.revokeObjectURL(videoRef.current.src);
                     }
+                    const nextVideoSrc = setMatchVideoFile(file);
+                    if (videoRef.current) {
+                      videoRef.current.src = nextVideoSrc;
+                      videoRef.current.playbackRate = 1;
+                    }
+                    setVideoSrc(nextVideoSrc);
+                    sessionStorage.setItem("rugby-tagging-video-src", nextVideoSrc);
+                    setPlaybackRate(1);
+                    setCurrentTime(0);
+                    setVideoLoaded(true);
+                    setIsVideoPlaying(false);
+                    setVideoDuration(0);
+                    setVideoUploadStatus("idle");
+                    setVideoUploadPercent(0);
+                    setVideoUploadError("");
+                    setMatchSubmitStatus("idle");
+                    setMatchSubmitError("");
+                    setStatusMessage("Video loaded");
+                    pendingVideoFileRef.current = file;
+                    let matchIdForUpload = currentMatchId;
+                    if (!matchIdForUpload) {
+                      matchIdForUpload = createMatchId();
+                      persistCurrentMatchId(matchIdForUpload);
+                      setCurrentMatchId(matchIdForUpload);
+                    }
+                    void triggerVideoUpload(file, matchIdForUpload);
                   }}
                   isUploading={videoUploadStatus === "uploading"}
                   uploadProgress={videoUploadPercent}
