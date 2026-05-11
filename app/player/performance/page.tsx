@@ -20,7 +20,7 @@ import { usePlayer } from "../PlayerContext";
 import { PlayerPicker } from "../PlayerPicker";
 import { GradeBadge } from "@/app/components/GradeBadge";
 import { useMatches } from "@/app/providers/MatchesContext";
-import { buildReportRowsFromMatch } from "@/app/rugby-tagging/helpers";
+import { buildReportRowsFromMatch, formatMatchDate } from "@/app/rugby-tagging/helpers";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 import type { Grade, ReportRow } from "@/app/rugby-tagging/types";
 import type { SquadPlayer } from "@/app/rugby-tagging/lib/team";
@@ -319,7 +319,7 @@ export default function PerformancePage() {
               <div className="flex items-center justify-between px-4 py-3">
                 <div>
                   <p className="text-xs text-muted">Best tackle accuracy</p>
-                  <p className="text-xs text-muted-2 mt-0.5">vs {matchLabel(bestTacklePctEntry.match)}{bestTacklePctEntry.match.matchDate ? ` · ${bestTacklePctEntry.match.matchDate}` : ""}</p>
+                  <p className="text-xs text-muted-2 mt-0.5">vs {matchLabel(bestTacklePctEntry.match)}{bestTacklePctEntry.match.matchDate ? ` · ${formatMatchDate(bestTacklePctEntry.match.matchDate)}` : ""}</p>
                 </div>
                 <Link href={`/player/games/${bestTacklePctEntry.match.id}`} className="text-lg font-bold text-[#7ea37e] hover:text-[#7ea37e]/80 transition-colors tabular-nums">
                   {bestTacklePctEntry.row.tacklePct.toFixed(0)}%
@@ -330,7 +330,7 @@ export default function PerformancePage() {
               <div className="flex items-center justify-between px-4 py-3">
                 <div>
                   <p className="text-xs text-muted">Most carries</p>
-                  <p className="text-xs text-muted-2 mt-0.5">vs {matchLabel(mostCarriesEntry.match)}{mostCarriesEntry.match.matchDate ? ` · ${mostCarriesEntry.match.matchDate}` : ""}</p>
+                  <p className="text-xs text-muted-2 mt-0.5">vs {matchLabel(mostCarriesEntry.match)}{mostCarriesEntry.match.matchDate ? ` · ${formatMatchDate(mostCarriesEntry.match.matchDate)}` : ""}</p>
                 </div>
                 <Link href={`/player/games/${mostCarriesEntry.match.id}`} className="text-lg font-bold text-[#b79a63] hover:text-[#b79a63]/80 transition-colors tabular-nums">
                   {mostCarriesEntry.row.carries}
@@ -341,7 +341,7 @@ export default function PerformancePage() {
               <div className="flex items-center justify-between px-4 py-3">
                 <div>
                   <p className="text-xs text-muted">Most involvements</p>
-                  <p className="text-xs text-muted-2 mt-0.5">vs {matchLabel(mostInvEntry.match)}{mostInvEntry.match.matchDate ? ` · ${mostInvEntry.match.matchDate}` : ""}</p>
+                  <p className="text-xs text-muted-2 mt-0.5">vs {matchLabel(mostInvEntry.match)}{mostInvEntry.match.matchDate ? ` · ${formatMatchDate(mostInvEntry.match.matchDate)}` : ""}</p>
                 </div>
                 <Link href={`/player/games/${mostInvEntry.match.id}`} className="text-lg font-bold text-foreground-strong hover:text-foreground transition-colors tabular-nums">
                   {mostInvEntry.row.involvements}

@@ -8,7 +8,7 @@ import { COACH_PAGE_HELP } from "../help-content";
 import GameReviewTimelinePanel from "@/app/rugby-tagging/components/GameReviewTimelinePanel";
 import CoachReviewPanel from "@/app/rugby-tagging/components/CoachReviewPanel";
 import TeamSnapshotPanel from "@/app/rugby-tagging/components/TeamSnapshotPanel";
-import { getMatchVideoUrl } from "@/app/rugby-tagging/lib/matchVideoSession";
+import { useMatchVideoSession } from "@/app/providers/MatchVideoSessionContext";
 import { buildMatchConfidenceSummary } from "@/app/rugby-tagging/lib/matchConfidence";
 import { DEFAULT_ROSTER_ROWS, STORAGE_KEY } from "@/app/rugby-tagging/constants";
 import { ACTIVE_TEAM_ID_KEY } from "@/lib/teamContext";
@@ -19,7 +19,7 @@ function getScopedStorageKey(): string {
   catch { return STORAGE_KEY; }
 }
 import { formatTime, hydrateRosterRows } from "@/app/rugby-tagging/helpers";
-import { getCurrentMatchId, getSavedMatchById, upsertSavedMatch } from "@/app/rugby-tagging/lib/savedMatches";
+import { getCurrentMatchId, upsertSavedMatch } from "@/app/rugby-tagging/lib/savedMatches";
 import { getTeam } from "@/app/rugby-tagging/lib/team";
 import {
   buildSetPieceReviewMoments,
@@ -109,18 +109,6 @@ function loadSavedReviewSession(): SavedSession {
   if (typeof window === "undefined") return {};
 
   try {
-    const matchId = getCurrentMatchId();
-    const savedMatch = matchId ? getSavedMatchById(matchId) : null;
-    if (savedMatch) {
-      return {
-        ...savedMatch,
-        events: Array.isArray(savedMatch.events)
-          ? savedMatch.events.filter((event) => !event.isPending)
-          : [],
-        clips: safeClips(savedMatch.clips),
-      };
-    }
-
     const raw = localStorage.getItem(getScopedStorageKey());
     if (!raw) return {};
     const saved: SavedSession = JSON.parse(raw);
@@ -135,11 +123,9 @@ function loadSavedReviewSession(): SavedSession {
 
 function loadSavedReviewVideoSrc() {
   if (typeof window === "undefined") return "";
-
   try {
-    return getMatchVideoUrl() || sessionStorage.getItem("rugby-tagging-video-src") || "";
-  } catch (error) {
-    console.error("Failed to load video source", error);
+    return sessionStorage.getItem("rugby-tagging-video-src") || "";
+  } catch {
     return "";
   }
 }
@@ -195,7 +181,8 @@ function buildEventSummary(event: EventItem) {
 }
 
 export default function ReviewPage() {
-  const { isLoading: isMatchesLoading } = useMatches();
+  const { matches, isLoading: isMatchesLoading } = useMatches();
+  const { videoUrl: sessionVideoUrl } = useMatchVideoSession();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -220,7 +207,7 @@ export default function ReviewPage() {
   const [showRawTranscript, setShowRawTranscript] = useState(
     typeof savedSession.showRawTranscript === "boolean" ? savedSession.showRawTranscript : true
   );
-  const [videoSrc, setVideoSrc] = useState(loadSavedReviewVideoSrc);
+  const [videoSrc, setVideoSrc] = useState(() => sessionVideoUrl ?? loadSavedReviewVideoSrc());
   const [videoCloudStatus, setVideoCloudStatus] = useState<"idle" | "loading" | "loaded" | "unavailable">("idle");
   const [currentTime, setCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
@@ -286,7 +273,7 @@ export default function ReviewPage() {
 
       try {
         const matchId = getCurrentMatchId();
-        const record = matchId ? getSavedMatchById(matchId) : null;
+        const record = matchId ? (matches.find((m) => m.id === matchId) ?? null) : null;
         if (record) {
           upsertSavedMatch({
             ...record,
@@ -497,7 +484,7 @@ export default function ReviewPage() {
     if (isMatchesLoading) return;
     const matchId = getCurrentMatchId();
     if (!matchId) return;
-    const match = getSavedMatchById(matchId);
+    const match = matches.find((m) => m.id === matchId) ?? null;
     if (!match?.videoStoragePath) return;
 
     setVideoCloudStatus("loading");
@@ -516,7 +503,7 @@ export default function ReviewPage() {
   useEffect(() => {
     if (!videoSrc || videoSrc.startsWith("blob:")) return;
     const matchId = getCurrentMatchId();
-    const match = matchId ? getSavedMatchById(matchId) : null;
+    const match = matchId ? (matches.find((m) => m.id === matchId) ?? null) : null;
     if (!match?.videoStoragePath) return;
     const storagePath = match.videoStoragePath;
     const timer = setTimeout(() => {
@@ -1066,7 +1053,7 @@ export default function ReviewPage() {
                         if (!videoSrc || videoSrc.startsWith("blob:")) return;
                         const matchId = getCurrentMatchId();
                         if (!matchId) return;
-                        const m = getSavedMatchById(matchId);
+                        const m = matches.find((mx) => mx.id === matchId) ?? null;
                         if (!m?.videoStoragePath) return;
                         setVideoCloudStatus("unavailable");
                       }}

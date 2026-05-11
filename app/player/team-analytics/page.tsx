@@ -188,7 +188,7 @@ export default function PlayerTeamAnalyticsPage() {
                   {matches.map((match) => (
                     <option key={match.id} value={match.id}>
                       {matchLabel(match)}
-                      {match.matchDate ? ` - ${match.matchDate}` : ""}
+                      {match.matchDate ? ` - ${formatMatchDate(match.matchDate)}` : ""}
                     </option>
                   ))}
                 </select>

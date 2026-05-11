@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } fr
 import { CLOUD_SYNC_ERROR_EVENT } from "@/app/rugby-tagging/lib/savedMatches";
 import { useRouter } from "next/navigation";
 import { useMatches } from "@/app/providers/MatchesContext";
+import { useMatchVideoSession } from "@/app/providers/MatchVideoSessionContext";
 import TeamSheetModal from "@/app/rugby-tagging/components/TeamSheetModal";
 import MatchdayRosterPanel from "@/app/rugby-tagging/components/MatchdayRosterPanel";
 import TranscriptPanel from "@/app/rugby-tagging/components/TranscriptPanel";
@@ -26,15 +27,9 @@ import { VideoDropzone } from "@/app/components/VideoDropzone";
 import { EmptyState } from "@/app/components/EmptyState";
 import { Video } from "lucide-react";
 import {
-  clearMatchVideoSession,
-  setMatchVideoFile,
-} from "@/app/rugby-tagging/lib/matchVideoSession";
-import {
   clearCurrentMatchId,
   createMatchId,
   getCurrentMatchId,
-  getSavedMatchById,
-  getSavedMatches,
   setCurrentMatchId as persistCurrentMatchId,
   upsertSavedMatch,
   type SavedMatchRecord,
@@ -135,7 +130,8 @@ function getScopedCorrectionKey(): string {
 
 export default function RugbyVoiceTaggingMVP() {
   const router = useRouter();
-  const { isLoading: isMatchesLoading } = useMatches();
+  const { matches, isLoading: isMatchesLoading } = useMatches();
+  const { setVideoFile, clearSession } = useMatchVideoSession();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -715,7 +711,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
         // videoStoragePath). The effect re-runs when isMatchesLoading flips.
         if (isMatchesLoading) return;
 
-        const savedMatch = getSavedMatchById(existingMatchId);
+        const savedMatch = matches.find((m) => m.id === existingMatchId) ?? null;
 
         if (!savedMatch) {
           // Cache is loaded but the requested match isn't in it (deleted,
@@ -1058,7 +1054,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
   };
 
   const startNewMatch = () => {
-    clearMatchVideoSession();
+    clearSession();
     clearCurrentMatchId();
 
     if (streamRef.current) {
@@ -1498,7 +1494,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
         if (result.storagePath) {
           setVideoStoragePath(result.storagePath);
           pendingVideoFileRef.current = null;
-          const saved = getSavedMatchById(matchId);
+          const saved = matches.find((m) => m.id === matchId) ?? null;
           if (saved) {
             const previousStoragePath = saved.videoStoragePath;
             upsertSavedMatch({ ...saved, videoStoragePath: result.storagePath });
@@ -1535,7 +1531,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     nextVideoStoragePath?: string
   ): SavedMatchRecord => {
     const persistedEvents = events.filter((event) => !event.isPending);
-    const existing = getSavedMatchById(matchId);
+    const existing = matches.find((m) => m.id === matchId) ?? null;
 
     return {
       id: matchId,
@@ -1599,7 +1595,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     persistCurrentMatchId(matchId);
     setCurrentMatchId(matchId);
 
-    let submittedVideoStoragePath = videoStoragePath || getSavedMatchById(matchId)?.videoStoragePath || "";
+    let submittedVideoStoragePath = videoStoragePath || matches.find((m) => m.id === matchId)?.videoStoragePath || "";
 
     if (pendingVideoFileRef.current && !videoUploadPromiseRef.current) {
       videoUploadPromiseRef.current = triggerVideoUpload(pendingVideoFileRef.current, matchId);
@@ -2661,7 +2657,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
         onSelectPlayer={selectPlayer}
         onSubmitTeamSheet={submitTeamSheet}
         onSkip={() => setShowTeamSheetModal(false)}
-        savedMatches={getSavedMatches()}
+        savedMatches={matches}
         onLoadFromMatch={(rows) => setRosterRows(hydrateRosterRows(rows))}
         squadPlayers={squadProfile?.players}
       />
@@ -3167,7 +3163,7 @@ Ellie missed tackle"
                     if (videoRef.current?.src?.startsWith("blob:")) {
                       URL.revokeObjectURL(videoRef.current.src);
                     }
-                    const nextVideoSrc = setMatchVideoFile(file);
+                    const nextVideoSrc = setVideoFile(file);
                     if (videoRef.current) {
                       videoRef.current.src = nextVideoSrc;
                       videoRef.current.playbackRate = 1;
