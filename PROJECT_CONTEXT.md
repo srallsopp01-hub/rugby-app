@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 11 May 2026 — Walkthrough illustrations: replaced raw screenshots in CaptureWalkthroughModal with per-slide SVG illustrations (accent-coloured, theme-aware). Previous: Coach player admin improvements; Capture Walkthrough Modal (15-slide onboarding); Saved Matches compact row redesign.
+**Last updated:** 11 May 2026 — Brand system v1: FW mark + FYNL Whistle lockup (Archivo Black / Instrument Serif italic / Bebas Neue) rolled out across marketing header/footer, auth layout, coach sidebar, OG image, and favicon. Accent updated to Referee Orange #ff5a1f. Hold-for-slomo 🐢 button added to Capture. TeamEventsPanel now uses rosterRows (match-day sheet) instead of squad profile. Previous: Walkthrough illustrations (SVG, theme-aware).
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
