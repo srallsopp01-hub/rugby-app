@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 11 May 2026 — Brand system v1: FW mark + FYNL Whistle lockup (Archivo Black / Instrument Serif italic / Bebas Neue) rolled out across marketing header/footer, auth layout, coach sidebar, OG image, and favicon. Accent updated to Referee Orange #ff5a1f. Hold-for-slomo 🐢 button added to Capture. TeamEventsPanel now uses rosterRows (match-day sheet) instead of squad profile. Previous: Walkthrough illustrations (SVG, theme-aware).
+**Last updated:** 12 May 2026 — No-CC free trial: trial is now 14 days / 2 games, no credit card required. `create-starter` sets `status: "trialing"` + 14-day `trial_ends_at`. Stripe checkout no longer includes a trial period (charge on upgrade). New `/api/matches/quota` endpoint counts org-wide saved_matches for trial orgs. `upsertCloudSavedMatch` checks quota before inserting new matches (updates bypass). Trial quota banner on saved-matches page; capture page redirects to `/pricing` if quota is exhausted. Previous: Brand system v1: FW mark + FYNL Whistle lockup (Archivo Black / Instrument Serif italic / Bebas Neue) rolled out across marketing header/footer, auth layout, coach sidebar, OG image, and favicon. Accent updated to Referee Orange #ff5a1f.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---

@@ -35,6 +35,7 @@ import {
   type SavedMatchRecord,
 } from "@/app/rugby-tagging/lib/savedMatches";
 import { upsertCloudSavedMatch } from "@/lib/savedMatchesCloud";
+import { useTrialQuota } from "@/lib/useTrialQuota";
 import {
   deleteMatchVideo,
   getMatchVideoSignedUrl,
@@ -132,6 +133,7 @@ export default function RugbyVoiceTaggingMVP() {
   const router = useRouter();
   const { matches, isLoading: isMatchesLoading } = useMatches();
   const { setVideoFile, clearSession } = useMatchVideoSession();
+  const quota = useTrialQuota();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -1056,6 +1058,10 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
   };
 
   const startNewMatch = () => {
+    if (quota && quota.isTrial && !quota.allowed) {
+      router.push("/pricing");
+      return;
+    }
     clearSession();
     clearCurrentMatchId();
 

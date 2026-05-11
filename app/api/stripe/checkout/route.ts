@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
-      subscription_data: { trial_period_days: 14 },
+      subscription_data: {},
       ...(founderCouponId ? { discounts: [{ coupon: founderCouponId }] } : {}),
       client_reference_id: user.id,
       customer_email: user.email,

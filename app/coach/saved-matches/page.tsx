@@ -18,6 +18,7 @@ import { generateMultiMatchWorkbook } from "@/app/rugby-tagging/lib/exports/mult
 import { downloadWorkbook } from "@/app/rugby-tagging/lib/exports/downloadWorkbook";
 import { useMatches } from "@/app/providers/MatchesContext";
 import { EmptyState } from "@/app/components/EmptyState";
+import { useTrialQuota } from "@/lib/useTrialQuota";
 
 export default function CoachSavedMatchesPage() {
   const router = useRouter();
@@ -26,6 +27,7 @@ export default function CoachSavedMatchesPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const quota = useTrialQuota();
 
   const toggleSelected = (matchId: string) => {
     setSelectedMatchIds((prev) =>
@@ -129,6 +131,37 @@ export default function CoachSavedMatchesPage() {
           Saved matches sync to your account when cloud storage is reachable.
           Best used on desktop or laptop.
         </p>
+
+        {quota?.isTrial && (
+          <div className={`rounded-2xl border px-4 py-3 text-sm ${quota.allowed ? "border-accent/30 bg-accent/5" : "border-warning/40 bg-warning/5"}`}>
+            {quota.trialExpired ? (
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-foreground">Your free trial has ended.</span>
+                <a href="/pricing" className="shrink-0 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">
+                  Upgrade to continue
+                </a>
+              </div>
+            ) : quota.allowed ? (
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-foreground">
+                  Free trial — <span className="font-semibold">{quota.used} of {quota.limit}</span> games recorded.
+                </span>
+                <a href="/pricing" className="shrink-0 text-xs text-accent underline underline-offset-2 hover:opacity-80">
+                  Upgrade for unlimited
+                </a>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-foreground">
+                  You&apos;ve used both trial games. Upgrade to record more.
+                </span>
+                <a href="/pricing" className="shrink-0 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">
+                  Upgrade now
+                </a>
+              </div>
+            )}
+          </div>
+        )}
 
         {sortedMatches.length === 0 ? (
           <EmptyState

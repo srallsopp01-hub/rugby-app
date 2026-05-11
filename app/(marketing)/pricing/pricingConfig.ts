@@ -175,7 +175,7 @@ export const planContent: readonly PlanContent[] = [
     eyebrow: "Best for one team getting started",
     description:
       "For coaches who want one clean place to analyse matches, create clips and share feedback.",
-    cta: "Start 14-day free trial",
+    cta: "Start free trial – no card needed",
     href: "/signup?plan=team-launch",
     features: [
       "1 sport",
@@ -200,7 +200,7 @@ export const planContent: readonly PlanContent[] = [
     eyebrow: "Best for clubs with multiple teams",
     description:
       "For clubs that want every team working from the same coaching system.",
-    cta: "Start 14-day free trial",
+    cta: "Start free trial – no card needed",
     href: "/signup?plan=club-5",
     featured: true,
     features: [
@@ -281,7 +281,7 @@ export const faqs = [
   {
     question: "Is there a free trial?",
     answer:
-      "Yes. You can try the full coaching workflow for 14 days with one analysed full match included.",
+      "Yes. Record up to 2 full matches over 2 weeks — no credit card required. Upgrade when you're ready to continue.",
   },
   {
     question: "Do players need to pay?",

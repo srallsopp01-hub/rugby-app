@@ -82,6 +82,24 @@ export async function upsertCloudSavedMatch(
 
     const resolvedTeamId = teamId ?? ctx.teamId;
     const supabase = createClient();
+
+    // Check if this is a new match (not an update/autosave). Only new matches count against the trial quota.
+    const { count: existingCount } = await supabase
+      .from("saved_matches")
+      .select("id", { count: "exact", head: true })
+      .eq("team_id", resolvedTeamId)
+      .eq("match_id", record.id);
+
+    if (existingCount === 0) {
+      const res = await fetch("/api/matches/quota");
+      if (res.ok) {
+        const quota = await res.json();
+        if (!quota.allowed) {
+          return { ok: false, error: "TRIAL_LIMIT_REACHED" };
+        }
+      }
+    }
+
     const payload = recordToUpsertPayload(record, resolvedTeamId, ctx.userId);
 
     const { error } = await supabase

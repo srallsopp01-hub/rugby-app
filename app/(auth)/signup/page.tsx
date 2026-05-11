@@ -170,7 +170,7 @@ function SignupContent() {
             ? "Confirm your email and choose a password. Your player profile is waiting."
             : inviteToken || joinToken
             ? "Create your account to join the team."
-            : "Start your 14-day free trial."}
+            : "Start your free trial — 2 weeks, 2 games, no card required."}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">

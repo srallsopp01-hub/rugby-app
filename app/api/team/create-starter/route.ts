@@ -26,7 +26,7 @@ export async function POST() {
   if (existing) return NextResponse.json({ ok: true, teamId: existing.team_id });
 
   const now = new Date().toISOString();
-  const trialEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  const trialEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
 
   // Create a personal organisation for this coach.
   const { data: org, error: orgError } = await admin
@@ -34,7 +34,7 @@ export async function POST() {
     .insert({
       name: "My Club",
       plan: "trial",
-      status: "active",
+      status: "trialing",
       owner_user_id: user.id,
       trial_ends_at: trialEnd,
       created_at: now,
