@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import { CLOUD_SYNC_ERROR_EVENT } from "@/app/rugby-tagging/lib/savedMatches";
 import { useRouter } from "next/navigation";
+import { useMatches } from "@/app/providers/MatchesContext";
 import TeamSheetModal from "@/app/rugby-tagging/components/TeamSheetModal";
 import MatchdayRosterPanel from "@/app/rugby-tagging/components/MatchdayRosterPanel";
 import TranscriptPanel from "@/app/rugby-tagging/components/TranscriptPanel";
@@ -134,6 +135,7 @@ function getScopedCorrectionKey(): string {
 
 export default function RugbyVoiceTaggingMVP() {
   const router = useRouter();
+  const { isLoading: isMatchesLoading } = useMatches();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -146,6 +148,11 @@ export default function RugbyVoiceTaggingMVP() {
   const spacebarHeldRef = useRef(false);
   const pendingVideoFileRef = useRef<File | null>(null);
   const videoUploadPromiseRef = useRef<Promise<VideoUploadResult> | null>(null);
+  // Tracks which match (or "" for in-progress localStorage session) the
+  // load-saved-match effect below has already hydrated state from. Prevents
+  // re-running setters on every cache update — that would clobber a coach's
+  // in-progress edits to a reopened match.
+  const loadedMatchIdRef = useRef<string | null>(null);
 
   const [activeMode, setActiveMode] = useState<AppMode>("stat");
   const [videoStoragePath, setVideoStoragePath] = useState("");
@@ -698,70 +705,93 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     try {
       const existingMatchId = getCurrentMatchId();
 
+      // Already hydrated from this source — don't clobber in-progress edits.
+      if (loadedMatchIdRef.current === (existingMatchId || "")) return;
+
       if (existingMatchId) {
+        // Wait for MatchesProvider's first Supabase fetch. Without this guard,
+        // the cache lookup races and silently falls through to a stale
+        // per-team localStorage session (which loses the saved match's
+        // videoStoragePath). The effect re-runs when isMatchesLoading flips.
+        if (isMatchesLoading) return;
+
         const savedMatch = getSavedMatchById(existingMatchId);
 
-        if (savedMatch) {
-          const safeEvents = Array.isArray(savedMatch.events)
-            ? savedMatch.events.filter((event: EventItem) => !event.isPending)
-            : [];
-
-          setCurrentMatchId(savedMatch.id);
-          setMatchTitle(savedMatch.matchTitle || "");
-          setOpponent(savedMatch.opponent || "");
-          setMatchDate(savedMatch.matchDate || "");
-          setRosterRows(hydrateRosterRows(savedMatch.rosterRows));
-          setSelectedPlayer(savedMatch.selectedPlayer || "");
-          setEvents(safeEvents);
-          setReviewQueue(
-            Array.isArray(savedMatch.reviewQueue) ? savedMatch.reviewQueue : []
+        if (!savedMatch) {
+          // Cache is loaded but the requested match isn't in it (deleted,
+          // or currentMatchId set under a different team). Don't fall back
+          // to the team's localStorage session — that would be the wrong
+          // match's data.
+          console.warn(
+            `Capture: currentMatchId=${existingMatchId} not found in matches cache; leaving state unhydrated.`
           );
-          setCoachNotes(
-            Array.isArray(savedMatch.coachNotes) ? savedMatch.coachNotes : []
-          );
-          setActiveMode(
-            savedMatch.activeMode === "game-review" ? "game-review" : "stat"
-          );
-          setShowRawTranscript(
-            typeof savedMatch.showRawTranscript === "boolean"
-              ? savedMatch.showRawTranscript
-              : true
-          );
-          setVideoStoragePath(savedMatch.videoStoragePath || "");
-          setOurScore(typeof savedMatch.ourScore === "number" ? savedMatch.ourScore : "");
-          setOpponentScore(typeof savedMatch.opponentScore === "number" ? savedMatch.opponentScore : "");
-
-          localStorage.setItem(
-            getScopedStorageKey(),
-            JSON.stringify({
-              activeMode:
-                savedMatch.activeMode === "game-review" ? "game-review" : "stat",
-              matchTitle: savedMatch.matchTitle || "",
-              opponent: savedMatch.opponent || "",
-              matchDate: savedMatch.matchDate || "",
-              rosterRows: savedMatch.rosterRows || [],
-              selectedPlayer: savedMatch.selectedPlayer || "",
-              events: safeEvents,
-              reviewQueue: Array.isArray(savedMatch.reviewQueue)
-                ? savedMatch.reviewQueue
-                : [],
-              coachNotes: Array.isArray(savedMatch.coachNotes)
-                ? savedMatch.coachNotes
-                : [],
-              clips: Array.isArray(savedMatch.clips) ? savedMatch.clips : [],
-              showRawTranscript:
-                typeof savedMatch.showRawTranscript === "boolean"
-                  ? savedMatch.showRawTranscript
-                  : true,
-              videoStoragePath: savedMatch.videoStoragePath,
-            })
-          );
-
+          loadedMatchIdRef.current = existingMatchId;
           return;
         }
+
+        const safeEvents = Array.isArray(savedMatch.events)
+          ? savedMatch.events.filter((event: EventItem) => !event.isPending)
+          : [];
+
+        setCurrentMatchId(savedMatch.id);
+        setMatchTitle(savedMatch.matchTitle || "");
+        setOpponent(savedMatch.opponent || "");
+        setMatchDate(savedMatch.matchDate || "");
+        setRosterRows(hydrateRosterRows(savedMatch.rosterRows));
+        setSelectedPlayer(savedMatch.selectedPlayer || "");
+        setEvents(safeEvents);
+        setReviewQueue(
+          Array.isArray(savedMatch.reviewQueue) ? savedMatch.reviewQueue : []
+        );
+        setCoachNotes(
+          Array.isArray(savedMatch.coachNotes) ? savedMatch.coachNotes : []
+        );
+        setActiveMode(
+          savedMatch.activeMode === "game-review" ? "game-review" : "stat"
+        );
+        setShowRawTranscript(
+          typeof savedMatch.showRawTranscript === "boolean"
+            ? savedMatch.showRawTranscript
+            : true
+        );
+        setVideoStoragePath(savedMatch.videoStoragePath || "");
+        setOurScore(typeof savedMatch.ourScore === "number" ? savedMatch.ourScore : "");
+        setOpponentScore(typeof savedMatch.opponentScore === "number" ? savedMatch.opponentScore : "");
+
+        localStorage.setItem(
+          getScopedStorageKey(),
+          JSON.stringify({
+            activeMode:
+              savedMatch.activeMode === "game-review" ? "game-review" : "stat",
+            matchTitle: savedMatch.matchTitle || "",
+            opponent: savedMatch.opponent || "",
+            matchDate: savedMatch.matchDate || "",
+            rosterRows: savedMatch.rosterRows || [],
+            selectedPlayer: savedMatch.selectedPlayer || "",
+            events: safeEvents,
+            reviewQueue: Array.isArray(savedMatch.reviewQueue)
+              ? savedMatch.reviewQueue
+              : [],
+            coachNotes: Array.isArray(savedMatch.coachNotes)
+              ? savedMatch.coachNotes
+              : [],
+            clips: Array.isArray(savedMatch.clips) ? savedMatch.clips : [],
+            showRawTranscript:
+              typeof savedMatch.showRawTranscript === "boolean"
+                ? savedMatch.showRawTranscript
+                : true,
+            videoStoragePath: savedMatch.videoStoragePath,
+          })
+        );
+
+        loadedMatchIdRef.current = existingMatchId;
+        return;
       }
 
+      // No specific match requested — restore the team's in-progress capture
+      // session from localStorage if any.
       const raw = localStorage.getItem(getScopedStorageKey());
+      loadedMatchIdRef.current = "";
       if (!raw) return;
 
       const saved = JSON.parse(raw);
@@ -791,7 +821,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     } catch (error) {
       console.error("Failed to load saved session", error);
     }
-  }, []);
+  }, [isMatchesLoading]);
 
   useEffect(() => {
     try {
