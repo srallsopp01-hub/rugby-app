@@ -13,6 +13,7 @@ import {
   buildSetPieceSummary,
   buildTeamEventSummary,
   buildTeamTotals,
+  formatMatchDate,
   teamTacklePctFromTotals,
 } from "@/app/rugby-tagging/helpers";
 import { buildPlayerCoachingPlan } from "../playerCoachingPlan";
@@ -383,7 +384,7 @@ export default function PlayerComparePage() {
                     {snapshots.map((snapshot) => (
                       <option key={snapshot.match.id} value={snapshot.match.id}>
                         {snapshot.label}
-                        {snapshot.match.matchDate ? ` - ${snapshot.match.matchDate}` : ""}
+                        {snapshot.match.matchDate ? ` - ${formatMatchDate(snapshot.match.matchDate)}` : ""}
                       </option>
                     ))}
                   </SelectField>
@@ -391,7 +392,7 @@ export default function PlayerComparePage() {
                     {snapshots.map((snapshot) => (
                       <option key={snapshot.match.id} value={snapshot.match.id}>
                         {snapshot.label}
-                        {snapshot.match.matchDate ? ` - ${snapshot.match.matchDate}` : ""}
+                        {snapshot.match.matchDate ? ` - ${formatMatchDate(snapshot.match.matchDate)}` : ""}
                       </option>
                     ))}
                   </SelectField>

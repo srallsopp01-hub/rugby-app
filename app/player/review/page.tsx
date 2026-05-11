@@ -8,10 +8,9 @@ import { PLAYER_PAGE_HELP } from "../help-content";
 import { PlayerPicker } from "../PlayerPicker";
 import { useMatches } from "@/app/providers/MatchesContext";
 import {
-  getSavedMatchById,
   upsertSavedMatch,
 } from "@/app/rugby-tagging/lib/savedMatches";
-import { formatTime } from "@/app/rugby-tagging/helpers";
+import { formatMatchDate, formatTime } from "@/app/rugby-tagging/helpers";
 import {
   buildSetPieceReviewMoments,
   filterSetPieceReviewMoments,
@@ -43,12 +42,10 @@ function categoryClass(cat: string | undefined) {
 }
 
 function updateClipInSavedMatch(
-  matchId: string,
+  match: SavedMatchRecord,
   clipId: number,
   mutate: (clip: ClipAnnotation) => ClipAnnotation
 ) {
-  const match = getSavedMatchById(matchId);
-  if (!match) return;
   const nextClips = (match.clips ?? []).map((c) => (c.id === clipId ? mutate(c) : c));
   upsertSavedMatch({ ...match, clips: nextClips, updatedAt: new Date().toISOString() });
 }
@@ -337,7 +334,9 @@ export default function ReviewPage() {
 
   const setReaction = useCallback(
     (matchId: string, clipId: number, playerId: string, type: ClipReaction["type"] | null, note?: string) => {
-      updateClipInSavedMatch(matchId, clipId, (clip) => {
+      const match = matches.find((m) => m.id === matchId);
+      if (!match) return;
+      updateClipInSavedMatch(match, clipId, (clip) => {
         const others = (clip.reactions ?? []).filter((r) => r.playerId !== playerId);
         if (type === null) return { ...clip, reactions: others };
         const next: ClipReaction = {
@@ -349,12 +348,14 @@ export default function ReviewPage() {
         return { ...clip, reactions: [...others, next] };
       });
     },
-    []
+    [matches]
   );
 
   const setPlayerNote = useCallback(
     (matchId: string, clipId: number, playerId: string, text: string) => {
-      updateClipInSavedMatch(matchId, clipId, (clip) => {
+      const match = matches.find((m) => m.id === matchId);
+      if (!match) return;
+      updateClipInSavedMatch(match, clipId, (clip) => {
         const trimmed = text.trim();
         const others = (clip.playerNotes ?? []).filter((n) => n.playerId !== playerId);
         if (!trimmed) return { ...clip, playerNotes: others };
@@ -369,7 +370,7 @@ export default function ReviewPage() {
         return { ...clip, playerNotes: [...others, note] };
       });
     },
-    []
+    [matches]
   );
 
   if (!ready) return null;
@@ -422,7 +423,7 @@ export default function ReviewPage() {
                       >
                         vs {m.opponent || m.matchTitle || "Game"}
                         {m.matchDate && (
-                          <span className="ml-1.5 text-xs font-normal text-muted-2">{m.matchDate}</span>
+                          <span className="ml-1.5 text-xs font-normal text-muted-2">{formatMatchDate(m.matchDate)}</span>
                         )}
                       </button>
                     ))}
@@ -437,7 +438,7 @@ export default function ReviewPage() {
                       vs {match.opponent || match.matchTitle || "Game"}
                     </p>
                     {match.matchDate && (
-                      <p className="text-xs text-muted-2 mt-0.5">{match.matchDate}</p>
+                      <p className="text-xs text-muted-2 mt-0.5">{formatMatchDate(match.matchDate)}</p>
                     )}
                   </div>
                   <span className="text-xs text-muted-2">

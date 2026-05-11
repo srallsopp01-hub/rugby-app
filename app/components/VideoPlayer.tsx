@@ -231,55 +231,6 @@ export const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
       else video.pause();
     }
 
-    // Empty / loading states
-    if (!src) {
-      if (loadingHint) {
-        return (
-          <div
-            className={`flex aspect-video items-center justify-center rounded-2xl border border-border bg-panel ${className}`}
-          >
-            <div className="flex flex-col items-center gap-3">
-              <svg
-                className="h-8 w-8 animate-spin text-accent"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                aria-hidden="true"
-              >
-                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-              </svg>
-              <span className="text-sm text-muted">{loadingHint}</span>
-            </div>
-          </div>
-        );
-      }
-      return (
-        <div
-          className={`flex aspect-video items-center justify-center rounded-2xl border border-border bg-panel ${className}`}
-        >
-          {emptyState ?? (
-            <div className="flex flex-col items-center gap-2 text-center">
-              <svg
-                width="44"
-                height="44"
-                viewBox="0 0 44 44"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                className="text-muted-2"
-                aria-hidden="true"
-              >
-                <rect x="3" y="9" width="38" height="26" rx="3" />
-                <path d="M17 16l12 6-12 6V16z" />
-              </svg>
-              <span className="text-sm text-muted">No video loaded</span>
-            </div>
-          )}
-        </div>
-      );
-    }
-
     const playedPct = duration > 0 ? (currentTime / duration) * 100 : 0;
     const hoverPct =
       seekHoverTime !== null && duration > 0
@@ -289,21 +240,25 @@ export const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
     return (
       <div
         ref={containerRef}
-        className={`group relative overflow-hidden rounded-2xl bg-black ${className}`}
-        onMouseMove={showControls}
-        onMouseEnter={showControls}
-        onMouseLeave={() => {
+        className={`relative overflow-hidden rounded-2xl ${
+          src
+            ? `group bg-black ${className}`
+            : `border border-border bg-panel ${className}`
+        }`}
+        onMouseMove={src ? showControls : undefined}
+        onMouseEnter={src ? showControls : undefined}
+        onMouseLeave={src ? () => {
           if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
           if (!internalRef.current?.paused) setControlsVisible(false);
           setSeekHoverTime(null);
-        }}
+        } : undefined}
       >
-        {/* Video element */}
+        {/* Video element — always mounted so the forwarded ref is always populated */}
         <video
           ref={setVideoRef}
-          src={src}
-          className={`aspect-video w-full cursor-pointer object-contain ${videoClassName}`}
-          onClick={togglePlayPause}
+          src={src ?? undefined}
+          className={`aspect-video w-full object-contain ${src ? "cursor-pointer" : "invisible"} ${videoClassName}`}
+          onClick={src ? togglePlayPause : undefined}
           onPlay={() => {
             setIsPlaying(true);
             onPlay?.();
@@ -350,11 +305,49 @@ export const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
           }}
         />
 
+        {/* Empty / loading overlay — shown when no src; sits over the inert invisible video */}
+        {!src && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            {loadingHint ? (
+              <div className="flex flex-col items-center gap-3">
+                <svg
+                  className="h-8 w-8 animate-spin text-accent"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden="true"
+                >
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                </svg>
+                <span className="text-sm text-muted">{loadingHint}</span>
+              </div>
+            ) : (emptyState ?? (
+              <div className="flex flex-col items-center gap-2 text-center">
+                <svg
+                  width="44"
+                  height="44"
+                  viewBox="0 0 44 44"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  className="text-muted-2"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="9" width="38" height="26" rx="3" />
+                  <path d="M17 16l12 6-12 6V16z" />
+                </svg>
+                <span className="text-sm text-muted">No video loaded</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Parent-supplied overlay (e.g. annotation canvas) */}
-        {overlay}
+        {src && overlay}
 
         {/* Controls overlay */}
-        <div
+        {src && <div
           className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 transition-opacity duration-200 ${
             controlsVisible ? "opacity-100" : "opacity-0"
           }`}
@@ -649,7 +642,7 @@ export const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
               )}
             </div>
           </div>
-        </div>
+        </div>}
       </div>
     );
   }

@@ -1,4 +1,5 @@
 import type { EventItem, ReportRow, UnitSummaryRow } from "../types";
+import { formatMatchDate } from "../helpers";
 
 type LineoutCallStat = {
   call: string;
@@ -86,7 +87,7 @@ export default function MatchReportModal({
               {matchTitle || "Match report"}
             </h3>
             <p className="mt-1 text-sm text-muted">
-              {[opponent ? `vs ${opponent}` : "", matchDate].filter(Boolean).join(" • ")}
+              {[opponent ? `vs ${opponent}` : "", formatMatchDate(matchDate)].filter(Boolean).join(" • ")}
             </p>
           </div>
 

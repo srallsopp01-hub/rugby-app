@@ -17,6 +17,7 @@ import {
   buildTeamEventSummary,
   buildSetPieceSummary,
   teamTacklePctFromTotals,
+  formatMatchDate,
 } from "@/app/rugby-tagging/helpers";
 import type { EventItem, SessionLog, TrainingSession } from "@/app/rugby-tagging/types";
 import { GradeBadge } from "@/app/components/GradeBadge";
@@ -238,8 +239,9 @@ function buildContextString(profile: SquadProfile | null, savedMatches: SavedMat
   }
 
   if (savedMatches.length) {
+    const toDateMs = (d: string) => { const t = new Date(d).getTime(); return isNaN(t) ? 0 : t; };
     const sorted = [...savedMatches].sort((a, b) =>
-      new Date(a.matchDate || a.createdAt).getTime() - new Date(b.matchDate || b.createdAt).getTime()
+      toDateMs(a.matchDate || a.createdAt) - toDateMs(b.matchDate || b.createdAt)
     );
     const matchLines: string[] = [];
     let sumTackle = 0, sumLineout = 0, sumScrum = 0, sumTried = 0, sumConceded = 0;
@@ -256,7 +258,7 @@ function buildContextString(profile: SquadProfile | null, savedMatches: SavedMat
       sumTried += teamEvents.triesScored;
       sumConceded += teamEvents.triesConceded;
       matchLines.push(
-        `  - ${match.opponent || "unknown opponent"} (${match.matchDate || "unknown date"}): ` +
+        `  - ${match.opponent || "unknown opponent"} (${formatMatchDate(match.matchDate) || "unknown date"}): ` +
         `tackle ${Math.round(tacklePct)}%, lineout ${Math.round(setPiece.ownLineoutSuccessPct)}%, ` +
         `scrum ${Math.round(setPiece.ownScrumSuccessPct)}%, tries scored ${teamEvents.triesScored}, tries conceded ${teamEvents.triesConceded}`
       );

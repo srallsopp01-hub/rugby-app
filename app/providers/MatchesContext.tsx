@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { fetchCloudSavedMatches } from "@/lib/savedMatchesCloud";
 import { getMyTeamContext, ACTIVE_TEAM_CHANGED_EVENT } from "@/lib/teamContext";
-import { SAVED_MATCHES_CHANGED_EVENT, setMatchesCache, getSavedMatches, type SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
+import { SAVED_MATCHES_CHANGED_EVENT, setMatchesCache, type SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
 
 type MatchesContextValue = {
   matches: SavedMatchRecord[];
@@ -43,9 +43,11 @@ export function MatchesProvider({ children }: { children: React.ReactNode }) {
     };
 
     // When upsertSavedMatch/deleteSavedMatch update the cache and fire
-    // SAVED_MATCHES_CHANGED_EVENT, sync React state from the cache — do NOT
+    // SAVED_MATCHES_CHANGED_EVENT, sync React state from the event detail — do NOT
     // re-fetch (that would cause an infinite loop).
-    const handleSave = () => { setMatches(getSavedMatches()); };
+    const handleSave = (e: Event) => {
+      setMatches((e as CustomEvent<SavedMatchRecord[]>).detail);
+    };
 
     document.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener(SAVED_MATCHES_CHANGED_EVENT, handleSave);

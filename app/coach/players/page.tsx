@@ -5,7 +5,7 @@ import { PageHelp } from "@/app/components/PageHelp";
 import { PageHeader } from "@/app/components/PageHeader";
 import { COACH_PAGE_HELP } from "../help-content";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getMatchVideoUrl } from "@/app/rugby-tagging/lib/matchVideoSession";
+import { useMatchVideoSession } from "@/app/providers/MatchVideoSessionContext";
 import {
   STORAGE_KEY,
   DEFAULT_ROSTER_ROWS,
@@ -73,20 +73,6 @@ function loadPlayersSession(): SavedSession {
   }
 }
 
-function loadPlayersVideoSrc() {
-  if (typeof window === "undefined") return "";
-
-  try {
-    return (
-      getMatchVideoUrl() ||
-      sessionStorage.getItem("rugby-tagging-video-src") ||
-      ""
-    );
-  } catch (error) {
-    console.error("Failed to load video source", error);
-    return "";
-  }
-}
 
 
 export default function PlayersPage() {
@@ -108,6 +94,8 @@ function PlayersLoading() {
 }
 
 function PlayersContent() {
+  const { videoUrl: sessionVideoUrl } = useMatchVideoSession();
+  const sessionVideoFallback = sessionVideoUrl ?? (typeof window !== "undefined" ? sessionStorage.getItem("rugby-tagging-video-src") ?? "" : "");
   const router = useRouter();
   const searchParams = useSearchParams();
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -142,7 +130,7 @@ function PlayersContent() {
           : [],
     [selectedMatch, savedSession.events]
   );
-  const [videoSrc, setVideoSrc] = useState(loadPlayersVideoSrc);
+  const [videoSrc, setVideoSrc] = useState(() => sessionVideoFallback);
   const [videoLoading, setVideoLoading] = useState(false);
   const [videoCloudStatus, setVideoCloudStatus] =
     useState<"idle" | "loading" | "loaded" | "unavailable">("idle");
@@ -162,7 +150,7 @@ function PlayersContent() {
         if (cancelled) return;
         setActiveEventIndex(0);
         setCurrentTime(0);
-        setVideoSrc(loadPlayersVideoSrc());
+        setVideoSrc(sessionVideoFallback);
         setVideoCloudStatus("idle");
         setVideoLoading(false);
       });
@@ -183,7 +171,7 @@ function PlayersContent() {
         setVideoCloudStatus("loaded");
         setVideoCloudError(null);
       } else {
-        setVideoSrc(loadPlayersVideoSrc());
+        setVideoSrc(sessionVideoFallback);
         setVideoCloudStatus("unavailable");
         setVideoCloudError(error ?? null);
       }

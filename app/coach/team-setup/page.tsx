@@ -197,7 +197,7 @@ export default function TeamSetupPage() {
       fullName: player.fullName,
       preferredName: player.preferredName,
       nicknamesRaw: player.nicknames.join(", "),
-      selectedPositions: [player.primaryPosition, ...player.secondaryPositions].filter(Boolean),
+      selectedPositions: [player.primaryPosition, ...player.secondaryPositions].filter((p) => POSITION_OPTIONS.includes(p)),
       status: player.status,
     });
     setShowForm(true);

@@ -1,4 +1,5 @@
 import type { EventItem, RosterRow } from "../types";
+import { formatMatchDate } from "../helpers";
 
 export type MatchConfidenceSummary = {
   title: string;
@@ -35,7 +36,7 @@ export function formatMatchTitle(match: MatchLike | null | undefined) {
 export function formatMatchSubtitle(match: MatchLike | null | undefined) {
   const parts = [
     match?.opponent?.trim() ? `vs ${match.opponent.trim()}` : "",
-    match?.matchDate?.trim() || "",
+    formatMatchDate(match?.matchDate) || "",
   ].filter(Boolean);
 
   return parts.join(" - ") || "No opponent or date added";

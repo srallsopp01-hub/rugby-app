@@ -1,32 +1,14 @@
-let currentMatchVideoFile: File | null = null;
-let currentMatchVideoUrl = "";
+// Migrated to app/providers/MatchVideoSessionContext.tsx — use useMatchVideoSession() hook instead.
+// These stubs exist only to surface missed callsites at build time.
 
-export function setMatchVideoFile(file: File) {
-  if (currentMatchVideoUrl) {
-    URL.revokeObjectURL(currentMatchVideoUrl);
-  }
-
-  currentMatchVideoFile = file;
-  currentMatchVideoUrl = URL.createObjectURL(file);
-  return currentMatchVideoUrl;
+export function setMatchVideoFile(_file: File): string {
+  throw new Error("setMatchVideoFile is removed — use useMatchVideoSession().setVideoFile()");
 }
 
-export function getMatchVideoUrl() {
-  if (currentMatchVideoUrl) return currentMatchVideoUrl;
-
-  if (currentMatchVideoFile) {
-    currentMatchVideoUrl = URL.createObjectURL(currentMatchVideoFile);
-    return currentMatchVideoUrl;
-  }
-
-  return "";
+export function getMatchVideoUrl(): string {
+  throw new Error("getMatchVideoUrl is removed — use useMatchVideoSession().videoUrl");
 }
 
-export function clearMatchVideoSession() {
-  if (currentMatchVideoUrl) {
-    URL.revokeObjectURL(currentMatchVideoUrl);
-  }
-
-  currentMatchVideoFile = null;
-  currentMatchVideoUrl = "";
+export function clearMatchVideoSession(): void {
+  throw new Error("clearMatchVideoSession is removed — use useMatchVideoSession().clearSession()");
 }

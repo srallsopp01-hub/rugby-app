@@ -777,3 +777,24 @@ export function teamTacklePctFromTotals(totals: MatchTotals): number {
     ? (totals.tackles / (totals.tackles + totals.missed)) * 100
     : 0;
 }
+
+/**
+ * Format a match date string for display as DD/MM/YYYY.
+ * Accepts ISO (YYYY-MM-DD), the legacy DD/MM/YYYY format, or any date string
+ * the browser can parse. Returns the input unchanged if it can't be parsed.
+ */
+export function formatMatchDate(matchDate: string | null | undefined): string {
+  if (!matchDate) return "";
+  // Legacy DD/MM/YYYY — already display-ready
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(matchDate)) return matchDate;
+  // ISO YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(matchDate)) {
+    const [y, m, d] = matchDate.split("-");
+    return `${d}/${m}/${y}`;
+  }
+  const date = new Date(matchDate);
+  if (!isNaN(date.getTime())) {
+    return date.toLocaleDateString("en-AU"); // DD/MM/YYYY
+  }
+  return matchDate;
+}

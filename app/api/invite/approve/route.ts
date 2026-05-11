@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { memberId?: string };
+  let body: { memberId?: string; existingPlayerId?: string };
   try {
     body = await req.json();
   } catch {
@@ -54,8 +54,23 @@ export async function POST(req: Request) {
 
   let resolvedPlayerSquadId: string | null = member.player_squad_id;
 
-  // requested_name present = user joined via link with no pre-assigned slot; create their player
-  if (member.requested_name && member.user_id) {
+  // existingPlayerId provided = coach mapped this user to an existing squad player
+  if (body.existingPlayerId && member.user_id) {
+    if (!admin) {
+      return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+    }
+    resolvedPlayerSquadId = body.existingPlayerId;
+    await admin
+      .from("team_members")
+      .update({ player_squad_id: body.existingPlayerId })
+      .eq("id", member.id);
+    await linkSquadPlayerToUser({
+      teamId: member.team_id,
+      playerSquadId: body.existingPlayerId,
+      memberUserId: member.user_id,
+    });
+  } else if (member.requested_name && member.user_id) {
+    // requested_name present = user joined via link with no pre-assigned slot; create their player
     if (!admin) {
       return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
     }
@@ -89,8 +104,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to approve member" }, { status: 500 });
   }
 
-  // Link the squad player slot for users who joined with a pre-assigned slot (no requested_name)
+  // Link the squad player slot for users who joined with a pre-assigned slot (no requested_name, no existingPlayerId)
   if (
+    !body.existingPlayerId &&
     !member.requested_name &&
     member.role === "player" &&
     resolvedPlayerSquadId &&

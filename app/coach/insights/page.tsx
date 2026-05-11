@@ -26,6 +26,7 @@ import {
   buildTeamEventSummary,
   buildTeamTotals,
   buildUnitSummaryRows,
+  formatMatchDate,
   gradeClassName,
   gradeToScore,
   hydrateRosterRows,
@@ -246,7 +247,7 @@ export default function InsightsPage() {
       return ak.localeCompare(bk);
     });
     const matchSnapshots = sorted.map((m) => ({
-      label: m.matchTitle?.trim() || m.matchDate || `Match ${m.id.slice(-4)}`,
+      label: m.matchTitle?.trim() || formatMatchDate(m.matchDate) || `Match ${m.id.slice(-4)}`,
       date: m.matchDate || m.updatedAt,
       rows: buildReportRowsFromMatch(m.rosterRows, m.events),
     }));
@@ -276,7 +277,7 @@ export default function InsightsPage() {
       const te = buildTeamEventSummary(resolvedEvts);
       const tp = teamTacklePctFromTotals(totals);
       return {
-        name: (m.matchTitle?.trim() || m.matchDate || `M${m.id.slice(-4)}`).slice(0, 14),
+        name: (m.matchTitle?.trim() || formatMatchDate(m.matchDate) || `M${m.id.slice(-4)}`).slice(0, 14),
         tacklePct: Math.round(tp),
         lineoutPct: Math.round(sp.ownLineoutSuccessPct),
         triesFor: te.triesScored,
@@ -382,7 +383,7 @@ export default function InsightsPage() {
           title="Team Analytics"
           subtitle={
             allMatches.length < 2
-              ? [matchTitle, opponent ? `vs ${opponent}` : "", matchDate].filter(Boolean).join(" · ") ||
+              ? [matchTitle, opponent ? `vs ${opponent}` : "", formatMatchDate(matchDate)].filter(Boolean).join(" · ") ||
                 "No match loaded — open a saved match or complete tagging in Capture"
               : undefined
           }
@@ -480,7 +481,7 @@ export default function InsightsPage() {
                 >
                   {allMatches.map((m) => (
                     <option key={m.id} value={m.id}>
-                      {[m.matchTitle, m.opponent ? `vs ${m.opponent}` : "", m.matchDate].filter(Boolean).join(" · ") || m.id}
+                      {[m.matchTitle, m.opponent ? `vs ${m.opponent}` : "", formatMatchDate(m.matchDate)].filter(Boolean).join(" · ") || m.id}
                     </option>
                   ))}
                 </select>

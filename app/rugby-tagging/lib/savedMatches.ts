@@ -45,12 +45,9 @@ export type SavedMatchRecord = {
 };
 
 // In-memory cache — populated by MatchesContext after fetching from Supabase.
+// Only mutated by setMatchesCache, upsertSavedMatch, and deleteSavedMatch.
+// External reads go through useMatches() — do NOT add new getSaved* exports.
 let _matchesCache: SavedMatchRecord[] = [];
-
-export function getSavedMatches(): SavedMatchRecord[] { return [..._matchesCache]; }
-export function getSavedMatchById(matchId: string): SavedMatchRecord | null {
-  return _matchesCache.find((m) => m.id === matchId) ?? null;
-}
 export function setMatchesCache(matches: SavedMatchRecord[]): void { _matchesCache = matches; }
 
 export function createMatchId() {
@@ -79,7 +76,7 @@ export function upsertSavedMatch(record: SavedMatchRecord) {
   if (idx >= 0) { prev[idx] = record; } else { prev.unshift(record); }
   setMatchesCache(prev);
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(SAVED_MATCHES_CHANGED_EVENT));
+    window.dispatchEvent(new CustomEvent(SAVED_MATCHES_CHANGED_EVENT, { detail: prev }));
   }
   // Persist to Supabase asynchronously.
   import("@/lib/savedMatchesCloud")
@@ -102,9 +99,10 @@ export function upsertSavedMatch(record: SavedMatchRecord) {
 
 export function deleteSavedMatch(matchId: string, videoStoragePath?: string) {
   // Optimistic cache update.
-  setMatchesCache(_matchesCache.filter((m) => m.id !== matchId));
+  const updated = _matchesCache.filter((m) => m.id !== matchId);
+  setMatchesCache(updated);
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(SAVED_MATCHES_CHANGED_EVENT));
+    window.dispatchEvent(new CustomEvent(SAVED_MATCHES_CHANGED_EVENT, { detail: updated }));
   }
 
   if (videoStoragePath) {

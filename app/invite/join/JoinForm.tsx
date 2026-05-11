@@ -20,7 +20,6 @@ export default function JoinForm({ token, role, squadPlayers, preFilledSquadPlay
   const [view, setView] = useState<View>("pick");
   const [selectedPlayerId, setSelectedPlayerId] = useState(preFilledSquadPlayerId ?? "");
   const [requestedName, setRequestedName] = useState("");
-  const [requestedPosition, setRequestedPosition] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -97,7 +96,6 @@ export default function JoinForm({ token, role, squadPlayers, preFilledSquadPlay
           body: JSON.stringify({
             token,
             requestedName: requestedName.trim(),
-            requestedPosition: requestedPosition.trim() || undefined,
           }),
         });
         const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
@@ -141,19 +139,6 @@ export default function JoinForm({ token, role, squadPlayers, preFilledSquadPlay
             value={requestedName}
             onChange={(e) => setRequestedName(e.target.value)}
             placeholder="e.g. Jamie Smith"
-            className="rounded-lg border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground-strong outline-none transition focus:border-border-light"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label className="font-mono text-[11px] font-bold uppercase text-muted-2">
-            Position <span className="text-muted-2 font-normal normal-case">(optional)</span>
-          </label>
-          <input
-            type="text"
-            value={requestedPosition}
-            onChange={(e) => setRequestedPosition(e.target.value)}
-            placeholder="e.g. Flanker"
             className="rounded-lg border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground-strong outline-none transition focus:border-border-light"
           />
         </div>

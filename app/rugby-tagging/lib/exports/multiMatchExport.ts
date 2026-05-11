@@ -18,6 +18,7 @@ import {
   buildTeamEventSummary,
   buildTeamTotals,
   teamTacklePctFromTotals,
+  formatMatchDate,
 } from "../../helpers";
 import type { ReportRow } from "../../types";
 
@@ -253,7 +254,7 @@ function buildTeamComparisonSheet(
   colHeader(ws.getCell(5, 1), "Metric");
   snapshots.forEach((snap, i) => {
     const cell = ws.getCell(5, 2 + i);
-    colHeader(cell, snap.matchDate ? `${snap.label}\n${snap.matchDate}` : snap.label);
+    colHeader(cell, snap.matchDate ? `${snap.label}\n${formatMatchDate(snap.matchDate)}` : snap.label);
   });
   colHeader(ws.getCell(5, totalCols), `Δ ${firstLabel} → ${lastLabel}`);
   ws.getRow(5).height = 40;

@@ -6,6 +6,7 @@ import { FloatingHelpChat } from "@/app/components/FloatingHelpChat";
 import CreateStarterTeamButton from "./CreateStarterTeamButton";
 import { TeamProvider } from "@/app/providers/TeamContext";
 import { MatchesProvider } from "@/app/providers/MatchesContext";
+import { MatchVideoSessionProvider } from "@/app/providers/MatchVideoSessionContext";
 
 export default async function CoachLayout({
   children,
@@ -32,6 +33,7 @@ export default async function CoachLayout({
 
   return (
     <TeamProvider>
+      <MatchVideoSessionProvider>
       <MatchesProvider>
         <div className="flex h-screen overflow-hidden">
           <CoachSidebar isOrgAdminOnly={isOrgAdminOnly} isClubAdmin={isClubAdmin} />
@@ -59,6 +61,7 @@ export default async function CoachLayout({
           <FloatingHelpChat />
         </div>
       </MatchesProvider>
+      </MatchVideoSessionProvider>
     </TeamProvider>
   );
 }

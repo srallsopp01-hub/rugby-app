@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 11 May 2026 — Added 15-slide Capture Walkthrough Modal (`app/components/CaptureWalkthroughModal.tsx`); auto-opens on first visit, persists progress in localStorage (`fynlwhistle-capture-walkthrough-progress`), re-openable via new "Walkthrough" button in Capture page header. Previous: Polished all empty states; added `EmptyState` and `VideoDropzone` components.
+**Last updated:** 11 May 2026 — Coach player admin improvements: position field removed from player join form, invalid positions auto-cleared on edit, "Map to existing" option on pending approvals. Previous: Capture Walkthrough Modal (15-slide onboarding); Saved Matches compact row redesign.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -1565,6 +1565,29 @@ Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Str
 - ✅ `app/coach/capture/page.tsx` — targeted find/replace only; 6-card status grid left as page content; Help button → `secondaryAction`, Start New Match → `primaryAction`
 - ✅ Back link on `player/games/[gameId]` stays above PageHeader, not inside it
 - ✅ TypeScript strict, zero new lint errors, build passes
+
+### Batch BQ (May 2026) — Saved Matches compact row redesign
+
+- ✅ `/coach/saved-matches` — match list rebuilt as compact single-line rows; expand chevron reveals full stats inline; actions menu (Reopen, Delete, Download) replaces inline buttons
+- ✅ Rows sorted by `matchDate` descending; expand state is per-row, not global
+
+---
+
+### Batch BR (May 2026) — Capture Walkthrough Modal
+
+- ✅ `app/components/CaptureWalkthroughModal.tsx` — 15-slide illustrated walkthrough for new coaches; auto-opens on first visit to `/coach/capture` (keyed off `fynlwhistle-capture-walkthrough-progress` in localStorage)
+- ✅ Progress persists across sessions so returning coaches don't see it again; dismissible at any point
+- ✅ Re-openable via a "Walkthrough" button added to the Capture page header (`secondaryAction`)
+- ✅ Slide images stored in `public/walkthrough/capture/` (01-welcome.png … 15-whats-next.png)
+
+---
+
+### Batch BS (May 2026) — Coach player admin improvements
+
+- ✅ **Join form position removed** — `app/invite/join/JoinForm.tsx`: free-text position field removed from the "notify coach" view; players now submit name only; position is coach-managed only
+- ✅ **Invalid position auto-clear on edit** — `app/coach/team-setup/page.tsx`: `openEdit()` now filters `selectedPositions` to entries present in `POSITION_OPTIONS`; positions like "backrow" entered via old free-text are silently dropped when the coach opens the edit form, prompting them to pick a valid value
+- ✅ **Map to existing player on approval** — `app/coach/team/page.tsx`: pending requests section now has three actions: "Add to squad" (creates new player as before), "Map to existing" (dropdown of unclaimed squad slots → confirm), and "Dismiss"; prevents duplicate profiles when a player joins via link without finding their name
+- ✅ **Approve API extended** — `app/api/invite/approve/route.ts`: accepts optional `existingPlayerId` in POST body; when present, links the user to the existing squad player via `linkSquadPlayerToUser` instead of creating a new one; existing "Add to squad" and pre-assigned slot paths unchanged
 
 ---
 

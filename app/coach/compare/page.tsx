@@ -8,6 +8,7 @@ import { COACH_PAGE_HELP } from "../help-content";
 import {
   type SavedMatchRecord,
 } from "@/app/rugby-tagging/lib/savedMatches";
+import { formatMatchDate } from "@/app/rugby-tagging/helpers";
 import { useMatches } from "@/app/providers/MatchesContext";
 import { EmptyState } from "@/app/components/EmptyState";
 import { GitCompareArrows } from "lucide-react";
@@ -482,7 +483,7 @@ export default function ComparePage() {
         }
       >
         {snapshot.label}
-        {snapshot.match.matchDate ? ` - ${snapshot.match.matchDate}` : ""}
+        {snapshot.match.matchDate ? ` - ${formatMatchDate(snapshot.match.matchDate)}` : ""}
       </option>
     ));
 

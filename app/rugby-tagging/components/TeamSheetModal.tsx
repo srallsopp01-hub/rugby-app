@@ -1,4 +1,5 @@
 import { POSITION_OPTIONS } from "../constants";
+import { formatMatchDate } from "../helpers";
 import type { RosterRow } from "../types";
 import type { SquadPlayer } from "../lib/team";
 import type { SavedMatchRecord } from "../lib/savedMatches";
@@ -90,7 +91,7 @@ export default function TeamSheetModal({
                 .map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.opponent ? `vs ${m.opponent}` : m.matchTitle || "Untitled match"}
-                    {m.matchDate ? ` — ${m.matchDate}` : ""}
+                    {m.matchDate ? ` — ${formatMatchDate(m.matchDate)}` : ""}
                   </option>
                 ))}
             </select>

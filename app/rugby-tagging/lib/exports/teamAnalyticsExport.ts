@@ -16,6 +16,7 @@
  */
 
 import ExcelJS from "exceljs";
+import { formatMatchDate } from "../../helpers";
 import type {
   Grade,
   ReportRow,
@@ -260,7 +261,7 @@ function buildTeamStatsSheet(wb: ExcelJS.Workbook, input: TeamAnalyticsExportInp
 
   const metaParts = [
     input.opponent ? `Opponent: ${input.opponent}` : "",
-    input.matchDate ? `Date: ${input.matchDate}` : "",
+    input.matchDate ? `Date: ${formatMatchDate(input.matchDate)}` : "",
     `Score: ${input.teamEventSummary.triesScored} tries scored – ${input.teamEventSummary.triesConceded} tries conceded`,
   ].filter(Boolean);
   ws.getCell("A2").value = metaParts.join("   |   ");

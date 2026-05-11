@@ -64,6 +64,8 @@ export default function TeamPage() {
 
   const [acceptedMembers, setAcceptedMembers] = useState<TeamMember[]>([]);
   const [notifyRequests, setNotifyRequests] = useState<TeamMember[]>([]);
+  const [mappingRequestId, setMappingRequestId] = useState<string | null>(null);
+  const [mapTargetPlayerId, setMapTargetPlayerId] = useState("");
 
   // Keep local profile in sync with TeamContext (handles async initial fetch).
   useEffect(() => {
@@ -268,6 +270,25 @@ export default function TeamPage() {
     await rejectTeamMember(memberId);
     setNotifyRequests((prev) => prev.filter((m) => m.id !== memberId));
     setStatusMessage("Request dismissed");
+  }
+
+  async function handleMapToExisting(memberId: string, existingPlayerId: string) {
+    const res = await fetch("/api/invite/approve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memberId, existingPlayerId }),
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({})) as { error?: string };
+      setStatusMessage(json.error ?? "Failed to map player");
+      return;
+    }
+    setNotifyRequests((prev) => prev.filter((m) => m.id !== memberId));
+    setMappingRequestId(null);
+    setMapTargetPlayerId("");
+    const updated = await fetchTeamMembers();
+    setAcceptedMembers(updated.filter((m) => m.status === "active"));
+    setStatusMessage("Player mapped to existing squad slot");
   }
 
   async function handleTogglePermissions(memberId: string, current: boolean) {
@@ -552,40 +573,90 @@ export default function TeamPage() {
             </p>
 
             <div className="mt-4 space-y-3">
-              {notifyRequests.map((req) => (
-                <div
-                  key={req.id}
-                  className="flex flex-col gap-3 rounded-xl border border-border bg-panel px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-foreground-strong">
-                      {req.requestedName ?? req.email}
-                    </p>
-                    {req.requestedPosition && (
-                      <p className="mt-0.5 text-xs text-muted">{req.requestedPosition}</p>
-                    )}
-                    {req.email && (
-                      <p className="mt-0.5 text-xs text-muted-2">{req.email}</p>
+              {notifyRequests.map((req) => {
+                const isMapping = mappingRequestId === req.id;
+                return (
+                  <div
+                    key={req.id}
+                    className="rounded-xl border border-border bg-panel px-4 py-3"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-foreground-strong">
+                          {req.requestedName ?? req.email}
+                        </p>
+                        {req.email && (
+                          <p className="mt-0.5 text-xs text-muted-2">{req.email}</p>
+                        )}
+                      </div>
+                      {!isMapping && (
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void handleApproveRequest(req.id)}
+                            className="rounded-lg border border-success/30 bg-success/10 px-3 py-1.5 text-xs font-semibold text-success transition hover:border-success/60"
+                          >
+                            Add to squad
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMappingRequestId(req.id);
+                              setMapTargetPlayerId("");
+                            }}
+                            className="rounded-lg border border-border bg-panel-2 px-3 py-1.5 text-xs font-semibold text-foreground-strong transition hover:border-border-light"
+                          >
+                            Map to existing
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDismissRequest(req.id)}
+                            className="rounded-lg border border-border bg-panel-2 px-3 py-1.5 text-xs font-semibold text-muted transition hover:border-border-light"
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {isMapping && (
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <select
+                          value={mapTargetPlayerId}
+                          onChange={(e) => setMapTargetPlayerId(e.target.value)}
+                          className="min-w-0 flex-1 rounded-lg border border-border bg-panel-2 px-3 py-2 text-sm text-foreground-strong outline-none transition focus:border-border-light"
+                        >
+                          <option value="">Select existing player…</option>
+                          {squadPlayers
+                            .filter((p) => !p.linkedUserId)
+                            .map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.fullName}{p.primaryPosition ? ` — ${p.primaryPosition}` : ""}
+                              </option>
+                            ))}
+                        </select>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            disabled={!mapTargetPlayerId}
+                            onClick={() => void handleMapToExisting(req.id, mapTargetPlayerId)}
+                            className="rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-xs font-semibold text-success transition hover:border-success/60 disabled:opacity-50"
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setMappingRequestId(null); setMapTargetPlayerId(""); }}
+                            className="rounded-lg border border-border bg-panel-2 px-3 py-2 text-xs font-semibold text-muted transition hover:border-border-light"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
-                  <div className="flex shrink-0 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => void handleApproveRequest(req.id)}
-                      className="rounded-lg border border-success/30 bg-success/10 px-3 py-1.5 text-xs font-semibold text-success transition hover:border-success/60"
-                    >
-                      Add to squad
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleDismissRequest(req.id)}
-                      className="rounded-lg border border-border bg-panel-2 px-3 py-1.5 text-xs font-semibold text-muted transition hover:border-border-light"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         )}

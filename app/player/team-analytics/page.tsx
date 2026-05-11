@@ -25,6 +25,7 @@ import {
   buildSetPieceSummary,
   buildTeamEventSummary,
   buildTeamTotals,
+  formatMatchDate,
   teamTacklePctFromTotals,
 } from "@/app/rugby-tagging/helpers";
 import type { EventItem, ReportRow } from "@/app/rugby-tagging/types";

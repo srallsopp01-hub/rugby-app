@@ -1,6 +1,7 @@
 import { Document, Page, View, Text, StyleSheet, pdf } from "@react-pdf/renderer";
 import type { TeamAnalyticsExportInput } from "./teamAnalyticsExport";
 import type { Grade } from "../../types";
+import { formatMatchDate } from "../../helpers";
 
 // ── Palette ────────────────────────────────────────────────────────────────
 const GRADE_COLORS: Record<Grade, { bg: string; text: string }> = {
@@ -136,7 +137,7 @@ function MatchReportDocument({ input }: { input: TeamAnalyticsExportInput }) {
     .slice(0, 4);
 
   const safeMatchTitle = matchTitle || "Match Report";
-  const metaParts = [opponent ? `vs ${opponent}` : null, matchDate || null].filter(Boolean).join(" · ");
+  const metaParts = [opponent ? `vs ${opponent}` : null, formatMatchDate(matchDate) || null].filter(Boolean).join(" · ");
 
   return (
     <Document title={safeMatchTitle} author="FYNL Whistle" creator="FYNL Whistle">
