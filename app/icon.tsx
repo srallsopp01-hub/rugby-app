@@ -37,7 +37,7 @@ export default function Icon() {
             right: 0,
             top: "49%",
             height: 2,
-            background: "#ff5a1f",
+            background: "#ed6a1f",
           }}
         />
       </div>

@@ -28,7 +28,7 @@ export default function Image() {
             right: 0,
             top: "62%",
             height: 20,
-            background: "#ff5a1f",
+            background: "#ed6a1f",
           }}
         />
 
@@ -66,7 +66,7 @@ export default function Image() {
                 right: 0,
                 top: "49%",
                 height: 3,
-                background: "#ff5a1f",
+                background: "#ed6a1f",
               }}
             />
           </div>
@@ -86,7 +86,7 @@ export default function Image() {
               style={{
                 fontSize: 15,
                 fontStyle: "italic",
-                color: "#ff5a1f",
+                color: "#ed6a1f",
                 letterSpacing: "-0.01em",
               }}
             >
@@ -122,7 +122,7 @@ export default function Image() {
               fontWeight: 900,
               lineHeight: 0.9,
               letterSpacing: "-0.04em",
-              color: "#ff5a1f",
+              color: "#ed6a1f",
             }}
           >
             called.

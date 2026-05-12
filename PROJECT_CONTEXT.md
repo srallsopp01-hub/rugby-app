@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 12 May 2026 — No-CC free trial: trial is now 14 days / 2 games, no credit card required. `create-starter` sets `status: "trialing"` + 14-day `trial_ends_at`. Stripe checkout no longer includes a trial period (charge on upgrade). New `/api/matches/quota` endpoint counts org-wide saved_matches for trial orgs. `upsertCloudSavedMatch` checks quota before inserting new matches (updates bypass). Trial quota banner on saved-matches page; capture page redirects to `/pricing` if quota is exhausted. Previous: Brand system v1: FW mark + FYNL Whistle lockup (Archivo Black / Instrument Serif italic / Bebas Neue) rolled out across marketing header/footer, auth layout, coach sidebar, OG image, and favicon. Accent updated to Referee Orange #ff5a1f.
+**Last updated:** 12 May 2026 — OG images: accent colour fixed to #ed6a1f across opengraph-image.tsx and icon.tsx; per-post blog OG image added at app/(marketing)/blog/[slug]/opengraph-image.tsx. Previous: No-CC free trial: trial is now 14 days / 2 games, no credit card required.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -1588,6 +1588,15 @@ Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Str
 - ✅ **Invalid position auto-clear on edit** — `app/coach/team-setup/page.tsx`: `openEdit()` now filters `selectedPositions` to entries present in `POSITION_OPTIONS`; positions like "backrow" entered via old free-text are silently dropped when the coach opens the edit form, prompting them to pick a valid value
 - ✅ **Map to existing player on approval** — `app/coach/team/page.tsx`: pending requests section now has three actions: "Add to squad" (creates new player as before), "Map to existing" (dropdown of unclaimed squad slots → confirm), and "Dismiss"; prevents duplicate profiles when a player joins via link without finding their name
 - ✅ **Approve API extended** — `app/api/invite/approve/route.ts`: accepts optional `existingPlayerId` in POST body; when present, links the user to the existing squad player via `linkSquadPlayerToUser` instead of creating a new one; existing "Add to squad" and pre-assigned slot paths unchanged
+
+---
+
+### Batch BT (May 2026) — OG images: brand colour fix + per-post blog cards
+
+- ✅ `app/opengraph-image.tsx` — accent updated from old `#ff5a1f` → `#ed6a1f` (matches BL unified brand orange)
+- ✅ `app/icon.tsx` — same accent fix on the FW mark stripe
+- ✅ `app/(marketing)/blog/[slug]/opengraph-image.tsx` — new per-post OG image (1200×630): tag badge, post title, description, left orange accent stripe, domain footer; looks up post by slug from `blogPosts`
+- ✅ `public/walkthrough/source/` screenshots deleted (replaced by inline SVG illustrations in Batch BR)
 
 ---
 
