@@ -1,3 +1,4 @@
+import Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const PLAN_LABELS: Record<string, string> = {
@@ -30,6 +31,20 @@ function daysUntil(iso: string | null | undefined): number | null {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
+function formatCurrency(amount: number, currency: string): string {
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function stripeCustomerUrl(customerId: string): string {
+  const isTest = (process.env.STRIPE_SECRET_KEY ?? "").startsWith("sk_test_");
+  const prefix = isTest ? "/test" : "";
+  return `https://dashboard.stripe.com${prefix}/customers/${customerId}`;
+}
+
 export default async function BillingPage() {
   const admin = createAdminClient();
 
@@ -50,6 +65,35 @@ export default async function BillingPage() {
 
   const allOrgs = orgs ?? [];
 
+  // MRR from Stripe active subscriptions
+  let mrrByCurrency: Record<string, number> = {};
+  let activePayingCount = 0;
+
+  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  if (stripeKey) {
+    try {
+      const stripe = new Stripe(stripeKey);
+      const subs = await stripe.subscriptions.list({ limit: 100, status: "active" });
+      const seenCustomers = new Set<string>();
+
+      for (const sub of subs.data) {
+        if (sub.customer) seenCustomers.add(String(sub.customer));
+        for (const item of sub.items.data) {
+          const amount = item.price.unit_amount ?? 0;
+          const currency = item.price.currency ?? "usd";
+          const interval = item.price.recurring?.interval;
+          const monthly = interval === "year" ? amount / 12 : amount;
+          mrrByCurrency[currency] = (mrrByCurrency[currency] ?? 0) + monthly / 100;
+        }
+      }
+      activePayingCount = seenCustomers.size;
+    } catch {
+      // Stripe unavailable — skip MRR stats
+    }
+  }
+
+  const hasMrr = Object.keys(mrrByCurrency).length > 0;
+
   // Counts by plan
   const byPlan = allOrgs.reduce<Record<string, number>>((acc, o) => {
     const p = o.plan ?? "unknown";
@@ -59,7 +103,10 @@ export default async function BillingPage() {
 
   const trialing = allOrgs
     .filter((o) => o.status === "trialing")
-    .sort((a, b) => new Date(a.trial_ends_at ?? "").getTime() - new Date(b.trial_ends_at ?? "").getTime());
+    .sort(
+      (a, b) =>
+        new Date(a.trial_ends_at ?? "").getTime() - new Date(b.trial_ends_at ?? "").getTime()
+    );
 
   const pastDue = allOrgs.filter((o) => o.status === "past_due");
 
@@ -69,6 +116,31 @@ export default async function BillingPage() {
         <h1 className="text-2xl font-semibold text-foreground-strong">Billing</h1>
         <p className="mt-1 text-sm text-muted">Subscription status across all organisations.</p>
       </div>
+
+      {/* MRR / ARR */}
+      {hasMrr && (
+        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)] mb-4">
+          <h2 className="text-sm font-semibold text-foreground-strong mb-4">Revenue</h2>
+          <div className="flex flex-wrap gap-3">
+            {Object.entries(mrrByCurrency).map(([currency, mrr]) => (
+              <div key={currency} className="rounded-xl bg-panel-2 px-4 py-3 min-w-[130px]">
+                <p className="text-xs text-muted mb-0.5">MRR ({currency.toUpperCase()})</p>
+                <p className="text-2xl font-bold text-foreground-strong">
+                  {formatCurrency(mrr, currency)}
+                </p>
+                <p className="text-xs text-muted mt-1">
+                  ARR {formatCurrency(mrr * 12, currency)}
+                </p>
+              </div>
+            ))}
+            <div className="rounded-xl bg-panel-2 px-4 py-3 min-w-[130px]">
+              <p className="text-xs text-muted mb-0.5">Active paying</p>
+              <p className="text-2xl font-bold text-foreground-strong">{activePayingCount}</p>
+              <p className="text-xs text-muted mt-1">subscribers</p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Plan breakdown */}
       <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)] mb-4">
@@ -102,9 +174,25 @@ export default async function BillingPage() {
                   className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-panel-2 text-sm"
                 >
                   <span className="font-medium text-foreground-strong truncate">{org.name}</span>
-                  <span className={`text-xs ml-4 shrink-0 ${urgent ? "text-red-400 font-semibold" : "text-muted"}`}>
-                    {days !== null ? (days <= 0 ? "Expired" : `${days}d left`) : "—"} · ends {formatDate(org.trial_ends_at)}
-                  </span>
+                  <div className="flex items-center gap-3 ml-4 shrink-0">
+                    <span
+                      className={`text-xs ${urgent ? "text-red-400 font-semibold" : "text-muted"}`}
+                    >
+                      {days !== null ? (days <= 0 ? "Expired" : `${days}d left`) : "—"} · ends{" "}
+                      {formatDate(org.trial_ends_at)}
+                    </span>
+                    {org.stripe_customer_id && (
+                      <a
+                        href={stripeCustomerUrl(org.stripe_customer_id)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-muted hover:text-foreground transition-colors"
+                        title="Open in Stripe"
+                      >
+                        ↗
+                      </a>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -127,9 +215,22 @@ export default async function BillingPage() {
                 className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-red-500/10 text-sm"
               >
                 <span className="font-medium text-foreground-strong truncate">{org.name}</span>
-                <span className="text-xs text-red-400 ml-4 shrink-0">
-                  {PLAN_LABELS[org.plan] ?? org.plan} · due {formatDate(org.current_period_end)}
-                </span>
+                <div className="flex items-center gap-3 ml-4 shrink-0">
+                  <span className="text-xs text-red-400">
+                    {PLAN_LABELS[org.plan] ?? org.plan} · due {formatDate(org.current_period_end)}
+                  </span>
+                  {org.stripe_customer_id && (
+                    <a
+                      href={stripeCustomerUrl(org.stripe_customer_id)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-red-400/70 hover:text-red-400 transition-colors"
+                      title="Open in Stripe"
+                    >
+                      ↗
+                    </a>
+                  )}
+                </div>
               </div>
             ))}
           </div>

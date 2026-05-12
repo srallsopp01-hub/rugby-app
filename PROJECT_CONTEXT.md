@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 12 May 2026 — OG images: accent colour fixed to #ed6a1f across opengraph-image.tsx and icon.tsx; per-post blog OG image added at app/(marketing)/blog/[slug]/opengraph-image.tsx. Previous: No-CC free trial: trial is now 14 days / 2 games, no credit card required.
+**Last updated:** 12 May 2026 — Move 4: Business admin panel — `/admin/billing` now shows live MRR/ARR from Stripe API + active paying customer count + Stripe customer links on trialing/past-due rows; `/admin/organisations` now shows owner email column + Stripe customer links per org. Previous: OG images: accent colour fixed to #ed6a1f across opengraph-image.tsx and icon.tsx; per-post blog OG image added at app/(marketing)/blog/[slug]/opengraph-image.tsx.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -93,9 +93,9 @@ The app is split into four clearly separated layers with independent layouts and
 |---|---|---|
 | `/admin` | Live | Platform overview: orgs by status, active teams, coach seats, new orgs (30 days) |
 | `/admin/accounts` | Live | All registered users — email, org, role, joined date (via Supabase auth admin API) |
-| `/admin/organisations` | Live | All orgs table — plan, status, team/seat counts, billing date; click to expand teams; Edit to change plan or override limits |
+| `/admin/organisations` | Live | All orgs table — owner email, plan, status, team/seat counts, billing date, Stripe link; click to expand teams; Edit to change plan or override limits |
 | `/admin/teams` | Live | All teams — org name, status, member count, created date |
-| `/admin/billing` | Live | Orgs by plan, trialing orgs (soonest-expiry first, urgent ≤3 days in red), past-due list |
+| `/admin/billing` | Live | Live MRR/ARR from Stripe API + active paying count; orgs by plan; trialing orgs (soonest-expiry first, urgent ≤3 days in red) with Stripe links; past-due list with Stripe links |
 | `/admin/usage` | Live | Total orgs/teams/members/matches; monthly bar charts for new orgs and saved matches (6 months) |
 | `/admin/issues` | Stub | Internal issue tracking (no backing data yet) |
 | `/admin/settings` | Stub | Admin settings (no backing data yet) |
@@ -1602,6 +1602,11 @@ Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Str
 
 ## Next — what's left to do
 
+### Move 4 — ✅ Shipped (May 2026)
+- `/admin/billing` — live MRR/ARR stat cards from Stripe subscriptions API (summed per currency, interval-normalised); active paying customer count; Stripe dashboard links on trialing and past-due org rows
+- `/admin/organisations` — owner email column (batch-resolved from auth admin listUsers); Stripe customer link per org row; `stripeTestMode` flag passed from server to client for correct dashboard URL
+- No DB migrations; no new routes; 3 files changed
+
 ### Move 3 — ✅ Shipped (May 2026)
 - `/coach/organisation` — club_admin read-only: org name, plan, status, billing date, team count, coach seat count
 - Club_admin gate fix in `app/coach/layout.tsx` — accepts `organisation_members` as well as `team_members`
@@ -1652,11 +1657,7 @@ At this point: a club can discover the product, sign up, pay with a real card, r
 ---
 ### Post-launch — internal tooling
 
-**5. Move 4 — Business admin panel** (`/admin/organisations`, `/admin/billing`)
-- Internal visibility layer: customer list, MRR, subscription status, plan breakdown
-- Data source: `organisations` table — status/plan/current_period_end kept in sync by webhooks
-- Scope: read-only internal tool, no customer-facing UI
-- Replaces the current admin stubs
+**5. Move 4 — Business admin panel** (`/admin/organisations`, `/admin/billing`) — ✅ Done
 
 **6. Stripe Customer Portal**
 - Lets customers manage their own billing (cancel, upgrade, update card) without a custom billing UI

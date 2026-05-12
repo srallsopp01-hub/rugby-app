@@ -15,7 +15,7 @@ export default async function OrganisationsPage() {
   const { data: orgs } = await admin
     .from("organisations")
     .select(
-      "id, name, plan, status, team_limit, seat_limit, player_limit, trial_ends_at, current_period_end, created_at"
+      "id, name, plan, status, team_limit, seat_limit, player_limit, trial_ends_at, current_period_end, created_at, owner_user_id, stripe_customer_id"
     )
     .order("created_at", { ascending: false });
 
@@ -30,22 +30,30 @@ export default async function OrganisationsPage() {
 
   const orgIds = orgs.map((o) => o.id);
 
-  const [{ data: teams }, { data: orgMembers }, { data: teamMembersRaw }] = await Promise.all([
-    admin
-      .from("teams")
-      .select("id, name, organisation_id")
-      .in("organisation_id", orgIds)
-      .eq("status", "active"),
-    admin
-      .from("organisation_members")
-      .select("organisation_id, id")
-      .in("organisation_id", orgIds),
-    admin
-      .from("team_members")
-      .select("team_id, role, status")
-      .in("role", ["head_coach", "assistant_coach"])
-      .eq("status", "active"),
-  ]);
+  const [{ data: teams }, { data: orgMembers }, { data: teamMembersRaw }, authUsersResult] =
+    await Promise.all([
+      admin
+        .from("teams")
+        .select("id, name, organisation_id")
+        .in("organisation_id", orgIds)
+        .eq("status", "active"),
+      admin
+        .from("organisation_members")
+        .select("organisation_id, id")
+        .in("organisation_id", orgIds),
+      admin
+        .from("team_members")
+        .select("team_id, role, status")
+        .in("role", ["head_coach", "assistant_coach"])
+        .eq("status", "active"),
+      admin.auth.admin.listUsers({ perPage: 1000 }),
+    ]);
+
+  // Build userId → email map from auth users
+  const emailByUserId = new Map<string, string>();
+  for (const u of authUsersResult.data?.users ?? []) {
+    if (u.email) emailByUserId.set(u.id, u.email);
+  }
 
   const teamsByOrg = (teams ?? []).reduce<Record<string, { id: string; name: string }[]>>(
     (acc, t) => {
@@ -80,10 +88,14 @@ export default async function OrganisationsPage() {
     teamCount: (teamsByOrg[org.id] ?? []).length,
     seatCount: (coachByOrg[org.id] ?? 0) + (orgAdminCount[org.id] ?? 0),
     teams: teamsByOrg[org.id] ?? [],
+    ownerEmail: org.owner_user_id ? (emailByUserId.get(org.owner_user_id) ?? null) : null,
+    stripeCustomerId: org.stripe_customer_id ?? null,
   }));
 
+  const stripeTestMode = (process.env.STRIPE_SECRET_KEY ?? "").startsWith("sk_test_");
+
   return (
-    <div className="p-8 max-w-6xl">
+    <div className="p-8 max-w-7xl">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-foreground-strong">Organisations</h1>
         <p className="mt-1 text-sm text-muted">
@@ -92,7 +104,7 @@ export default async function OrganisationsPage() {
         </p>
       </div>
 
-      <OrgTable initialOrgs={rows} />
+      <OrgTable initialOrgs={rows} stripeTestMode={stripeTestMode} />
     </div>
   );
 }

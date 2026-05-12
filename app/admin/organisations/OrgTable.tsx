@@ -27,6 +27,11 @@ function formatDate(iso: string | null | undefined): string {
   });
 }
 
+function stripeCustomerUrl(customerId: string, testMode: boolean): string {
+  const prefix = testMode ? "/test" : "";
+  return `https://dashboard.stripe.com${prefix}/customers/${customerId}`;
+}
+
 export interface OrgRow {
   id: string;
   name: string;
@@ -41,9 +46,17 @@ export interface OrgRow {
   teamCount: number;
   seatCount: number;
   teams: { id: string; name: string }[];
+  ownerEmail: string | null;
+  stripeCustomerId: string | null;
 }
 
-export default function OrgTable({ initialOrgs }: { initialOrgs: OrgRow[] }) {
+export default function OrgTable({
+  initialOrgs,
+  stripeTestMode,
+}: {
+  initialOrgs: OrgRow[];
+  stripeTestMode: boolean;
+}) {
   const [orgs, setOrgs] = useState(initialOrgs);
   const [editOrg, setEditOrg] = useState<OrgRow | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -65,12 +78,14 @@ export default function OrgTable({ initialOrgs }: { initialOrgs: OrgRow[] }) {
 
       <div className="rounded-2xl border border-border bg-panel overflow-hidden">
         {/* Header */}
-        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_80px] gap-4 px-4 py-3 border-b border-border bg-panel-2">
-          {["Organisation", "Plan", "Status", "Teams", "Seats", "Billing date", ""].map((h) => (
-            <span key={h} className="text-xs font-medium text-muted">
-              {h}
-            </span>
-          ))}
+        <div className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_1fr_1fr_100px] gap-4 px-4 py-3 border-b border-border bg-panel-2">
+          {["Organisation", "Owner", "Plan", "Status", "Teams", "Seats", "Billing date", ""].map(
+            (h) => (
+              <span key={h} className="text-xs font-medium text-muted">
+                {h}
+              </span>
+            )
+          )}
         </div>
 
         {orgs.length === 0 && (
@@ -85,13 +100,14 @@ export default function OrgTable({ initialOrgs }: { initialOrgs: OrgRow[] }) {
 
           return (
             <div key={org.id} className="border-b border-border last:border-0">
-              <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_80px] gap-4 items-center px-4 py-3 hover:bg-panel-2/50 transition-colors">
+              <div className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_1fr_1fr_100px] gap-4 items-center px-4 py-3 hover:bg-panel-2/50 transition-colors">
                 <button
                   onClick={() => setExpanded(isExpanded ? null : org.id)}
                   className="text-left text-sm font-medium text-foreground-strong hover:text-foreground truncate"
                 >
                   {org.name}
                 </button>
+                <span className="text-sm text-muted truncate">{org.ownerEmail ?? "—"}</span>
                 <span className="text-sm text-foreground">
                   {PLAN_LABELS[org.plan] ?? org.plan ?? "—"}
                 </span>
@@ -103,12 +119,25 @@ export default function OrgTable({ initialOrgs }: { initialOrgs: OrgRow[] }) {
                 <span className="text-sm text-foreground">{org.teamCount}</span>
                 <span className="text-sm text-foreground">{org.seatCount}</span>
                 <span className="text-sm text-foreground">{formatDate(billingDate)}</span>
-                <button
-                  onClick={() => setEditOrg(org)}
-                  className="text-xs text-muted hover:text-foreground px-2 py-1 rounded-lg hover:bg-panel-3 transition-colors text-right"
-                >
-                  Edit
-                </button>
+                <div className="flex items-center justify-end gap-1">
+                  {org.stripeCustomerId && (
+                    <a
+                      href={stripeCustomerUrl(org.stripeCustomerId, stripeTestMode)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-muted hover:text-foreground px-2 py-1 rounded-lg hover:bg-panel-3 transition-colors"
+                      title="Open in Stripe"
+                    >
+                      ↗
+                    </a>
+                  )}
+                  <button
+                    onClick={() => setEditOrg(org)}
+                    className="text-xs text-muted hover:text-foreground px-2 py-1 rounded-lg hover:bg-panel-3 transition-colors"
+                  >
+                    Edit
+                  </button>
+                </div>
               </div>
 
               {/* Expanded teams list */}
