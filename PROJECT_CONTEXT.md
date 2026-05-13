@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 12 May 2026 — Move 4: Business admin panel — `/admin/billing` now shows live MRR/ARR from Stripe API + active paying customer count + Stripe customer links on trialing/past-due rows; `/admin/organisations` now shows owner email column + Stripe customer links per org. Previous: OG images: accent colour fixed to #ed6a1f across opengraph-image.tsx and icon.tsx; per-post blog OG image added at app/(marketing)/blog/[slug]/opengraph-image.tsx.
+**Last updated:** 13 May 2026 — Capture keyboard shortcuts: P toggles pause/play at any time; hold S slows to 0.5x while held (mirrors turtle button). Spacebar remains voice push-to-talk only. Insights date sorting fixed to parse DD/MM/YYYY numerically. Previous: Move 4: Business admin panel — `/admin/billing` now shows live MRR/ARR from Stripe API + active paying customer count + Stripe customer links on trialing/past-due rows; `/admin/organisations` now shows owner email column + Stripe customer links per org.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
