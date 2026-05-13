@@ -1700,6 +1700,7 @@ These are low-effort, high-signal for early clubs:
 - Advanced video annotation / telestration
 - Plan limit enforcement (schema ready, code enforcement not yet built)
 - Automated test suite (start with data transformation and export utilities)
+  - Vitest setup for FYNL Whistle — port `formations.test.ts` from Phaseboard repo when adding the broader test suite (currently 41 tests covering formation accuracy)
 
 ---
 
