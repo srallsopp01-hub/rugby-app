@@ -116,6 +116,16 @@ const HELP_DISMISSED_KEY = "rugby-tagging-help-dismissed";
 
 // Return team-scoped localStorage keys so capture sessions and correction
 // memory never bleed between teams when a coach switches team context.
+function toInputDateValue(dateStr: string): string {
+  if (!dateStr) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  const ddmm = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (ddmm) return `${ddmm[3]}-${ddmm[2].padStart(2, "0")}-${ddmm[1].padStart(2, "0")}`;
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  return "";
+}
+
 function getScopedStorageKey(): string {
   try {
     const t = localStorage.getItem(ACTIVE_TEAM_ID_KEY) ?? "";
@@ -235,6 +245,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
   type VideoUploadStatus = "idle" | "uploading" | "uploaded" | "error";
   const [videoUploadStatus, setVideoUploadStatus] = useState<VideoUploadStatus>("idle");
   const [videoUploadPercent, setVideoUploadPercent] = useState(0);
+  const [showReplaceDropzone, setShowReplaceDropzone] = useState(false);
   const [videoUploadError, setVideoUploadError] = useState("");
   const [matchSubmitStatus, setMatchSubmitStatus] =
     useState<"idle" | "submitting" | "submitted" | "error">("idle");
@@ -737,7 +748,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
         setCurrentMatchId(savedMatch.id);
         setMatchTitle(savedMatch.matchTitle || "");
         setOpponent(savedMatch.opponent || "");
-        setMatchDate(savedMatch.matchDate || "");
+        setMatchDate(toInputDateValue(savedMatch.matchDate || ""));
         setRosterRows(hydrateRosterRows(savedMatch.rosterRows));
         setSelectedPlayer(savedMatch.selectedPlayer || "");
         setEvents(safeEvents);
@@ -802,7 +813,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
 
       setMatchTitle(saved.matchTitle || "");
       setOpponent(saved.opponent || "");
-      setMatchDate(saved.matchDate || "");
+      setMatchDate(toInputDateValue(saved.matchDate || ""));
       setRosterRows(hydrateRosterRows(saved.rosterRows));
       setSelectedPlayer(saved.selectedPlayer || "");
       setEvents(safeEvents);
@@ -1514,6 +1525,7 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
             }
           }
           setVideoUploadStatus("uploaded");
+          setShowReplaceDropzone(false);
         } else {
           setVideoUploadError(result.error ?? "Video upload failed");
           setVideoUploadStatus("error");
@@ -3092,10 +3104,10 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
                 />
 
                 <input
+                  type="date"
                   value={matchDate}
                   onChange={(e) => setMatchDate(e.target.value)}
                   className="w-full rounded-xl border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground"
-                  placeholder="Date"
                 />
               </div>
 
@@ -3238,54 +3250,70 @@ Ellie missed tackle"
                 <label className="mb-2 block text-sm font-medium text-foreground">
                   Match video
                 </label>
-                <VideoDropzone
-                  onFileSelected={(file) => {
-                    if (videoRef.current?.src?.startsWith("blob:")) {
-                      URL.revokeObjectURL(videoRef.current.src);
+                {videoSrc !== null && videoUploadStatus !== "uploading" && !showReplaceDropzone ? (
+                  <div className="flex items-center justify-between rounded-xl border border-border bg-panel-2 px-3 py-2">
+                    <span className="flex items-center gap-2 text-sm text-muted">
+                      <Video className="h-4 w-4 shrink-0" />
+                      Match video loaded
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowReplaceDropzone(true)}
+                      className="text-sm text-accent hover:underline"
+                    >
+                      Replace video
+                    </button>
+                  </div>
+                ) : (
+                  <VideoDropzone
+                    onFileSelected={(file) => {
+                      if (videoRef.current?.src?.startsWith("blob:")) {
+                        URL.revokeObjectURL(videoRef.current.src);
+                      }
+                      const nextVideoSrc = setVideoFile(file);
+                      if (videoRef.current) {
+                        videoRef.current.src = nextVideoSrc;
+                        videoRef.current.playbackRate = 1;
+                      }
+                      setVideoSrc(nextVideoSrc);
+                      sessionStorage.setItem("rugby-tagging-video-src", nextVideoSrc);
+                      setPlaybackRate(1);
+                      setCurrentTime(0);
+                      setVideoLoaded(true);
+                      setIsVideoPlaying(false);
+                      setVideoDuration(0);
+                      setVideoUploadStatus("idle");
+                      setVideoUploadPercent(0);
+                      setVideoUploadError("");
+                      setMatchSubmitStatus("idle");
+                      setMatchSubmitError("");
+                      setStatusMessage("Video loaded");
+                      pendingVideoFileRef.current = file;
+                      let matchIdForUpload = currentMatchId;
+                      if (!matchIdForUpload) {
+                        matchIdForUpload = createMatchId();
+                        persistCurrentMatchId(matchIdForUpload);
+                        setCurrentMatchId(matchIdForUpload);
+                      }
+                      void triggerVideoUpload(file, matchIdForUpload);
+                    }}
+                    isUploading={videoUploadStatus === "uploading"}
+                    uploadProgress={videoUploadPercent}
+                    uploadTone={
+                      videoUploadStatus === "uploaded" ? "success" :
+                      videoUploadStatus === "uploading" ? "uploading" :
+                      videoUploadStatus === "error" ? "error" :
+                      "idle"
                     }
-                    const nextVideoSrc = setVideoFile(file);
-                    if (videoRef.current) {
-                      videoRef.current.src = nextVideoSrc;
-                      videoRef.current.playbackRate = 1;
+                    uploadStatus={
+                      videoUploadStatus === "uploading" ? videoUploadLabel :
+                      videoUploadStatus === "uploaded" ? "Synced to cloud" :
+                      videoUploadStatus === "error" ? `Upload failed – ${videoUploadError || "video not saved to cloud"}` :
+                      undefined
                     }
-                    setVideoSrc(nextVideoSrc);
-                    sessionStorage.setItem("rugby-tagging-video-src", nextVideoSrc);
-                    setPlaybackRate(1);
-                    setCurrentTime(0);
-                    setVideoLoaded(true);
-                    setIsVideoPlaying(false);
-                    setVideoDuration(0);
-                    setVideoUploadStatus("idle");
-                    setVideoUploadPercent(0);
-                    setVideoUploadError("");
-                    setMatchSubmitStatus("idle");
-                    setMatchSubmitError("");
-                    setStatusMessage("Video loaded");
-                    pendingVideoFileRef.current = file;
-                    let matchIdForUpload = currentMatchId;
-                    if (!matchIdForUpload) {
-                      matchIdForUpload = createMatchId();
-                      persistCurrentMatchId(matchIdForUpload);
-                      setCurrentMatchId(matchIdForUpload);
-                    }
-                    void triggerVideoUpload(file, matchIdForUpload);
-                  }}
-                  isUploading={videoUploadStatus === "uploading"}
-                  uploadProgress={videoUploadPercent}
-                  uploadTone={
-                    videoUploadStatus === "uploaded" ? "success" :
-                    videoUploadStatus === "uploading" ? "uploading" :
-                    videoUploadStatus === "error" ? "error" :
-                    "idle"
-                  }
-                  uploadStatus={
-                    videoUploadStatus === "uploading" ? videoUploadLabel :
-                    videoUploadStatus === "uploaded" ? "Synced to cloud" :
-                    videoUploadStatus === "error" ? `Upload failed – ${videoUploadError || "video not saved to cloud"}` :
-                    undefined
-                  }
-                  maxFileSizeLabel="Up to 5 GB · mp4, mov, m4v"
-                />
+                    maxFileSizeLabel="Up to 5 GB · mp4, mov, m4v"
+                  />
+                )}
               </div>
 
               <VideoPlayer

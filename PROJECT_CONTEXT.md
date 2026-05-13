@@ -1598,6 +1598,12 @@ Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Str
 - ✅ `app/(marketing)/blog/[slug]/opengraph-image.tsx` — new per-post OG image (1200×630): tag badge, post title, description, left orange accent stripe, domain footer; looks up post by slug from `blogPosts`
 - ✅ `public/walkthrough/source/` screenshots deleted (replaced by inline SVG illustrations in Batch BR)
 
+### Batch BU (May 2026) — Capture dropzone collapse + player involvement playlist
+
+- ✅ `app/coach/capture/page.tsx` — VideoDropzone collapses to a thin "Match video loaded" status bar once `videoSrc` is non-null and no upload is in flight; "Replace video" button re-opens the dropzone; `showReplaceDropzone` state (default false) reset after successful upload; dropzone always visible during active upload
+- ✅ `app/coach/capture/page.tsx` — date input switched to `type="date"` with `toInputDateValue()` normaliser so saved matches hydrate the native date picker correctly
+- ✅ `app/player/games/[gameId]/page.tsx` — `seekToEvent` replaced by `playInvolvementWindow`; plays a ±3 s window per event then auto-advances through the full playlist; `onPause` clears the window so manual pauses stop auto-advance
+
 ---
 
 ## Next — what's left to do

@@ -86,6 +86,8 @@ export default function GameDetailPage() {
   const [activeEventIdx, setActiveEventIdx] = useState<number | null>(null);
   const playlistRef = useRef<HTMLDivElement>(null);
   const videoRetryCount = useRef(0);
+  const activeWindowEndRef = useRef<number | null>(null);
+  const activeEventIdxRef = useRef<number | null>(null);
 
   useEffect(() => {
     videoRetryCount.current = 0;
@@ -120,13 +122,17 @@ export default function GameDetailPage() {
     e.target.value = "";
   }
 
-  function seekToEvent(idx: number) {
+  function playInvolvementWindow(idx: number) {
     const ev = events[idx];
     if (!ev) return;
+    const windowStart = Math.max(0, ev.timestamp - 3);
+    const windowEnd = ev.timestamp + 3;
+    activeWindowEndRef.current = windowEnd;
+    activeEventIdxRef.current = idx;
     setActiveEventIdx(idx);
     if (videoRef.current) {
-      videoRef.current.currentTime = Math.max(0, ev.timestamp - 3);
-      videoRef.current.play();
+      videoRef.current.currentTime = windowStart;
+      void videoRef.current.play();
     }
     setTimeout(() => {
       const item = playlistRef.current?.querySelector(`[data-idx="${idx}"]`);
@@ -198,6 +204,30 @@ export default function GameDetailPage() {
                 src={videoUrl}
                 className="rounded-none"
                 enableFullscreen
+                onPause={() => {
+                  activeWindowEndRef.current = null;
+                }}
+                onTimeUpdate={(currentTime) => {
+                  const windowEnd = activeWindowEndRef.current;
+                  if (windowEnd === null || currentTime < windowEnd) return;
+                  const nextIdx = (activeEventIdxRef.current ?? -1) + 1;
+                  if (nextIdx < events.length) {
+                    playInvolvementWindow(nextIdx);
+                  } else {
+                    activeWindowEndRef.current = null;
+                    videoRef.current?.pause();
+                  }
+                }}
+                onEnded={() => {
+                  const windowEnd = activeWindowEndRef.current;
+                  if (windowEnd === null) return;
+                  const nextIdx = (activeEventIdxRef.current ?? -1) + 1;
+                  if (nextIdx < events.length) {
+                    playInvolvementWindow(nextIdx);
+                  } else {
+                    activeWindowEndRef.current = null;
+                  }
+                }}
                 onError={() => {
                   if (!videoUrl || videoUrl.startsWith("blob:")) return;
                   if (!match?.videoStoragePath) return;
@@ -349,7 +379,7 @@ export default function GameDetailPage() {
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => seekToEvent(Math.max(safeActiveIdx - 1, 0))}
+                  onClick={() => playInvolvementWindow(Math.max(safeActiveIdx - 1, 0))}
                   disabled={activeEventIdx === null || safeActiveIdx === 0}
                   className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground disabled:opacity-50"
                 >
@@ -357,7 +387,7 @@ export default function GameDetailPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => seekToEvent(activeEventIdx === null ? 0 : Math.min(safeActiveIdx + 1, events.length - 1))}
+                  onClick={() => playInvolvementWindow(activeEventIdx === null ? 0 : Math.min(safeActiveIdx + 1, events.length - 1))}
                   disabled={activeEventIdx !== null && safeActiveIdx >= events.length - 1}
                   className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground disabled:opacity-50"
                 >
@@ -380,7 +410,7 @@ export default function GameDetailPage() {
                       type="button"
                       key={event.id}
                       data-idx={index}
-                      onClick={() => seekToEvent(index)}
+                      onClick={() => playInvolvementWindow(index)}
                       className={`flex w-full items-start justify-between gap-3 rounded-xl border px-4 py-3 text-left transition ${
                         isActive
                           ? "border-border-light bg-panel text-foreground"
