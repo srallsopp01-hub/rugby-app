@@ -1,11 +1,10 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
-import type { Actor, ActorType, Team, Tool, Scene, HistoryEntry, PlayArrow, ArrowDrawType, Zone, ZoneShape, FormationPreset } from './types';
+import type { Actor, ActorType, Team, Tool, Scene, HistoryEntry, PlayArrow, ArrowDrawType, Zone, ZoneShape, FormationPreset, Play } from './types';
 
-const STORAGE_KEY = 'fynlwhistle-playbook-active';
 const MAX_HISTORY = 50;
 
-function makeScene(name: string): Scene {
+export function makeScene(name: string): Scene {
   return { id: nanoid(), name, actors: [], arrows: [], zones: [], duration: 1500, notes: '' };
 }
 
@@ -85,7 +84,8 @@ interface EditorStore {
   undo: () => void;
   redo: () => void;
 
-  loadFromStorage: () => void;
+  loadPlay: (play: Play) => void;
+  getPlaySnapshot: () => Pick<Play, 'name' | 'scenes'>;
 }
 
 const first = makeScene('Scene 1');
@@ -472,21 +472,25 @@ const useEditorStore = create<EditorStore>((set, get) => ({
       };
     }),
 
-  loadFromStorage: () => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const saved = JSON.parse(raw);
-      const scenes: Scene[] = (saved.scenes ?? []).map((sc: Scene) => ({
-        notes: '',
-        ...sc,
-        arrows: (sc.arrows ?? []).map((a: PlayArrow) => ({ ...a })),
-        zones: (sc.zones ?? []),
-      }));
-      set({ projectName: saved.projectName, scenes, currentSceneId: saved.currentSceneId });
-    } catch {
-      // ignore corrupt data
-    }
+  loadPlay: (play) => {
+    const scenes: Scene[] = play.scenes.length > 0
+      ? play.scenes.map((sc) => ({ notes: '', ...sc, arrows: sc.arrows ?? [], zones: sc.zones ?? [] }))
+      : [makeScene('Scene 1')];
+    set({
+      projectName: play.name,
+      scenes,
+      currentSceneId: scenes[0].id,
+      past: [],
+      future: [],
+      selectedActorId: null,
+      selectedArrowId: null,
+      selectedZoneId: null,
+    });
+  },
+
+  getPlaySnapshot: () => {
+    const s = get();
+    return { name: s.projectName, scenes: s.scenes };
   },
 }));
 

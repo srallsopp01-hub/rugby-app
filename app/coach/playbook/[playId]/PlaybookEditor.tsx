@@ -1,8 +1,12 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import { FileQuestion } from 'lucide-react';
 import useEditorStore from '../lib/editorStore';
+import { getPlay, createPlay, savePlay, getActiveTeamId } from '../lib/playsStore';
+import { EmptyState } from '@/app/components/EmptyState';
 import TopBar from '../components/TopBar';
 import LeftSidebar from '../components/LeftSidebar';
 import RightSidebar from '../components/RightSidebar';
@@ -10,11 +14,14 @@ import SceneRail from '../components/SceneRail';
 
 const RugbyCanvas = dynamic(() => import('../components/canvas/RugbyCanvas'), { ssr: false });
 
-const STORAGE_KEY = 'fynlwhistle-playbook-active';
-
 export default function PlaybookEditor() {
+  const params = useParams();
+  const playId = params.playId as string;
+  const router = useRouter();
+
   const {
-    loadFromStorage,
+    loadPlay,
+    getPlaySnapshot,
     scenes,
     currentSceneId,
     projectName,
@@ -31,21 +38,46 @@ export default function PlaybookEditor() {
     setIsPlaying,
   } = useEditorStore();
 
-  // Load saved state once on mount
-  useEffect(() => {
-    loadFromStorage();
-  }, [loadFromStorage]);
+  const [playNotFound, setPlayNotFound] = useState(false);
 
-  // Autosave whenever relevant state changes
+  // Load play on mount (or when playId changes due to 'new' → real-id redirect)
   useEffect(() => {
+    const teamId = getActiveTeamId();
+    if (!teamId) return;
+
+    if (playId === 'new') {
+      const play = createPlay(teamId, 'Untitled play');
+      router.replace(`/coach/playbook/${play.id}`);
+      return;
+    }
+
+    const play = getPlay(teamId, playId);
+    if (play) {
+      loadPlay(play);
+    } else {
+      setPlayNotFound(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playId]);
+
+  // Debounced autosave — runs 800 ms after any editor state change
+  useEffect(() => {
+    if (playId === 'new') return;
+    const teamId = getActiveTeamId();
+    if (!teamId) return;
+
     const timer = setTimeout(() => {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ projectName, scenes, currentSceneId })
-      );
+      const existing = getPlay(teamId, playId);
+      if (!existing) return;
+      savePlay(teamId, {
+        ...existing,
+        ...getPlaySnapshot(),
+        updatedAt: new Date().toISOString(),
+      });
     }, 800);
     return () => clearTimeout(timer);
-  }, [scenes, currentSceneId, projectName]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scenes, currentSceneId, projectName, playId]);
 
   // Playback timer: advance to next scene after each scene's duration
   useEffect(() => {
@@ -74,20 +106,17 @@ export default function PlaybookEditor() {
         e.preventDefault();
         redo();
       }
-      // Delete selected actor, arrow, or zone
       if (!isInput && (e.key === 'Delete' || e.key === 'Backspace')) {
         if (selectedActorId) { e.preventDefault(); deleteActor(selectedActorId); }
         else if (selectedArrowId) { e.preventDefault(); deletePlayArrow(selectedArrowId); }
         else if (selectedZoneId) { e.preventDefault(); deleteZone(selectedZoneId); }
       }
-      // Escape: deselect + cancel drawing
       if (e.key === 'Escape') {
         useEditorStore.getState().setSelectedActor(null);
         useEditorStore.getState().setSelectedArrow(null);
         useEditorStore.getState().setSelectedZone(null);
         useEditorStore.getState().setSelectedTool('select');
       }
-      // Space: toggle play
       if (!isInput && e.key === ' ') {
         e.preventDefault();
         if (scenes.length > 1) setIsPlaying(!isPlaying);
@@ -100,6 +129,20 @@ export default function PlaybookEditor() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
+
+  if (playNotFound) {
+    return (
+      <div className="flex items-center justify-center h-full p-6">
+        <EmptyState
+          icon={FileQuestion}
+          title="Play not found"
+          description="This play doesn't exist or belongs to a different team."
+          action={{ label: 'Back to Playbook', href: '/coach/playbook' }}
+          size="md"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-background text-foreground overflow-hidden select-none">

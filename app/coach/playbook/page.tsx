@@ -1,7 +1,6 @@
-import Link from "next/link";
-import { Clapperboard } from "lucide-react";
-import { PageHeader } from "@/app/components/PageHeader";
-import { EmptyState } from "@/app/components/EmptyState";
+import Link from 'next/link';
+import { PageHeader } from '@/app/components/PageHeader';
+import PlaysList from './PlaysList';
 
 export default function PlaybookPage() {
   return (
@@ -18,13 +17,7 @@ export default function PlaybookPage() {
           </Link>
         }
       />
-      <EmptyState
-        icon={Clapperboard}
-        title="No plays yet"
-        description="Build tactical animations to walk your team through phases of play."
-        action={{ label: "New play", href: "/coach/playbook/new" }}
-        size="lg"
-      />
+      <PlaysList />
     </div>
   );
 }
