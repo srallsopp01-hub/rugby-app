@@ -66,6 +66,12 @@ export async function POST(req: NextRequest) {
     .eq("user_id", targetUser.id)
     .maybeSingle();
 
+  // If already an active member, skip creating a new row and just link the squad slot
+  if (existing?.status === "active") {
+    await linkSquadPlayerToUser({ teamId, playerSquadId, memberUserId: targetUser.id });
+    return NextResponse.json({ ok: true });
+  }
+
   if (existing) {
     return NextResponse.json(
       { error: "This account is already a member of this team." },
