@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 13 May 2026 — Capture keyboard shortcuts: P toggles pause/play at any time; hold S slows to 0.5x while held (mirrors turtle button). Spacebar remains voice push-to-talk only. Insights date sorting fixed to parse DD/MM/YYYY numerically. Previous: Move 4: Business admin panel — `/admin/billing` now shows live MRR/ARR from Stripe API + active paying customer count + Stripe customer links on trialing/past-due rows; `/admin/organisations` now shows owner email column + Stripe customer links per org.
+**Last updated:** 13 May 2026 — Bug fix: "Link account" on `/coach/team` now works when the player already joined via invite link. The API no longer 409s if the user has an active `team_members` row — it proceeds to set `linkedUserId` on the squad slot. The unclaimed slots list also now hides players whose email matches an active member even when `linkedUserId` is null. Previous: Capture keyboard shortcuts: P toggles pause/play at any time; hold S slows to 0.5x while held. Insights date sorting fixed to parse DD/MM/YYYY numerically.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
