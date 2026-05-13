@@ -1,9 +1,7 @@
 "use client";
 
+import PlaybookEditor from './PlaybookEditor';
+
 export default function PlaybookEditorPage() {
-  return (
-    <div className="p-6">
-      <p className="text-muted">Playbook editor — coming next</p>
-    </div>
-  );
+  return <PlaybookEditor />;
 }
