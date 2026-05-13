@@ -79,6 +79,17 @@ function trendArrow(values: number[]): "up" | "down" | "flat" {
   return "flat";
 }
 
+function parseDateMs(m: { matchDate?: string; createdAt?: string; updatedAt?: string }): number {
+  const md = m.matchDate?.trim();
+  if (md) {
+    const ddmm = md.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (ddmm) return new Date(+ddmm[3], +ddmm[2] - 1, +ddmm[1]).getTime();
+    const d = new Date(md);
+    if (!isNaN(d.getTime())) return d.getTime();
+  }
+  return new Date(m.createdAt || m.updatedAt || 0).getTime();
+}
+
 export default function InsightsPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
@@ -241,11 +252,7 @@ export default function InsightsPage() {
 
   const trendData = useMemo(() => {
     if (allMatches.length < 2) return null;
-    const sorted = [...allMatches].sort((a, b) => {
-      const ak = (a.matchDate || a.updatedAt || "").trim();
-      const bk = (b.matchDate || b.updatedAt || "").trim();
-      return ak.localeCompare(bk);
-    });
+    const sorted = [...allMatches].sort((a, b) => parseDateMs(a) - parseDateMs(b));
     const matchSnapshots = sorted.map((m) => ({
       label: m.matchTitle?.trim() || formatMatchDate(m.matchDate) || `Match ${m.id.slice(-4)}`,
       date: m.matchDate || m.updatedAt,
@@ -264,11 +271,7 @@ export default function InsightsPage() {
 
   const seasonChartData = useMemo(() => {
     if (allMatches.length < 2) return null;
-    const sorted = [...allMatches].sort((a, b) => {
-      const ak = (a.matchDate || a.updatedAt || "").trim();
-      const bk = (b.matchDate || b.updatedAt || "").trim();
-      return ak.localeCompare(bk);
-    });
+    const sorted = [...allMatches].sort((a, b) => parseDateMs(a) - parseDateMs(b));
     return sorted.map((m) => {
       const resolvedEvts = (m.events || []).filter((e: EventItem) => !e.isPending);
       const rows = buildReportRowsFromMatch(m.rosterRows, resolvedEvts);

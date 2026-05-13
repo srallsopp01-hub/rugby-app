@@ -145,6 +145,7 @@ export default function RugbyVoiceTaggingMVP() {
   const pageShellRef = useRef<HTMLDivElement | null>(null);
   const spacebarHeldRef = useRef(false);
   const preSlomoRateRef = useRef<number>(1);
+  const keyboardSlomoHeldRef = useRef(false);
   const pendingVideoFileRef = useRef<File | null>(null);
   const videoUploadPromiseRef = useRef<Promise<VideoUploadResult> | null>(null);
   // Tracks which match (or "" for in-progress localStorage session) the
@@ -2668,6 +2669,60 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeMode, voiceModeEnabled, showTeamSheetModal, showReportSetupModal, recording, transcribing, pendingResolution]);
+
+  useEffect(() => {
+    const isTypingField = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return false;
+      const tag = target.tagName;
+      if (tag === "TEXTAREA") return true;
+      if (tag === "INPUT") {
+        const inputType = (target as HTMLInputElement).type?.toLowerCase();
+        return ["text", "search", "email", "url", "tel", "password", "number"].includes(inputType || "text");
+      }
+      return target.isContentEditable;
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isTypingField(e)) return;
+      if (showTeamSheetModal || showReportSetupModal) return;
+
+      if (e.code === "KeyP" && !e.repeat) {
+        if (videoLoaded) toggleVideoPlayback();
+        return;
+      }
+
+      if (e.code === "KeyS") {
+        if (e.repeat || keyboardSlomoHeldRef.current) return;
+        if (!videoLoaded) return;
+        keyboardSlomoHeldRef.current = true;
+        handleSlomoStart();
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code !== "KeyS") return;
+      if (!keyboardSlomoHeldRef.current) return;
+      keyboardSlomoHeldRef.current = false;
+      handleSlomoEnd();
+    };
+
+    const handleBlur = () => {
+      if (!keyboardSlomoHeldRef.current) return;
+      keyboardSlomoHeldRef.current = false;
+      handleSlomoEnd();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", handleBlur);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", handleBlur);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoLoaded, slomoActive, showTeamSheetModal, showReportSetupModal]);
 
   return (
     <main
