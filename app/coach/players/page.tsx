@@ -99,6 +99,8 @@ function PlayersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const activeWindowEndRef = useRef<number | null>(null);
+  const activeEventIdxRef = useRef<number | null>(null);
   const [savedSession] = useState(loadPlayersSession);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const { matches: allMatches } = useMatches();
@@ -296,15 +298,23 @@ function PlayersContent() {
     setPlaybackRate(nextRate);
   };
 
-  const jumpToEventIndex = (index: number) => {
+  const playInvolvementWindow = (index: number) => {
     const event = playerEvents[index];
     if (!event || !videoRef.current) return;
-
-    videoRef.current.currentTime = event.timestamp;
-    videoRef.current.pause();
-    setCurrentTime(event.timestamp);
+    const windowStart = Math.max(0, event.timestamp - 3);
+    const windowEnd = event.timestamp + 3;
+    activeWindowEndRef.current = windowEnd;
+    activeEventIdxRef.current = index;
+    videoRef.current.currentTime = windowStart;
+    setCurrentTime(windowStart);
     setActiveEventIndex(index);
+    void videoRef.current.play();
   };
+
+  useEffect(() => {
+    activeWindowEndRef.current = null;
+    activeEventIdxRef.current = null;
+  }, [playerEvents]);
 
   const safeActiveEventIndex =
     playerEvents.length === 0
@@ -397,9 +407,32 @@ function PlayersContent() {
                             videoRef.current.playbackRate = playbackRate;
                           }
                         }}
-                        onTimeUpdate={() =>
-                          setCurrentTime(videoRef.current?.currentTime || 0)
-                        }
+                        onPause={() => {
+                          activeWindowEndRef.current = null;
+                        }}
+                        onEnded={() => {
+                          const windowEnd = activeWindowEndRef.current;
+                          if (windowEnd === null) return;
+                          const nextIdx = (activeEventIdxRef.current ?? -1) + 1;
+                          if (nextIdx < playerEvents.length) {
+                            playInvolvementWindow(nextIdx);
+                          } else {
+                            activeWindowEndRef.current = null;
+                          }
+                        }}
+                        onTimeUpdate={() => {
+                          const t = videoRef.current?.currentTime ?? 0;
+                          setCurrentTime(t);
+                          const windowEnd = activeWindowEndRef.current;
+                          if (windowEnd === null || t < windowEnd) return;
+                          const nextIdx = (activeEventIdxRef.current ?? -1) + 1;
+                          if (nextIdx < playerEvents.length) {
+                            playInvolvementWindow(nextIdx);
+                          } else {
+                            activeWindowEndRef.current = null;
+                            videoRef.current?.pause();
+                          }
+                        }}
                         onError={() => {
                           if (!selectedMatch?.videoStoragePath || videoSrc.startsWith("blob:")) return;
                           setVideoLoading(true);
@@ -478,7 +511,7 @@ function PlayersContent() {
                 <div className="mb-4 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => jumpToEventIndex(Math.max(safeActiveEventIndex - 1, 0))}
+                    onClick={() => playInvolvementWindow(Math.max(safeActiveEventIndex - 1, 0))}
                     disabled={playerEvents.length === 0 || safeActiveEventIndex === 0}
                     className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground disabled:opacity-50"
                   >
@@ -487,7 +520,7 @@ function PlayersContent() {
                   <button
                     type="button"
                     onClick={() =>
-                      jumpToEventIndex(
+                      playInvolvementWindow(
                         Math.min(safeActiveEventIndex + 1, playerEvents.length - 1)
                       )
                     }
@@ -521,7 +554,7 @@ function PlayersContent() {
                       <button
                         type="button"
                         key={event.id}
-                        onClick={() => jumpToEventIndex(index)}
+                        onClick={() => playInvolvementWindow(index)}
                         className={`flex w-full items-start justify-between gap-3 rounded-xl border px-4 py-3 text-left transition ${
                           index === safeActiveEventIndex
                             ? "border-border-light bg-panel text-foreground"

@@ -1603,6 +1603,7 @@ Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Str
 - ✅ `app/coach/capture/page.tsx` — VideoDropzone collapses to a thin "Match video loaded" status bar once `videoSrc` is non-null and no upload is in flight; "Replace video" button re-opens the dropzone; `showReplaceDropzone` state (default false) reset after successful upload; dropzone always visible during active upload
 - ✅ `app/coach/capture/page.tsx` — date input switched to `type="date"` with `toInputDateValue()` normaliser so saved matches hydrate the native date picker correctly
 - ✅ `app/player/games/[gameId]/page.tsx` — `seekToEvent` replaced by `playInvolvementWindow`; plays a ±3 s window per event then auto-advances through the full playlist; `onPause` clears the window so manual pauses stop auto-advance
+- ✅ `app/coach/players/page.tsx` — same `playInvolvementWindow` pattern applied; `jumpToEventIndex` (which paused at raw timestamp) replaced; coach player view now auto-advances through the playlist identically; `useEffect` on `playerEvents` clears the active window when the player or match selector changes
 
 ---
 
