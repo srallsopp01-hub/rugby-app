@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Clapperboard, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { EmptyState } from '@/app/components/EmptyState';
 import { ACTIVE_TEAM_ID_KEY } from '@/lib/teamContext';
+import SceneThumbnail from './components/SceneThumbnail';
 import {
   getPlays,
   savePlay,
@@ -63,7 +64,7 @@ export default function PlaysList() {
     setMenuOpenId(null);
     const teamId = getActiveTeamId();
     if (!teamId) return;
-    if (window.confirm(`Delete "${play.name}"? This cannot be undone.`)) {
+    if (window.confirm(`Delete '${play.name}' permanently? This cannot be undone.`)) {
       deletePlay(teamId, play.id);
     }
   };
@@ -85,8 +86,15 @@ export default function PlaysList() {
       {plays.map((play) => (
         <div
           key={play.id}
-          className="bg-panel border border-border rounded-xl p-4 flex flex-col gap-3 hover:border-border-light transition-colors"
+          className="bg-panel border border-border rounded-xl overflow-hidden flex flex-col hover:border-border-light transition-colors"
         >
+          {/* Scene thumbnail */}
+          <div className="w-full aspect-[23/14] bg-panel-2 overflow-hidden">
+            <SceneThumbnail scene={play.scenes[0]} width="100%" height="100%" />
+          </div>
+
+          {/* Card content */}
+          <div className="p-4 flex flex-col gap-3">
           {/* Name row */}
           <div className="flex items-start justify-between gap-2">
             {renamingId === play.id ? (
@@ -155,6 +163,7 @@ export default function PlaysList() {
           >
             Open
           </Link>
+          </div>{/* end card content */}
         </div>
       ))}
     </div>

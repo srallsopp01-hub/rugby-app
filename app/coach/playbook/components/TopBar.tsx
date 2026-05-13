@@ -153,7 +153,13 @@ export default function TopBar() {
         <SavedBadge />
         <div className="w-px h-5 bg-panel-3" />
         <button
-          onClick={() => window.dispatchEvent(new Event('export-png'))}
+          onClick={() =>
+            window.dispatchEvent(
+              new CustomEvent('export-png', {
+                detail: { filename: `${projectName.toLowerCase().replace(/\s+/g, '-')}.png` },
+              })
+            )
+          }
           title="Export current view as PNG"
           className="px-3 py-1.5 rounded text-sm bg-accent hover:bg-accent/80 text-white border border-accent transition-colors"
         >

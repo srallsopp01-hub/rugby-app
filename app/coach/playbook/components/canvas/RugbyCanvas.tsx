@@ -660,13 +660,14 @@ export default function RugbyCanvas() {
 
   // ── Export PNG ────────────────────────────────────────────────────────────
   useEffect(() => {
-    const handler = () => {
+    const handler = (e: Event) => {
+      const filename = (e as CustomEvent<{ filename: string }>).detail?.filename ?? 'rugby-play.png';
       const stage = stageRef.current;
       if (!stage) return;
       const dataUrl = stage.toDataURL({ pixelRatio: 2 });
       const a = document.createElement('a');
       a.href = dataUrl;
-      a.download = 'rugby-play.png';
+      a.download = filename;
       a.click();
     };
     window.addEventListener('export-png', handler);

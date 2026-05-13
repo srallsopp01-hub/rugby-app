@@ -144,6 +144,38 @@ export const COACH_PAGE_HELP: Record<string, PageHelpProps> = {
     ],
   },
 
+  "/coach/playbook": {
+    title: "Playbook",
+    description: "Build tactical animations to walk your squad through phases of play — scene by scene.",
+    steps: [
+      { title: "Create a play", body: "Click New play to open the editor with a blank scene. Name it by clicking the title in the top bar." },
+      { title: "Add actors to the pitch", body: "Select a formation preset from the left sidebar to place all 15 players at once, or drag individual Home, Away, and Ball actors onto the pitch." },
+      { title: "Duplicate scenes to build phases", body: "Each phase of play is a scene. Hover a scene card in the footer and click ⧉ to duplicate it (positions carry over), then move actors to show the next movement." },
+      { title: "Preview with Play", body: "Click Play (or press Space) in the top bar to animate through all scenes automatically." },
+    ],
+    tips: [
+      "Rename a play by clicking its name in the top bar — changes save automatically.",
+      "Use Ctrl+Z / Ctrl+Shift+Z to undo or redo any change on the canvas.",
+      "Export as PNG (top-right Export button) to share a static image of the current scene.",
+    ],
+  },
+
+  "/coach/playbook/[playId]": {
+    title: "Playbook Editor",
+    description: "Drag actors, draw movement arrows, and animate phases of play for your team's tactical sessions.",
+    steps: [
+      { title: "Place actors", body: "Pick a formation from the left sidebar to place all 15 home players, or drag Home/Away/Ball actors onto the pitch individually." },
+      { title: "Draw movement arrows", body: "Select the Arrow tool (or press A), then click and drag on the pitch to draw a run arrow. Change type (run/pass/kick) in the right sidebar after drawing." },
+      { title: "Add the next phase", body: "Hover any scene card in the footer rail and click ⧉ Duplicate. Actors carry over — just reposition them for the next moment." },
+      { title: "Animate", body: "Press Space or click Play to step through all scenes. Press Stop to return to editing." },
+    ],
+    tips: [
+      "Keyboard: Space = play/stop, Ctrl+Z = undo, Delete = remove selected actor or arrow.",
+      "Duplicate from the current scene rather than adding a blank scene — it saves time repositioning players.",
+      "Scene duration (shown in the right sidebar) controls how long each phase displays during playback.",
+    ],
+  },
+
   "/coach/settings": {
     title: "Settings & Data Management",
     description: "Export all your data, manage local storage, and reset the app if needed.",

@@ -549,6 +549,7 @@ All previous CSV downloads have been removed. One polished report.
 - **Video:** current-device `sessionStorage` blob URL for immediate playback; authenticated head coaches upload match files directly to Cloudflare R2 with server-issued signed URLs
 - **Player identity:** `localStorage` key `rugby-player-selected-id` (SquadPlayer.id, via PlayerContext). Authenticated player members are auto-linked from `team_members.player_squad_id`.
 - **Cloud storage:** Supabase auth/database for `squad_profiles`, `saved_matches`, `team_members`, `invite_tokens`; Cloudflare R2 for private match video objects.
+- **Playbook plays:** `localStorage` key `fynlwhistle-playbook-plays-{teamId}`, scoped per team. No cloud sync yet — see "Playbook — what's left to do" below.
 
 ---
 
@@ -1635,6 +1636,16 @@ Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Str
 
 **Architecture note:** Plays are localStorage-only (no Supabase sync yet). The storage format (`Play.teamId`, `createdAt`, `updatedAt`) is designed for a straight port to a `playbook_plays` Supabase table when ready. The `subscribePlaysChanged` subscriber already covers team-switch events so the migration will require no component changes.
 
+### Batch BW (May 2026) — Playbook UX polish
+
+- ✅ PNG export filename — `Export` button dispatches `CustomEvent('export-png', { detail: { filename } })` so the canvas downloads as `{play-name}.png` instead of `rugby-play.png`
+- ✅ `SceneThumbnail.tsx` extracted from `SceneRail.tsx` into its own file; accepts optional `width`/`height` props for reuse at different sizes
+- ✅ Play cards on `/coach/playbook` now show the first scene's SVG thumbnail at the top of each card (full-width, `aspect-[23/14]`)
+- ✅ Delete confirm copy updated to "Delete '{name}' permanently? This cannot be undone."
+- ✅ Help content added for `/coach/playbook` (list) and `/coach/playbook/[playId]` (editor) — steps + 3 tips each including keyboard shortcuts
+- ✅ PROJECT_CONTEXT updated with storage entry and "Playbook — what's left to do" cloud migration plan
+- ✅ `npm run build` clean; no new lint errors
+
 ---
 
 ## Next — what's left to do
@@ -1731,6 +1742,41 @@ These are low-effort, high-signal for early clubs:
 - Plan limit enforcement (schema ready, code enforcement not yet built)
 - Automated test suite (start with data transformation and export utilities)
   - Vitest setup for FYNL Whistle — port `formations.test.ts` from Phaseboard repo when adding the broader test suite (currently 41 tests covering formation accuracy)
+
+---
+
+## Playbook — what's left to do
+
+### Cloud storage (future batch)
+
+**Supabase table: `playbook_plays`**
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | default gen_random_uuid() |
+| team_id | uuid → teams | NOT NULL |
+| name | text | NOT NULL |
+| scenes | jsonb | NOT NULL, the Scene[] array |
+| created_by_user_id | uuid → auth.users | NOT NULL |
+| created_at | timestamptz | default now() |
+| updated_at | timestamptz | default now() |
+
+RLS: follow the same pattern as `saved_matches` — read via `can_read_team_data`, write via `can_manage_team`. No per-row user ownership check needed.
+
+**Sync helper: `lib/playbookPlaysCloud.ts`** — mirror `lib/savedMatchesCloud.ts`:
+- `fetchCloudPlays(teamId?)` → `{ plays: Play[], error? }`
+- `upsertCloudPlay(play, teamId?)` → `{ ok, error? }` — upsert on conflict `(team_id, id)`
+- `deleteCloudPlay(playId, teamId?)` → `{ ok, error? }`
+- Merge strategy: newest `updatedAt` wins (same as saved matches)
+
+**Context provider: `PlaybookPlaysContext`** — mirror `MatchesContext` in `app/providers/MatchesContext.tsx`:
+- Mount in `app/coach/layout.tsx` alongside `MatchesProvider`
+- Fetches on mount, on tab visibility change, and on `ACTIVE_TEAM_CHANGED_EVENT`
+- `playsStore.ts` `savePlay()` / `deletePlay()` fire async cloud upsert/delete (fire-and-forget)
+
+**Plan limits:** Plays should NOT count against `player_limit` or `team_limit`. Plays are unlimited per team for now.
+
+**Player read-only view (deferred):** A future `/player/playbook` route could let players see their team's plays using `can_read_team_data` RLS — no schema changes needed, just a new page and a player-facing route guard.
 
 ---
 
