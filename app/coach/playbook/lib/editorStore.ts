@@ -106,7 +106,7 @@ const useEditorStore = create<EditorStore>((set, get) => ({
   showMovementArrows: true,
   orientation: 'landscape',
   pitchScale: 0.92,
-  actorScale: 1.0,
+  actorScale: 0.85,
   transitionDuration: 500,
 
   setProjectName: (name) => set({ projectName: name }),
