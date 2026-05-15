@@ -92,7 +92,12 @@ export default function TeamPage() {
   }, []);
 
   const squadPlayers = (profile?.players ?? []).filter((p) => p.status !== "unavailable");
-  const unclaimedSlots = squadPlayers.filter((p) => !p.linkedUserId);
+  const activeMemberEmails = new Set(
+    acceptedMembers.map((m) => m.email?.toLowerCase()).filter(Boolean) as string[]
+  );
+  const unclaimedSlots = squadPlayers.filter(
+    (p) => !p.linkedUserId && !activeMemberEmails.has((p.email ?? "").toLowerCase())
+  );
 
   async function handleLinkAccount(playerSquadId: string) {
     if (!profile || !linkEmail.trim()) return;

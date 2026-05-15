@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
 import { FynlMark, FynlLockup } from "@/app/components/FynlLogo";
 import { createClient } from "@/lib/supabase/client";
+import { Clapperboard } from "lucide-react";
 import {
   ACTIVE_TEAM_ID_KEY,
   ACTIVE_TEAM_CHANGED_EVENT,
@@ -67,6 +68,12 @@ const navItems = [
         <path d="M6.5 7L10 5.5 6.5 4v3z" fill="currentColor"/>
       </svg>
     ),
+  },
+  {
+    label: "Playbook",
+    href: "/coach/playbook",
+    exact: false,
+    icon: <Clapperboard size={16} />,
   },
   {
     label: "Players",

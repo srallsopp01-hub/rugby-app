@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 13 May 2026 — Capture keyboard shortcuts: P toggles pause/play at any time; hold S slows to 0.5x while held (mirrors turtle button). Spacebar remains voice push-to-talk only. Insights date sorting fixed to parse DD/MM/YYYY numerically. Previous: Move 4: Business admin panel — `/admin/billing` now shows live MRR/ARR from Stripe API + active paying customer count + Stripe customer links on trialing/past-due rows; `/admin/organisations` now shows owner email column + Stripe customer links per org.
+**Last updated:** 13 May 2026 — Batch BV: Playbook wired into team data model. Plays are team-scoped (key `fynlwhistle-playbook-plays-{teamId}`); index page lists all plays with rename/delete; editor loads/autosaves the correct play by route ID; switching teams shows that team's plays. Previous: Bug fix: "Link account" on `/coach/team` now works when the player already joined via invite link.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -74,6 +74,8 @@ The app is split into four clearly separated layers with independent layouts and
 | `/coach/saved-matches` | Live | Reopen / delete saved matches; sorted by `matchDate` descending (most recent game first) |
 | `/coach/settings` | Live | Browser-local coach settings, setup shortcuts, raw JSON export, guarded data management |
 | `/coach/organisation` | Live | Club admin only — org name, plan, status, billing date, active team count, coach seat count |
+| `/coach/playbook` | Live | Tactical play index — team-scoped play cards with rename/delete; "New play" creates a fresh play scoped to the active team |
+| `/coach/playbook/[playId]` | Live | Playbook editor — Konva canvas, multi-scene animation, undo/redo, formation presets, autosave debounced 800 ms; `new` route creates and redirects |
 
 ### Player platform
 | Route | Status | Purpose |
@@ -283,6 +285,20 @@ app/
     settings/page.tsx                 ← Coach settings: local storage status, shortcuts, JSON export, guarded resets
     organisation/page.tsx             ← Club admin only: org name, plan, status, billing date, team count, seat count; + "New team" button (creates team + head_coach membership)
     organisation/CreateTeamButton.tsx ← Client component for inline team creation form
+    playbook/
+      page.tsx                        ← Playbook index: server shell + <PlaysList />
+      PlaysList.tsx                   ← Client component; useSyncExternalStore on subscribePlaysChanged; 2/3-col grid; inline rename + delete
+      [playId]/page.tsx               ← Thin "use client" shell
+      [playId]/PlaybookEditor.tsx     ← Editor: useParams for playId, team-scoped load/autosave, playNotFound guard
+      lib/types.ts                    ← Actor, PlayArrow, Zone, Scene, Play types
+      lib/editorStore.ts              ← Zustand store; makeScene (exported), loadPlay, getPlaySnapshot, undo/redo
+      lib/playsStore.ts               ← localStorage layer: getPlays/getPlay/savePlay/deletePlay/createPlay; subscribePlaysChanged
+      lib/formations.ts               ← 20+ formation presets
+      components/TopBar.tsx           ← Play name (editable), undo/redo, play/stop, export
+      components/LeftSidebar.tsx      ← Tools, formation presets, add actors/zones
+      components/RightSidebar.tsx     ← Context panel for selected element
+      components/SceneRail.tsx        ← Scene thumbnails + controls
+      components/canvas/RugbyCanvas.tsx ← Konva interactive pitch canvas
 
   player/
     layout.tsx                        ← Player layout: h-screen, sidebar + scrollable main (wraps PlayerProvider)
@@ -533,6 +549,7 @@ All previous CSV downloads have been removed. One polished report.
 - **Video:** current-device `sessionStorage` blob URL for immediate playback; authenticated head coaches upload match files directly to Cloudflare R2 with server-issued signed URLs
 - **Player identity:** `localStorage` key `rugby-player-selected-id` (SquadPlayer.id, via PlayerContext). Authenticated player members are auto-linked from `team_members.player_squad_id`.
 - **Cloud storage:** Supabase auth/database for `squad_profiles`, `saved_matches`, `team_members`, `invite_tokens`; Cloudflare R2 for private match video objects.
+- **Playbook plays:** `localStorage` key `fynlwhistle-playbook-plays-{teamId}`, scoped per team. No cloud sync yet — see "Playbook — what's left to do" below.
 
 ---
 
@@ -1607,6 +1624,30 @@ Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Str
 
 ---
 
+### Batch BV (May 2026) — Playbook wired into team data model
+
+- ✅ `app/coach/playbook/lib/playsStore.ts` (new) — localStorage persistence layer scoped by team: key `fynlwhistle-playbook-plays-{teamId}`, value `{ plays: Play[] }`; `getPlays`, `getPlay`, `savePlay`, `deletePlay`, `createPlay` (returns Play with one empty Scene); `subscribePlaysChanged` listens to both `playbook-plays-changed` and `ACTIVE_TEAM_CHANGED_EVENT` so the index auto-refreshes on team switch
+- ✅ `app/coach/playbook/lib/editorStore.ts` — `makeScene` exported for use by `playsStore`; `loadPlay(play)` added (hydrates store from a Play, clears history); `getPlaySnapshot()` added (returns `{ name, scenes }` from current store state); `loadFromStorage` and the old fixed `STORAGE_KEY` removed — persistence is now driven by `PlaybookEditor`
+- ✅ `app/coach/playbook/[playId]/PlaybookEditor.tsx` — consumes `playId` via `useParams()`; on mount reads active team ID from `ACTIVE_TEAM_ID_KEY`, handles `new` route (creates play, `router.replace` to real ID), loads existing play via `getPlay`, sets `playNotFound` if missing; 800 ms debounced autosave saves `{ ...existingPlay, ...getPlaySnapshot(), updatedAt }` on every store change; `FileQuestion` EmptyState shown for unknown play IDs
+- ✅ `app/coach/playbook/page.tsx` — rebuilt as server component shell with `PageHeader` + `<PlaysList />`
+- ✅ `app/coach/playbook/PlaysList.tsx` (new) — `"use client"` component; `useSyncExternalStore(subscribePlaysChanged, ...)` drives reactive re-renders; responsive 2/3-col grid; each card shows name, scene count, relative updated time, Open link, overflow menu (Rename inline, Delete with `window.confirm`); Empty state when no plays; `teamId` read synchronously from localStorage in event handlers
+- ✅ `/coach/playbook` and `/coach/playbook/[playId]` added to coach routes table and key files in PROJECT_CONTEXT
+- ✅ Verification: `npm run lint` — no new errors; `npm run build` compiled successfully
+
+**Architecture note:** Plays are localStorage-only (no Supabase sync yet). The storage format (`Play.teamId`, `createdAt`, `updatedAt`) is designed for a straight port to a `playbook_plays` Supabase table when ready. The `subscribePlaysChanged` subscriber already covers team-switch events so the migration will require no component changes.
+
+### Batch BW (May 2026) — Playbook UX polish
+
+- ✅ PNG export filename — `Export` button dispatches `CustomEvent('export-png', { detail: { filename } })` so the canvas downloads as `{play-name}.png` instead of `rugby-play.png`
+- ✅ `SceneThumbnail.tsx` extracted from `SceneRail.tsx` into its own file; accepts optional `width`/`height` props for reuse at different sizes
+- ✅ Play cards on `/coach/playbook` now show the first scene's SVG thumbnail at the top of each card (full-width, `aspect-[23/14]`)
+- ✅ Delete confirm copy updated to "Delete '{name}' permanently? This cannot be undone."
+- ✅ Help content added for `/coach/playbook` (list) and `/coach/playbook/[playId]` (editor) — steps + 3 tips each including keyboard shortcuts
+- ✅ PROJECT_CONTEXT updated with storage entry and "Playbook — what's left to do" cloud migration plan
+- ✅ `npm run build` clean; no new lint errors
+
+---
+
 ## Next — what's left to do
 
 ### Move 4 — ✅ Shipped (May 2026)
@@ -1700,6 +1741,42 @@ These are low-effort, high-signal for early clubs:
 - Advanced video annotation / telestration
 - Plan limit enforcement (schema ready, code enforcement not yet built)
 - Automated test suite (start with data transformation and export utilities)
+  - Vitest setup for FYNL Whistle — port `formations.test.ts` from Phaseboard repo when adding the broader test suite (currently 41 tests covering formation accuracy)
+
+---
+
+## Playbook — what's left to do
+
+### Cloud storage (future batch)
+
+**Supabase table: `playbook_plays`**
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | default gen_random_uuid() |
+| team_id | uuid → teams | NOT NULL |
+| name | text | NOT NULL |
+| scenes | jsonb | NOT NULL, the Scene[] array |
+| created_by_user_id | uuid → auth.users | NOT NULL |
+| created_at | timestamptz | default now() |
+| updated_at | timestamptz | default now() |
+
+RLS: follow the same pattern as `saved_matches` — read via `can_read_team_data`, write via `can_manage_team`. No per-row user ownership check needed.
+
+**Sync helper: `lib/playbookPlaysCloud.ts`** — mirror `lib/savedMatchesCloud.ts`:
+- `fetchCloudPlays(teamId?)` → `{ plays: Play[], error? }`
+- `upsertCloudPlay(play, teamId?)` → `{ ok, error? }` — upsert on conflict `(team_id, id)`
+- `deleteCloudPlay(playId, teamId?)` → `{ ok, error? }`
+- Merge strategy: newest `updatedAt` wins (same as saved matches)
+
+**Context provider: `PlaybookPlaysContext`** — mirror `MatchesContext` in `app/providers/MatchesContext.tsx`:
+- Mount in `app/coach/layout.tsx` alongside `MatchesProvider`
+- Fetches on mount, on tab visibility change, and on `ACTIVE_TEAM_CHANGED_EVENT`
+- `playsStore.ts` `savePlay()` / `deletePlay()` fire async cloud upsert/delete (fire-and-forget)
+
+**Plan limits:** Plays should NOT count against `player_limit` or `team_limit`. Plays are unlimited per team for now.
+
+**Player read-only view (deferred):** A future `/player/playbook` route could let players see their team's plays using `can_read_team_data` RLS — no schema changes needed, just a new page and a player-facing route guard.
 
 ---
 
