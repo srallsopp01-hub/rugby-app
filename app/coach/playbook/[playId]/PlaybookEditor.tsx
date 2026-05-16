@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { FileQuestion } from 'lucide-react';
@@ -37,6 +37,10 @@ export default function PlaybookEditor() {
     nextScene,
     setIsPlaying,
   } = useEditorStore();
+
+  // Spacebar pan detection: track whether a pan drag occurred so keyup knows
+  // whether to toggle play or let the pan complete silently
+  const spacePannedRef = useRef(false);
 
   const [playNotFound, setPlayNotFound] = useState(false);
 
@@ -118,17 +122,34 @@ export default function PlaybookEditor() {
         useEditorStore.getState().setSelectedTool('select');
       }
       if (!isInput && e.key === ' ') {
-        e.preventDefault();
-        if (scenes.length > 1) setIsPlaying(!isPlaying);
+        e.preventDefault(); // prevent page scroll; play toggle fires on keyup
+        spacePannedRef.current = false; // reset flag; RugbyCanvas sets it if a pan drag starts
       }
     },
-    [undo, redo, selectedActorId, selectedArrowId, selectedZoneId, deleteActor, deletePlayArrow, deleteZone, isPlaying, setIsPlaying, scenes]
+    [undo, redo, selectedActorId, selectedArrowId, selectedZoneId, deleteActor, deletePlayArrow, deleteZone]
+  );
+
+  // Toggle play/stop on spacebar keyup — deferred from keydown so that
+  // spacebar+drag pan in RugbyCanvas doesn't also toggle playback
+  const handleKeyUp = useCallback(
+    (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+      if (!isInput && e.key === ' ' && scenes.length > 1) {
+        setIsPlaying(!isPlaying);
+      }
+    },
+    [isPlaying, setIsPlaying, scenes]
   );
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [handleKeyDown, handleKeyUp]);
 
   if (playNotFound) {
     return (

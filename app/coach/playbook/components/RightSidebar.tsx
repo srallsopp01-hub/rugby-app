@@ -14,6 +14,7 @@ export default function RightSidebar() {
     transitionDuration, setTransitionDuration,
     selectedArrowId, deletePlayArrow, updateArrowType,
     selectedZoneId, deleteZone, updateZoneLabel,
+    resetViewport,
   } = useEditorStore();
 
   const currentScene = scenes.find((s) => s.id === currentSceneId);
@@ -56,6 +57,7 @@ export default function RightSidebar() {
           onOrientationChange={setOrientation}
           pitchScale={pitchScale}
           onPitchScaleChange={setPitchScale}
+          onFitToView={resetViewport}
           actorScale={actorScale}
           onActorScaleChange={setActorScale}
           transitionDuration={transitionDuration}
@@ -396,7 +398,7 @@ function ScenePanel({
   scene, sceneIndex, totalScenes,
   onRename, onDurationChange, onNotesChange,
   orientation, onOrientationChange,
-  pitchScale, onPitchScaleChange,
+  pitchScale, onPitchScaleChange, onFitToView,
   actorScale, onActorScaleChange,
   transitionDuration, onTransitionDurationChange,
 }: {
@@ -410,6 +412,7 @@ function ScenePanel({
   onOrientationChange: (o: 'landscape' | 'portrait') => void;
   pitchScale: number;
   onPitchScaleChange: (s: number) => void;
+  onFitToView: () => void;
   actorScale: number;
   onActorScaleChange: (s: number) => void;
   transitionDuration: number;
@@ -494,7 +497,28 @@ function ScenePanel({
         </div>
       </div>
 
-      <SliderRow label="Pitch Size"   value={pitchScale}         min={0.4}  max={1.0}  step={0.02} format={(v) => `${Math.round(v * 100)}%`}          onChange={onPitchScaleChange} />
+      {/* Pitch Size — custom row with Fit to view reset */}
+      <div className="px-4 py-2.5 border-b border-border/50">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[11px] text-muted">Pitch Size</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-mono text-foreground">{Math.round(pitchScale * 100)}%</span>
+            <button
+              onClick={onFitToView}
+              title="Fit to view — reset zoom & pan"
+              aria-label="Fit to view"
+              className="w-5 h-5 flex items-center justify-center rounded text-muted-2 hover:text-foreground hover:bg-panel-3 transition-colors"
+            >
+              <FitToViewIcon />
+            </button>
+          </div>
+        </div>
+        <input
+          type="range" min={1.0} max={3.0} step={0.05} value={pitchScale}
+          onChange={(e) => onPitchScaleChange(Number(e.target.value))}
+          className="w-full accent-[var(--color-accent)] h-1"
+        />
+      </div>
       <SliderRow label="Player Size"  value={actorScale}         min={0.5}  max={2.0}  step={0.05} format={(v) => `${Math.round(v * 100)}%`}          onChange={onActorScaleChange} />
       <SliderRow label="Transition"   value={transitionDuration} min={0}    max={1200} step={50}   format={(v) => v === 0 ? 'Cut' : `${(v / 1000).toFixed(1)}s`}    onChange={onTransitionDurationChange} />
 
@@ -539,6 +563,17 @@ function PortraitIcon() {
       <rect x="1" y="1" width="8" height="12" rx="1" />
       <line x1="1" y1="5" x2="9" y2="5" strokeOpacity="0.5" />
       <line x1="1" y1="9" x2="9" y2="9" strokeOpacity="0.5" />
+    </svg>
+  );
+}
+
+function FitToViewIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+      <path d="M1 4V1h3" />
+      <path d="M8 1h3v3" />
+      <path d="M11 8v3H8" />
+      <path d="M4 11H1V8" />
     </svg>
   );
 }

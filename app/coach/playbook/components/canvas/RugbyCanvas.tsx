@@ -496,7 +496,7 @@ export default function RugbyCanvas() {
     addZone, updateZonePosition,
     showMovementArrows, showPlayerNames, orientation, pitchScale, actorScale, transitionDuration,
     selectedTool,
-    panX, panY, setPan, setPitchScale,
+    panX, panY,
   } = useEditorStore();
 
   const portrait = orientation === 'portrait';
