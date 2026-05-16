@@ -42,7 +42,7 @@ const A_OFF10 = +(TX + 10 / 112).toFixed(3);  // 0.339 — away backs offside (l
 const LS  = 0.040;                   // lineout column spacing
 const LY0 = 0.078;                   // first slot — just outside 5m line (normY 0.071)
 // 6 lineout slots: 0.078, 0.118, 0.158, 0.198, 0.238, 0.278
-const LY = Array.from({ length: 6 }, (_, i) => +(LY0 + i * LS).toFixed(3));
+const LY = Array.from({ length: 7 }, (_, i) => +(LY0 + i * LS).toFixed(3));
 
 // Per-formation line-of-touch positions (normX shift from base TX 0.250)
 const TX_61   = 0.160;               // 6+1  — inside attacking 22m (~12 m from try line)
@@ -111,61 +111,59 @@ function awayBackline(nearTY = 0): AP[] {
 }
 
 // ─── 5-man lineout — ATTACK (top touchline) ───────────────────────────────────
-// Home throws: 4,5,6,8 in line.  1,3,7 in 5m channel.  9 receiver at mid-line.
-// Away mirrors with 4,5,6,8 in line.
+// Home throws: 1,7,4,5,3 in line (5 fwds, front→back).  6 & 8 out with backs.  9 receiver at mid-line.
+// Away mirrors with same 5 in line.
 const lo5AtkHomeTop: AP[] = [
   h(2, TX, 0.000),                            // hooker on touchline, throws
-  ...loFwds([4, 5, 6, 8], true),              // 4 forwards in column
-  ...chan5m([7, 1, 3], true),                 // 5m channel pod
-  loSH(9, true, 4),                           // SH receiver ~2m infield of mid-line
+  ...loFwds([1, 7, 4, 5, 3], true),           // 5 forwards in column: #1,#7,#4,#5,#3 front→back
+  h(6, H_OFF10 - 0.009, 0.270),              // #6 out with backs (not in lineout)
+  h(8, H_OFF10, 0.340),                      // #8 out with backs (not in lineout)
+  loSH(9, true, 5),                           // SH receiver at midpoint of 5-man line
   ...homeBackline(),
 ];
 
 const lo5AtkAwayTop: AP[] = [
   a(2, AX, 0.010),                            // hooker near touchline (not throwing)
-  ...loFwds([4, 5, 6, 8], false),
-  ...chan5m([7, 1, 3], false),
-  loSH(9, false, 4),
+  ...loFwds([1, 7, 4, 5, 3], false),
+  a(6, A_OFF10 + 0.009, 0.270),
+  a(8, A_OFF10, 0.340),
+  loSH(9, false, 5),
   ...awayBackline(),
 ];
 
 // ─── 6+1 lineout — ATTACK (top touchline) ────────────────────────────────────
-// Home throws: 1,4,5,6,8 in line (5 fwds).  #7 = "+1" off the back.  #3 in 5m channel.
+// Home throws: 1,6,4,5,8,3 in line (6 fwds, front→back).  #7 = "+1" 2m off the back.
 // #9 is in the BACKS as first receiver (key 6+1 feature).
-// Away mirrors with 5 in line + #7 at tail.
+// Away mirrors with same 6 in line + #7 at tail.
 const lo61AtkHomeTop: AP[] = [
   h(2, TX, 0.000),
-  ...loFwds([1, 4, 5, 6, 8], true),           // 5 forwards (LY[0]–LY[4])
-  h(7, TX - 0.002, LY[4] + 0.029),            // "+1" — 2m off the back of the lineout
-  ...chan5m([3], true),                        // 3 in 5m channel
-  h(9, H_OFF10 + 0.009, 0.190),               // 9 in backs as first receiver (infield of 10)
+  ...loFwds([1, 6, 4, 5, 8, 3], true),        // 6 forwards (LY[0]–LY[5]): #1,#6,#4,#5,#8,#3
+  h(7, TX - 0.002, LY[5] + 0.029),            // #7 "+1" — 2m off the back of 6-man line
+  h(9, H_OFF10 + 0.009, 0.190),               // #9 in backs as first receiver (infield of 10)
   ...homeBackline(),
 ];
 
 const lo61AtkAwayTop: AP[] = [
   a(2, AX, 0.010),
-  ...loFwds([1, 4, 5, 6, 8], false),
-  a(7, TX + 0.002, LY[4] + 0.029),            // away +1 mirrors home
-  ...chan5m([3], false),
-  a(9, A_OFF10 - 0.009, 0.190),               // away 9 in backs
+  ...loFwds([1, 6, 4, 5, 8, 3], false),
+  a(7, TX + 0.002, LY[5] + 0.029),            // away +1 mirrors home
+  a(9, A_OFF10 - 0.009, 0.190),               // away #9 in backs
   ...awayBackline(),
 ];
 
 // ─── 7-man lineout — ATTACK (top touchline) ──────────────────────────────────
-// Home throws: 3,4,6,5,7,8 in line (6 fwds).  #1 in 5m channel.  #9 receiver at tail.
+// Home throws: 1,7,6,5,4,8,3 in line (7 fwds, front→back).  #9 receiver at midpoint.
 const lo7AtkHomeTop: AP[] = [
   h(2, TX, 0.000),
-  ...loFwds([3, 4, 6, 5, 7, 8], true),        // 6 forwards (LY[0]–LY[5])
-  ...chan5m([1], true),                        // 1 at front of 5m channel
-  loSH(9, true, 6),                            // 9 infield of mid 6-man line
+  ...loFwds([1, 7, 6, 5, 4, 8, 3], true),     // 7 forwards (LY[0]–LY[6]): #1,#7,#6,#5,#4,#8,#3
+  loSH(9, true, 7),                            // #9 infield of mid 7-man line
   ...homeBackline(),
 ];
 
 const lo7AtkAwayTop: AP[] = [
   a(2, AX, 0.010),
-  ...loFwds([3, 4, 6, 5, 7, 8], false),
-  ...chan5m([1], false),
-  loSH(9, false, 6),
+  ...loFwds([1, 7, 6, 5, 4, 8, 3], false),
+  loSH(9, false, 7),
   ...awayBackline(),
 ];
 
@@ -409,14 +407,14 @@ export const FORMATIONS: FormationPreset[] = [
   {
     id: 'lineout-5man-atk-top',
     name: '5-Man Atk ↑',
-    description: '5-man attack — top touchline, at halfway. 4,5,6,8 in line; 1,3,7 in 5m channel; backs 10m back',
+    description: '5-man attack — top touchline, at halfway. 1,7,4,5,3 in line; 6 & 8 out with backs; backs 10m back',
     category: 'lineout',
     actors: shiftX([...lo5AtkHomeTop, ...lo5AtkAwayTop], dx_5man),
   },
   {
     id: 'lineout-5man-atk-bot',
     name: '5-Man Atk ↓',
-    description: '5-man attack — bottom touchline mirror, at halfway',
+    description: '5-man attack — bottom touchline mirror, at halfway. 1,7,4,5,3 in line; 6 & 8 out with backs',
     category: 'lineout',
     actors: shiftX(bot([...lo5AtkHomeTop, ...lo5AtkAwayTop]), dx_5man),
   },
@@ -425,14 +423,14 @@ export const FORMATIONS: FormationPreset[] = [
   {
     id: 'lineout-6plus1-atk-top',
     name: '6+1 Atk ↑',
-    description: '6+1 attack — top touchline, inside attacking 22m. 1,4,5,6,8 in line; #7 as +1 off back; #9 in backs as first receiver',
+    description: '6+1 attack — top touchline, inside attacking 22m. 1,6,4,5,8,3 in line; #7 as +1 off back; #9 in backs as first receiver',
     category: 'lineout',
     actors: shiftX([...lo61AtkHomeTop, ...lo61AtkAwayTop], dx_61),
   },
   {
     id: 'lineout-6plus1-atk-bot',
     name: '6+1 Atk ↓',
-    description: '6+1 attack — bottom touchline mirror, inside attacking 22m',
+    description: '6+1 attack — bottom touchline mirror, inside attacking 22m. 1,6,4,5,8,3 in line; #7 as +1 off back',
     category: 'lineout',
     actors: shiftX(bot([...lo61AtkHomeTop, ...lo61AtkAwayTop]), dx_61),
   },
@@ -441,14 +439,14 @@ export const FORMATIONS: FormationPreset[] = [
   {
     id: 'lineout-7man-atk-top',
     name: '7-Man Atk ↑',
-    description: '7-man attack — top touchline, between home 22m and halfway. 3,4,6,5,7,8 in line; #1 in 5m channel; #9 receiver',
+    description: '7-man attack — top touchline, between home 22m and halfway. 1,7,6,5,4,8,3 in line; #9 receiver at midpoint',
     category: 'lineout',
     actors: shiftX([...lo7AtkHomeTop, ...lo7AtkAwayTop], dx_7man),
   },
   {
     id: 'lineout-7man-atk-bot',
     name: '7-Man Atk ↓',
-    description: '7-man attack — bottom touchline mirror, between home 22m and halfway',
+    description: '7-man attack — bottom touchline mirror, between home 22m and halfway. 1,7,6,5,4,8,3 in line; #9 receiver at midpoint',
     category: 'lineout',
     actors: shiftX(bot([...lo7AtkHomeTop, ...lo7AtkAwayTop]), dx_7man),
   },
@@ -509,4 +507,5 @@ export const FORMATION_CATEGORY_LABELS: Record<string, string> = {
   penalty: 'Penalty',
   restart: 'Restart',
   open:    'Open Play',
+  custom:  'Custom',
 };
