@@ -25,6 +25,12 @@ import { checkCloudSchema, type CloudSchemaHealth } from "@/lib/cloudHealth";
 import { clearTeamContextCache, getMyTeamContext } from "@/lib/teamContext";
 import { useTeam } from "@/app/providers/TeamContext";
 import { useMatches } from "@/app/providers/MatchesContext";
+import {
+  getCustomPresets,
+  getHiddenBuiltinIds,
+  restoreAllBuiltins,
+  subscribePresetsChanged,
+} from "@/app/coach/playbook/lib/presetStore";
 
 const THEME_SCHEME_KEY = "fynlwhistle-theme-scheme";
 const COACH_SIDEBAR_KEY = "coach-sidebar-collapsed";
@@ -162,6 +168,10 @@ export default function CoachSettingsPage() {
     getKnownStorageSnapshotJson,
     () => emptyStorageSnapshot
   );
+
+  const customPresetCount = useSyncExternalStore(subscribePresetsChanged, () => getCustomPresets().length, () => 0);
+  const hiddenBuiltinCount = useSyncExternalStore(subscribePresetsChanged, () => getHiddenBuiltinIds().length, () => 0);
+
   const [statusMessage, setStatusMessage] = useState("Settings loaded");
 
   useEffect(() => {
@@ -561,6 +571,42 @@ export default function CoachSettingsPage() {
               The export is for inspection and backup only. Import/restore is
               not part of Settings v1.
             </div>
+          </div>
+
+          {/* ── Playbook Presets ── */}
+          <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+            <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">
+              Playbook
+            </div>
+            <h2 className="mt-2 text-lg font-semibold text-foreground-strong">
+              Formation Presets
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-muted">
+              Manage your custom formation presets and restore any built-in presets you have hidden.
+            </p>
+
+            <div className="mt-4 flex items-center gap-6">
+              <div>
+                <p className="text-xs text-muted-2">Custom presets</p>
+                <p className="text-2xl font-bold text-foreground-strong">{customPresetCount}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-2">Hidden built-in presets</p>
+                <p className="text-2xl font-bold text-foreground-strong">{hiddenBuiltinCount}</p>
+              </div>
+            </div>
+
+            {hiddenBuiltinCount > 0 && (
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => restoreAllBuiltins()}
+                  className="rounded-lg border border-border bg-panel-2 px-4 py-2 text-sm font-medium text-foreground hover:bg-panel-3 transition-all"
+                >
+                  Restore {hiddenBuiltinCount} default preset{hiddenBuiltinCount !== 1 ? 's' : ''}
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">

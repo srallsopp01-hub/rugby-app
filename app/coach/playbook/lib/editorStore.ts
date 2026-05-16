@@ -34,6 +34,8 @@ interface EditorStore {
   pitchScale: number;
   actorScale: number;
   transitionDuration: number;
+  panX: number;
+  panY: number;
 
   setProjectName: (name: string) => void;
   setIsPlaying: (playing: boolean) => void;
@@ -43,6 +45,8 @@ interface EditorStore {
   setPitchScale: (s: number) => void;
   setActorScale: (s: number) => void;
   setTransitionDuration: (ms: number) => void;
+  setPan: (x: number, y: number) => void;
+  resetViewport: () => void;
   setActiveZoneColor: (color: string) => void;
   nextScene: () => boolean;
 
@@ -105,9 +109,11 @@ const useEditorStore = create<EditorStore>((set, get) => ({
   isPlaying: false,
   showMovementArrows: true,
   orientation: 'landscape',
-  pitchScale: 0.92,
+  pitchScale: 1.0,
   actorScale: 0.85,
   transitionDuration: 500,
+  panX: 0,
+  panY: 0,
 
   setProjectName: (name) => set({ projectName: name }),
   setIsPlaying: (playing) => set({ isPlaying: playing }),
@@ -117,6 +123,8 @@ const useEditorStore = create<EditorStore>((set, get) => ({
   setPitchScale: (s) => set({ pitchScale: s }),
   setActorScale: (s) => set({ actorScale: s }),
   setTransitionDuration: (ms) => set({ transitionDuration: ms }),
+  setPan: (x, y) => set({ panX: x, panY: y }),
+  resetViewport: () => set({ pitchScale: 1.0, panX: 0, panY: 0 }),
   setActiveZoneColor: (color) => set({ activeZoneColor: color }),
   nextScene: () => {
     const s = get();
@@ -485,6 +493,9 @@ const useEditorStore = create<EditorStore>((set, get) => ({
       selectedActorId: null,
       selectedArrowId: null,
       selectedZoneId: null,
+      pitchScale: 1.0,
+      panX: 0,
+      panY: 0,
     });
   },
 

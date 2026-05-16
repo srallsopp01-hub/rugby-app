@@ -55,7 +55,7 @@ function easeInOutCubic(t: number): number {
 
 // ─── Layout helpers ───────────────────────────────────────────────────────────
 
-function computePitch(stageW: number, stageH: number, scale: number, portrait: boolean): PitchLayout {
+function computePitch(stageW: number, stageH: number, scale: number, portrait: boolean, panX = 0, panY = 0): PitchLayout {
   const ratio = portrait ? 70 / 112 : 112 / 70;
   const pad = 44;
   const availW = stageW - pad * 2;
@@ -68,7 +68,14 @@ function computePitch(stageW: number, stageH: number, scale: number, portrait: b
   }
   const width = baseW * scale;
   const height = baseH * scale;
-  return { x: (stageW - width) / 2, y: (stageH - height) / 2, width, height };
+  return { x: (stageW - width) / 2 + panX, y: (stageH - height) / 2 + panY, width, height };
+}
+
+function clampPan(px: number, py: number, pitchW: number, pitchH: number) {
+  return {
+    x: Math.max(-pitchW / 2, Math.min(pitchW / 2, px)),
+    y: Math.max(-pitchH / 2, Math.min(pitchH / 2, py)),
+  };
 }
 
 function toCanvas(normX: number, normY: number, p: PitchLayout, portrait: boolean) {
@@ -474,6 +481,12 @@ export default function RugbyCanvas() {
   const [drawingFrom, setDrawingFrom] = useState<{ x: number; y: number } | null>(null);
   const [drawingTo,   setDrawingTo]   = useState<{ x: number; y: number } | null>(null);
 
+  const isPanningRef  = useRef(false);
+  const panMovedRef   = useRef(false);
+  const panStartRef   = useRef({ mouseX: 0, mouseY: 0, panX: 0, panY: 0 });
+  const spaceDownRef  = useRef(false);
+  const [isSpaceHeld, setIsSpaceHeld] = useState(false);
+
   const {
     scenes, currentSceneId,
     selectedActorId, selectedArrowId, selectedZoneId,
@@ -483,6 +496,7 @@ export default function RugbyCanvas() {
     addZone, updateZonePosition,
     showMovementArrows, showPlayerNames, orientation, pitchScale, actorScale, transitionDuration,
     selectedTool,
+    panX, panY, setPan, setPitchScale,
   } = useEditorStore();
 
   const portrait = orientation === 'portrait';
@@ -544,7 +558,7 @@ export default function RugbyCanvas() {
     return () => obs.disconnect();
   }, []);
 
-  const pitch = size.width > 0 ? computePitch(size.width, size.height, pitchScale, portrait) : null;
+  const pitch = size.width > 0 ? computePitch(size.width, size.height, pitchScale, portrait, panX, panY) : null;
 
   // ── Movement arrows ───────────────────────────────────────────────────────
   const { movementArrows, ghostActors } = useMemo(() => {
@@ -605,21 +619,59 @@ export default function RugbyCanvas() {
 
   // ── Mouse handlers ────────────────────────────────────────────────────────
   const handleStageMouseDown = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
+    const isBackground = e.target === e.target.getStage();
+    const startPan = spaceDownRef.current || (isBackground && !isArrowTool && !isZoneTool);
+    if (startPan && pitch) {
+      const pos = e.target.getStage()?.getPointerPosition();
+      if (pos) {
+        const { panX: px, panY: py } = useEditorStore.getState();
+        isPanningRef.current = true;
+        panMovedRef.current  = false;
+        panStartRef.current  = { mouseX: pos.x, mouseY: pos.y, panX: px, panY: py };
+        if (containerRef.current) containerRef.current.style.cursor = 'grabbing';
+        return;
+      }
+    }
     if (!isArrowTool || !pitch) return;
     const pos = e.target.getStage()?.getPointerPosition();
     if (pos) startDraw(pos.x, pos.y);
-  }, [isArrowTool, pitch, startDraw]);
+  }, [isArrowTool, isZoneTool, pitch, startDraw]);
 
   const handleStageMouseMove = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (isPanningRef.current && pitch) {
+      const pos = e.target.getStage()?.getPointerPosition();
+      if (pos) {
+        const dx = pos.x - panStartRef.current.mouseX;
+        const dy = pos.y - panStartRef.current.mouseY;
+        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) panMovedRef.current = true;
+        const clamped = clampPan(
+          panStartRef.current.panX + dx,
+          panStartRef.current.panY + dy,
+          pitch.width, pitch.height,
+        );
+        useEditorStore.getState().setPan(clamped.x, clamped.y);
+      }
+      return;
+    }
     if (!drawingFrom || !pitch) return;
     const pos = e.target.getStage()?.getPointerPosition();
     if (pos) moveDraw(pos.x, pos.y);
   }, [drawingFrom, pitch, moveDraw]);
 
   const handleStageMouseUp = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (isPanningRef.current) {
+      isPanningRef.current = false;
+      if (containerRef.current) {
+        containerRef.current.style.cursor = spaceDownRef.current ? 'grab' : 'default';
+      }
+      if (!panMovedRef.current) {
+        setSelectedActor(null); setSelectedArrow(null); setSelectedZone(null);
+      }
+      return;
+    }
     const pos = e.target.getStage()?.getPointerPosition();
     endDraw(pos?.x ?? drawingFrom?.x ?? 0, pos?.y ?? drawingFrom?.y ?? 0);
-  }, [drawingFrom, endDraw]);
+  }, [drawingFrom, endDraw, setSelectedActor, setSelectedArrow, setSelectedZone]);
 
   // ── Touch handlers ────────────────────────────────────────────────────────
   const getTouchPos = (e: Konva.KonvaEventObject<TouchEvent>) => {
@@ -674,7 +726,58 @@ export default function RugbyCanvas() {
     return () => window.removeEventListener('export-png', handler);
   }, []);
 
-  const cursor = (isArrowTool || isZoneTool) ? 'crosshair' : 'default';
+  // ── Spacebar hold tracking (for spacebar+drag pan) ───────────────────────
+  useEffect(() => {
+    const isTyping = (t: EventTarget | null) => {
+      const el = t as HTMLElement;
+      return el?.tagName === 'INPUT' || el?.tagName === 'TEXTAREA' || (el as HTMLElement)?.isContentEditable;
+    };
+    const onDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !isTyping(e.target)) {
+        spaceDownRef.current = true;
+        setIsSpaceHeld(true);
+      }
+    };
+    const onUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        spaceDownRef.current = false;
+        setIsSpaceHeld(false);
+      }
+    };
+    window.addEventListener('keydown', onDown);
+    window.addEventListener('keyup', onUp);
+    return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); };
+  }, []);
+
+  // ── Wheel: zoom (Ctrl/Cmd+scroll or pinch) or pan (2-finger scroll) ──────
+  const handleWheel = useCallback((e: Konva.KonvaEventObject<WheelEvent>) => {
+    e.evt.preventDefault();
+    if (!pitch) return;
+    const { pitchScale: s, panX: px, panY: py, setPitchScale: setScale, setPan: setP } = useEditorStore.getState();
+    const pointer = stageRef.current?.getPointerPosition();
+
+    if (e.evt.ctrlKey || e.evt.metaKey) {
+      // Pinch-to-zoom or Ctrl/Cmd+scroll — anchor zoom to cursor position
+      const factor = -e.evt.deltaY > 0 ? 1.08 : 1 / 1.08;
+      const newS   = Math.max(1.0, Math.min(3.0, s * factor));
+      if (pointer && newS !== s) {
+        const newPx = (pointer.x - size.width  / 2) * (1 - newS / s) + px * (newS / s);
+        const newPy = (pointer.y - size.height / 2) * (1 - newS / s) + py * (newS / s);
+        const clamped = clampPan(newPx, newPy, pitch.width * (newS / s), pitch.height * (newS / s));
+        setP(clamped.x, clamped.y);
+      }
+      setScale(newS);
+    } else {
+      // Two-finger scroll — pan
+      const clamped = clampPan(px - e.evt.deltaX, py - e.evt.deltaY, pitch.width, pitch.height);
+      setP(clamped.x, clamped.y);
+    }
+  }, [pitch, size]);
+
+  const cursor = isPanningRef.current ? 'grabbing'
+    : isSpaceHeld ? 'grab'
+    : (isArrowTool || isZoneTool) ? 'crosshair'
+    : 'default';
 
   return (
     <div ref={containerRef} className="w-full h-full" style={{ cursor }}>
@@ -689,6 +792,7 @@ export default function RugbyCanvas() {
           onTouchStart={handleStageTouchStart}
           onTouchMove={handleStageTouchMove}
           onTouchEnd={handleStageTouchEnd}
+          onWheel={handleWheel}
           style={{ background: 'var(--color-background)' }}
         >
           <Layer listening={false}>

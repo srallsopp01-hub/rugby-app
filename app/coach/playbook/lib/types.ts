@@ -13,7 +13,7 @@ export type Tool =
 
 export type ArrowDrawType = 'run' | 'pass' | 'kick';
 export type ZoneShape = 'rect' | 'ellipse';
-export type FormationCategory = 'kickoff' | 'lineout' | 'scrum' | 'penalty' | 'restart' | 'open';
+export type FormationCategory = 'kickoff' | 'lineout' | 'scrum' | 'penalty' | 'restart' | 'open' | 'custom';
 
 export interface Actor {
   id: string;
@@ -78,6 +78,14 @@ export interface FormationPreset {
   description: string;
   category: FormationCategory;
   actors: Omit<Actor, 'id'>[];
+}
+
+export interface CustomFormationPreset extends FormationPreset {
+  isCustom: true;
+  direction?: '↑' | '↓'; // cosmetic label only
+  order: number;          // sort order within category
+  createdAt: string;      // ISO
+  updatedAt: string;      // ISO
 }
 
 export interface Play {
