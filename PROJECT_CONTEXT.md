@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 13 May 2026 — Batch BV: Playbook wired into team data model. Plays are team-scoped (key `fynlwhistle-playbook-plays-{teamId}`); index page lists all plays with rename/delete; editor loads/autosaves the correct play by route ID; switching teams shows that team's plays. Previous: Bug fix: "Link account" on `/coach/team` now works when the player already joined via invite link.
+**Last updated:** 16 May 2026 — Bug fix: Playbook editor "Something went wrong" crash on load fixed (4 changes: LeftSidebar hydration mismatch, global-error.tsx prop rename, new playbook error boundary, spacePannedRef wired up). Previous: Batch BV: Playbook wired into team data model. Plays are team-scoped (key `fynlwhistle-playbook-plays-{teamId}`); index page lists all plays with rename/delete; editor loads/autosaves the correct play by route ID; switching teams shows that team's plays.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -1645,6 +1645,17 @@ Token-only refresh of the dark scheme to make it feel like Linear / Vercel / Str
 - ✅ Help content added for `/coach/playbook` (list) and `/coach/playbook/[playId]` (editor) — steps + 3 tips each including keyboard shortcuts
 - ✅ PROJECT_CONTEXT updated with storage entry and "Playbook — what's left to do" cloud migration plan
 - ✅ `npm run build` clean; no new lint errors
+
+---
+
+### Bug fix (May 2026) — Playbook editor "Something went wrong" crash
+
+Four-part fix for the global error boundary crash at `/coach/playbook/new` and any playbook editor URL. Root cause: `useSyncExternalStore` in `LeftSidebar.tsx` with localStorage-backed snapshot functions caused a React 19 hydration mismatch (server renders `[]`; client hydration returned actual localStorage data for users who had saved custom formation presets or hidden built-in ones). Next.js 16's stricter prerendering promoted this to a fatal error caught by `global-error.tsx`.
+
+- ✅ `app/coach/playbook/components/LeftSidebar.tsx` — replaced `useSyncExternalStore` with `useState`+`useEffect` for `customPresets` and `hiddenIds`; initial render always returns `[]` (matching server), localStorage loaded client-side after hydration
+- ✅ `app/global-error.tsx` — renamed `reset` → `unstable_retry` in prop destructuring, TypeScript type, and `onClick` handler; "Try again" button now actually works (Next.js 16 renamed this prop)
+- ✅ `app/coach/playbook/[playId]/error.tsx` (new) — segment-level error boundary that catches render errors before they reach `global-error.tsx`; uses Next.js 16 `unstable_retry` prop
+- ✅ `PlaybookEditor.tsx` + `RugbyCanvas.tsx` — wired up `spacePannedRef` that was declared but never set: `RugbyCanvas` accepts `onSpacePan` callback and fires it when spacebar-initiated pan drag moves >2px; `handleKeyUp` now guards `!spacePannedRef.current` so spacebar+drag panning doesn't also toggle playback
 
 ---
 

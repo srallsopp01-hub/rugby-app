@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useSyncExternalStore, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import useEditorStore from '../lib/editorStore';
 import { FORMATIONS, FORMATION_CATEGORY_LABELS } from '../lib/formations';
 import {
@@ -204,8 +204,17 @@ export default function LeftSidebar() {
   const tool = (t: Tool) => selectedTool === t;
 
   // ── Preset store (reactive) ──────────────────────────────────────────────
-  const customPresets = useSyncExternalStore(subscribePresetsChanged, getCustomPresets, getCustomPresets);
-  const hiddenIds     = useSyncExternalStore(subscribePresetsChanged, getHiddenBuiltinIds, getHiddenBuiltinIds);
+  const [customPresets, setCustomPresets] = useState<CustomFormationPreset[]>([]);
+  const [hiddenIds,     setHiddenIds]     = useState<string[]>([]);
+
+  useEffect(() => {
+    setCustomPresets(getCustomPresets());
+    setHiddenIds(getHiddenBuiltinIds());
+    return subscribePresetsChanged(() => {
+      setCustomPresets(getCustomPresets());
+      setHiddenIds(getHiddenBuiltinIds());
+    });
+  }, []);
 
   // ── UI state ─────────────────────────────────────────────────────────────
   const [formationsOpen, setFormationsOpen] = useState(true);

@@ -135,7 +135,7 @@ export default function PlaybookEditor() {
     (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
-      if (!isInput && e.key === ' ' && scenes.length > 1) {
+      if (!isInput && e.key === ' ' && scenes.length > 1 && !spacePannedRef.current) {
         setIsPlaying(!isPlaying);
       }
     },
@@ -171,7 +171,7 @@ export default function PlaybookEditor() {
       <div className="flex flex-1 overflow-hidden">
         <LeftSidebar />
         <main className="flex-1 overflow-hidden bg-background">
-          <RugbyCanvas />
+          <RugbyCanvas onSpacePan={() => { spacePannedRef.current = true; }} />
         </main>
         <RightSidebar />
       </div>

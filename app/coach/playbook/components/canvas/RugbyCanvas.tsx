@@ -473,7 +473,7 @@ function DrawingPreview({ from, to, tool }: { from: { x: number; y: number }; to
 
 // ─── Main canvas component ────────────────────────────────────────────────────
 
-export default function RugbyCanvas() {
+export default function RugbyCanvas({ onSpacePan }: { onSpacePan?: () => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -643,7 +643,10 @@ export default function RugbyCanvas() {
       if (pos) {
         const dx = pos.x - panStartRef.current.mouseX;
         const dy = pos.y - panStartRef.current.mouseY;
-        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) panMovedRef.current = true;
+        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+          if (!panMovedRef.current && spaceDownRef.current) onSpacePan?.();
+          panMovedRef.current = true;
+        }
         const clamped = clampPan(
           panStartRef.current.panX + dx,
           panStartRef.current.panY + dy,
