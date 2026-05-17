@@ -25,6 +25,14 @@ export default function TopBar() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(projectName);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+
+  useEffect(() => {
+    const onDone = () => setIsRecording(false);
+    window.addEventListener('mp4-recording-stopped', onDone);
+    return () => window.removeEventListener('mp4-recording-stopped', onDone);
+  }, []);
 
   useEffect(() => {
     if (editing) inputRef.current?.select();
@@ -152,19 +160,52 @@ export default function TopBar() {
       <div className="flex items-center gap-2">
         <SavedBadge />
         <div className="w-px h-5 bg-panel-3" />
-        <button
-          onClick={() =>
-            window.dispatchEvent(
-              new CustomEvent('export-png', {
-                detail: { filename: `${projectName.toLowerCase().replace(/\s+/g, '-')}.png` },
-              })
-            )
-          }
-          title="Export current view as PNG"
-          className="px-3 py-1.5 rounded text-sm bg-accent hover:bg-accent/80 text-white border border-accent transition-colors"
-        >
-          Export
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setExportOpen((o) => !o)}
+            disabled={isRecording}
+            title="Export"
+            className="px-3 py-1.5 rounded text-sm bg-accent hover:bg-accent/80 text-white border border-accent transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-1.5"
+          >
+            {isRecording ? 'Recording…' : 'Export'}
+            {!isRecording && <ChevronIcon />}
+          </button>
+          {exportOpen && (
+            <div
+              className="absolute right-0 top-full mt-1 w-40 bg-panel border border-border rounded shadow-lg z-50 overflow-hidden"
+              onMouseLeave={() => setExportOpen(false)}
+            >
+              <button
+                className="w-full text-left px-3 py-2 text-sm text-foreground hover:bg-panel-2 transition-colors"
+                onClick={() => {
+                  setExportOpen(false);
+                  window.dispatchEvent(
+                    new CustomEvent('export-png', {
+                      detail: { filename: `${projectName.toLowerCase().replace(/\s+/g, '-')}.png` },
+                    })
+                  );
+                }}
+              >
+                Export PNG
+              </button>
+              <button
+                disabled={isRecording}
+                className="w-full text-left px-3 py-2 text-sm text-foreground hover:bg-panel-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={() => {
+                  setExportOpen(false);
+                  setIsRecording(true);
+                  window.dispatchEvent(
+                    new CustomEvent('export-mp4', {
+                      detail: { filename: `${projectName.toLowerCase().replace(/\s+/g, '-')}.webm` },
+                    })
+                  );
+                }}
+              >
+                Export MP4
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
@@ -218,6 +259,13 @@ function NamesIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+    </svg>
+  );
+}
+function ChevronIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+      <path d="m6 9 6 6 6-6" />
     </svg>
   );
 }

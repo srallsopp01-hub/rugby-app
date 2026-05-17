@@ -729,6 +729,100 @@ export default function RugbyCanvas({ onSpacePan }: { onSpacePan?: () => void })
     return () => window.removeEventListener('export-png', handler);
   }, []);
 
+  // ── Export MP4 (WebM via MediaRecorder) ──────────────────────────────────
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const filename = (e as CustomEvent<{ filename: string }>).detail?.filename ?? 'play.webm';
+      const stage = stageRef.current;
+      if (!stage) return;
+
+      if (!window.MediaRecorder) {
+        alert('MP4 export needs a recent browser. Best results in Chrome on desktop.');
+        return;
+      }
+
+      const { width, height } = stage.size();
+      const recordCanvas = document.createElement('canvas');
+      recordCanvas.width = width;
+      recordCanvas.height = height;
+      const ctx = recordCanvas.getContext('2d')!;
+
+      const stream = recordCanvas.captureStream(30);
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+        ? 'video/webm;codecs=vp9'
+        : 'video/webm;codecs=vp8';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      const chunks: Blob[] = [];
+
+      recorder.ondataavailable = (ev) => { if (ev.data.size > 0) chunks.push(ev.data); };
+
+      let rafId: number;
+      const drawFrame = () => {
+        ctx.clearRect(0, 0, width, height);
+        // getChildren() returns only Layer nodes; getCanvas() returns the scene canvas (not the hit canvas)
+        (stage.getChildren() as Konva.Layer[]).forEach((layer) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ctx.drawImage((layer.getCanvas() as any).getElement() as HTMLCanvasElement, 0, 0);
+        });
+        rafId = requestAnimationFrame(drawFrame);
+      };
+
+      const renderOutro = () => {
+        ctx.fillStyle = '#0a1f12';
+        ctx.fillRect(0, 0, width, height);
+        const cx = width / 2;
+        const cy = height / 2;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.font = '24px sans-serif';
+        ctx.fillText('Made with', cx, cy - 44);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 48px sans-serif';
+        ctx.fillText('FYNL Whistle', cx, cy);
+        ctx.fillStyle = '#ed6a1f';
+        ctx.font = '20px sans-serif';
+        ctx.fillText('fynlwhistle.com', cx, cy + 44);
+      };
+
+      recorder.onstart = () => {
+        rafId = requestAnimationFrame(drawFrame);
+        const store = useEditorStore.getState();
+        store.setCurrentScene(store.scenes[0].id);
+        let hasStarted = false;
+        setTimeout(() => {
+          useEditorStore.getState().setIsPlaying(true);
+          hasStarted = true;
+        }, 50);
+
+        const unsub = useEditorStore.subscribe((state) => {
+          if (hasStarted && !state.isPlaying) {
+            unsub();
+            cancelAnimationFrame(rafId);
+            renderOutro();
+            setTimeout(() => recorder.stop(), 2000);
+          }
+        });
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        window.dispatchEvent(new CustomEvent('mp4-recording-stopped'));
+      };
+
+      recorder.start(100);
+    };
+
+    window.addEventListener('export-mp4', handler);
+    return () => window.removeEventListener('export-mp4', handler);
+  }, []);
+
   // ── Spacebar hold tracking (for spacebar+drag pan) ───────────────────────
   useEffect(() => {
     const isTyping = (t: EventTarget | null) => {

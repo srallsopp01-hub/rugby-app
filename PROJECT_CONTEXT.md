@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 17 May 2026 — Batch CA: Clips Module Step 1 (Video Sources) committed. `/coach/clips` page live with Sources tab (upload, preview, delete), 3 API routes, `video_sources` table with RLS, Clips nav item. Library + Highlights are coming-soon placeholders. Previous: Batch CB: Playbook cloud sync.
+**Last updated:** 17 May 2026 — WebM video export added to playbook editor. Export button is now a dropdown with "Export PNG" and "Export MP4" options. MP4 exports as `.webm` via MediaRecorder (vp9/vp8), captures the live Konva canvas during playback, appends a 2-second FYNL Whistle outro frame, then downloads. Previous: Batch CA: Clips Module Step 1 (Video Sources).
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
