@@ -66,6 +66,21 @@ export function createMatchVideoObjectKey(
   return `${ownerUserId}/${folder}/${uniquePrefix}-${safeFilename}`;
 }
 
+export const SOURCE_VIDEO_PATH_SEGMENT = "sources";
+
+export function createVideoSourceObjectKey(teamId: string, filename: string): string {
+  const timestamp = Date.now();
+  const uuid = randomUUID();
+  const sanitised = sanitizeR2Filename(filename);
+  return `${teamId}/${SOURCE_VIDEO_PATH_SEGMENT}/${timestamp}-${uuid}-${sanitised}`;
+}
+
+export function isValidR2SourceVideoKey(path: string): boolean {
+  if (!path || path.startsWith("/") || path.includes("\\") || path.includes("..")) return false;
+  const segments = path.split("/");
+  return segments.length >= 3 && segments[1] === SOURCE_VIDEO_PATH_SEGMENT && segments.every(Boolean);
+}
+
 export function createR2PresignedUrl(
   config: R2Config,
   method: "GET" | "PUT" | "DELETE",

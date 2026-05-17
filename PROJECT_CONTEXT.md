@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 17 May 2026 — Batch CB: Playbook cloud sync. `playbook_plays` Supabase table live; plays now sync across devices via `lib/playbookPlaysCloud.ts` + `SyncPlaybookPlays` component; localStorage remains the read source. Previous: Batch CA: Clips Module Step 1 (Video Sources).
+**Last updated:** 17 May 2026 — Batch CA: Clips Module Step 1 (Video Sources) committed. `/coach/clips` page live with Sources tab (upload, preview, delete), 3 API routes, `video_sources` table with RLS, Clips nav item. Library + Highlights are coming-soon placeholders. Previous: Batch CB: Playbook cloud sync.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---

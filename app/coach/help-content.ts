@@ -144,6 +144,34 @@ export const COACH_PAGE_HELP: Record<string, PageHelpProps> = {
     ],
   },
 
+  "/coach/clips": {
+    title: "Clips",
+    description: "Upload and manage external source videos for analysis — opposition footage, training clips, and more.",
+    steps: [
+      {
+        title: "Upload a source video",
+        body: "Go to the Sources tab and click 'Upload source video'. Give it a title, an optional opponent name, and any context notes. The file is stored securely in the cloud — only your team can access it.",
+      },
+      {
+        title: "Play back a source",
+        body: "Click any source card to open the preview modal. Use skip buttons to jump forward and back, and fullscreen for a better view.",
+      },
+      {
+        title: "Delete a source",
+        body: "Click Delete on any card, confirm the prompt, and the file is removed from both cloud storage and your team's list.",
+      },
+      {
+        title: "Library and Highlights (coming soon)",
+        body: "The Library tab will let you cut specific moments from source videos into a searchable clip library. The Highlights tab will let you stitch clips together into shareable reels for team meetings.",
+      },
+    ],
+    tips: [
+      "Source videos are head-coach-only for upload and delete. Assistant coaches and players can view sources but cannot add or remove them.",
+      "Each team can store up to 20 source videos, with a 5 GB per-file limit.",
+      "Adding a short context note to each source (e.g. 'their lineout plays from R4') makes it much easier to find the right footage when cutting clips later.",
+    ],
+  },
+
   "/coach/playbook": {
     title: "Playbook",
     description: "Build tactical animations to walk your squad through phases of play — scene by scene.",
