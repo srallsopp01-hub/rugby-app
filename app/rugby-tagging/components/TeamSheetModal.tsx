@@ -24,13 +24,20 @@ type TeamSheetModalProps = {
   onApplyPastedTeamSheet?: () => void;
 };
 
-function sortPlayersByPosition(players: SquadPlayer[], position: string): SquadPlayer[] {
-  if (!position) return [...players];
-  return [...players].sort((a, b) => {
-    const aScore = a.primaryPosition === position ? 0 : a.secondaryPositions?.includes(position) ? 1 : 2;
-    const bScore = b.primaryPosition === position ? 0 : b.secondaryPositions?.includes(position) ? 1 : 2;
-    return aScore - bScore;
-  });
+function groupPlayersByPosition(players: SquadPlayer[], position: string) {
+  const byName = (a: SquadPlayer, b: SquadPlayer) =>
+    (a.preferredName || a.fullName).localeCompare(b.preferredName || b.fullName);
+  if (!position) return { fits: [...players].sort(byName), others: [] };
+  const fits: SquadPlayer[] = [];
+  const others: SquadPlayer[] = [];
+  for (const p of players) {
+    if (p.primaryPosition === position || p.secondaryPositions?.includes(position)) {
+      fits.push(p);
+    } else {
+      others.push(p);
+    }
+  }
+  return { fits: fits.sort(byName), others: others.sort(byName) };
 }
 
 export default function TeamSheetModal({
@@ -57,7 +64,7 @@ export default function TeamSheetModal({
             Enter Team Sheet
           </h2>
           <p className="mt-2 text-sm text-muted">
-            Select players for each shirt number. Players are sorted by position fit.
+            Select players for each shirt number. Players are grouped by position fit.
           </p>
         </div>
 
@@ -110,9 +117,9 @@ export default function TeamSheetModal({
               </thead>
               <tbody>
                 {rosterRows.map((row) => {
-                  const sorted = hasSquadPlayers
-                    ? sortPlayersByPosition(squadPlayers, row.position)
-                    : [];
+                  const { fits, others } = hasSquadPlayers
+                    ? groupPlayersByPosition(squadPlayers, row.position)
+                    : { fits: [], others: [] };
 
                   return (
                     <tr key={row.number} className="border-t border-border hover:bg-panel-2/50 transition-colors">
@@ -134,12 +141,24 @@ export default function TeamSheetModal({
                             className="w-full rounded-lg border border-border bg-panel px-2 py-1.5 text-sm text-foreground"
                           >
                             <option value="">— Unassigned —</option>
-                            {sorted.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.preferredName || p.fullName}
-                                {p.primaryPosition === row.position ? " ✓" : ""}
-                              </option>
-                            ))}
+                            {fits.length > 0 && (
+                              <optgroup label="Fits position">
+                                {fits.map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.preferredName || p.fullName}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )}
+                            {others.length > 0 && (
+                              <optgroup label="Other players">
+                                {others.map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.preferredName || p.fullName}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )}
                           </select>
                         ) : (
                           <input
