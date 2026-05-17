@@ -1,4 +1,3 @@
-import { nanoid } from 'nanoid';
 import type { Play } from './types';
 import { makeScene } from './editorStore';
 import { ACTIVE_TEAM_CHANGED_EVENT, ACTIVE_TEAM_ID_KEY } from '@/lib/teamContext';
@@ -37,6 +36,9 @@ export function savePlay(teamId: string, play: Play): void {
   const updated = idx >= 0 ? plays.map((p) => (p.id === play.id ? play : p)) : [...plays, play];
   localStorage.setItem(storeKey(teamId), JSON.stringify({ plays: updated }));
   emit();
+  import('@/lib/playbookPlaysCloud').then(({ upsertCloudPlay }) => {
+    void upsertCloudPlay(play, teamId);
+  });
 }
 
 export function deletePlay(teamId: string, playId: string): void {
@@ -44,12 +46,15 @@ export function deletePlay(teamId: string, playId: string): void {
   const plays = getPlays(teamId).filter((p) => p.id !== playId);
   localStorage.setItem(storeKey(teamId), JSON.stringify({ plays }));
   emit();
+  import('@/lib/playbookPlaysCloud').then(({ deleteCloudPlay }) => {
+    void deleteCloudPlay(playId, teamId);
+  });
 }
 
 export function createPlay(teamId: string, name: string): Play {
   const now = new Date().toISOString();
   const play: Play = {
-    id: nanoid(),
+    id: crypto.randomUUID(),
     name,
     teamId,
     createdAt: now,

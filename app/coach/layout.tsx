@@ -7,6 +7,7 @@ import CreateStarterTeamButton from "./CreateStarterTeamButton";
 import { TeamProvider } from "@/app/providers/TeamContext";
 import { MatchesProvider } from "@/app/providers/MatchesContext";
 import { MatchVideoSessionProvider } from "@/app/providers/MatchVideoSessionContext";
+import SyncPlaybookPlays from "./SyncPlaybookPlays";
 
 export default async function CoachLayout({
   children,
@@ -35,6 +36,7 @@ export default async function CoachLayout({
     <TeamProvider>
       <MatchVideoSessionProvider>
       <MatchesProvider>
+        <SyncPlaybookPlays />
         <div className="flex h-screen overflow-hidden">
           <CoachSidebar isOrgAdminOnly={isOrgAdminOnly} isClubAdmin={isClubAdmin} />
           <div className="flex-1 flex flex-col overflow-hidden">

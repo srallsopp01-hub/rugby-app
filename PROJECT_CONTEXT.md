@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 16 May 2026 — Bug fix: Playbook editor "Something went wrong" crash on load fixed (4 changes: LeftSidebar hydration mismatch, global-error.tsx prop rename, new playbook error boundary, spacePannedRef wired up). Previous: Batch BV: Playbook wired into team data model. Plays are team-scoped (key `fynlwhistle-playbook-plays-{teamId}`); index page lists all plays with rename/delete; editor loads/autosaves the correct play by route ID; switching teams shows that team's plays.
+**Last updated:** 17 May 2026 — Batch CB: Playbook cloud sync. `playbook_plays` Supabase table live; plays now sync across devices via `lib/playbookPlaysCloud.ts` + `SyncPlaybookPlays` component; localStorage remains the read source. Previous: Batch CA: Clips Module Step 1 (Video Sources).
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -549,7 +549,7 @@ All previous CSV downloads have been removed. One polished report.
 - **Video:** current-device `sessionStorage` blob URL for immediate playback; authenticated head coaches upload match files directly to Cloudflare R2 with server-issued signed URLs
 - **Player identity:** `localStorage` key `rugby-player-selected-id` (SquadPlayer.id, via PlayerContext). Authenticated player members are auto-linked from `team_members.player_squad_id`.
 - **Cloud storage:** Supabase auth/database for `squad_profiles`, `saved_matches`, `team_members`, `invite_tokens`; Cloudflare R2 for private match video objects.
-- **Playbook plays:** `localStorage` key `fynlwhistle-playbook-plays-{teamId}`, scoped per team. No cloud sync yet — see "Playbook — what's left to do" below.
+- **Playbook plays:** `localStorage` key `fynlwhistle-playbook-plays-{teamId}`, scoped per team. Cloud-synced to Supabase `playbook_plays` table via `lib/playbookPlaysCloud.ts`; `SyncPlaybookPlays` component merges on mount/team-change/tab-focus; localStorage is still the synchronous read source.
 
 ---
 
@@ -1659,6 +1659,30 @@ Four-part fix for the global error boundary crash at `/coach/playbook/new` and a
 
 ---
 
+### Batch CB (May 2026) — Playbook cloud sync
+
+- ✅ New Supabase table `playbook_plays` (uuid PK, team_id FK, name, scenes jsonb, created_by_user_id, timestamps) with RLS via `can_read_team_data` / `can_manage_team`
+- ✅ `lib/playbookPlaysCloud.ts` — `fetchCloudPlays`, `upsertCloudPlay`, `deleteCloudPlay` mirroring `savedMatchesCloud.ts`; silent error logging, no quota check (plays are unlimited)
+- ✅ `playsStore.ts` — `createPlay` switched from `nanoid` to `crypto.randomUUID()` (UUID-compatible with DB); `savePlay` / `deletePlay` fire-and-forget cloud upsert/delete via dynamic import
+- ✅ `app/coach/SyncPlaybookPlays.tsx` — client component mounted in coach layout; on mount/team-change/tab-focus: fetches cloud plays, merges with local (newest `updatedAt` wins, cloud wins ties), writes to localStorage, pushes any local-only plays up to cloud (first-sync bootstrap)
+- ✅ `app/coach/layout.tsx` — `<SyncPlaybookPlays />` mounted inside `<MatchesProvider>`; no UI changes to any playbook component
+
+---
+
+### Batch CA (May 2026) — Clips Module Step 1: Video Sources
+
+- ✅ New `/coach/clips` route with Sources / Library / Highlights tabs (only Sources functional in this batch)
+- ✅ Coaches can upload external source videos (opposition footage, training, etc.) up to 5 GB each, max 20 per team
+- ✅ Source videos stored in private Cloudflare R2 under key `{team_id}/sources/{timestamp-uuid-filename}`
+- ✅ Three new API routes: `/api/source-video/upload-url`, `/api/source-video/signed-url`, `/api/source-video/delete` — head-coach-only writes, any team member can read
+- ✅ New table `video_sources` with RLS via `can_read_team_data` / `can_manage_team`
+- ✅ Source preview modal uses shared `VideoPlayer` with `onError` auto-refresh on signed URL expiry
+- ✅ Clips nav item added to coach sidebar between Review and Playbook (Film icon)
+- ✅ Library and Highlights tabs render "Coming soon" placeholders — to be built in Batches CB and CE
+- ✅ Help content added for `/coach/clips`
+
+---
+
 ## Next — what's left to do
 
 ### Move 4 — ✅ Shipped (May 2026)
@@ -1758,36 +1782,9 @@ These are low-effort, high-signal for early clubs:
 
 ## Playbook — what's left to do
 
-### Cloud storage (future batch)
+### Player read-only view (deferred)
 
-**Supabase table: `playbook_plays`**
-
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | default gen_random_uuid() |
-| team_id | uuid → teams | NOT NULL |
-| name | text | NOT NULL |
-| scenes | jsonb | NOT NULL, the Scene[] array |
-| created_by_user_id | uuid → auth.users | NOT NULL |
-| created_at | timestamptz | default now() |
-| updated_at | timestamptz | default now() |
-
-RLS: follow the same pattern as `saved_matches` — read via `can_read_team_data`, write via `can_manage_team`. No per-row user ownership check needed.
-
-**Sync helper: `lib/playbookPlaysCloud.ts`** — mirror `lib/savedMatchesCloud.ts`:
-- `fetchCloudPlays(teamId?)` → `{ plays: Play[], error? }`
-- `upsertCloudPlay(play, teamId?)` → `{ ok, error? }` — upsert on conflict `(team_id, id)`
-- `deleteCloudPlay(playId, teamId?)` → `{ ok, error? }`
-- Merge strategy: newest `updatedAt` wins (same as saved matches)
-
-**Context provider: `PlaybookPlaysContext`** — mirror `MatchesContext` in `app/providers/MatchesContext.tsx`:
-- Mount in `app/coach/layout.tsx` alongside `MatchesProvider`
-- Fetches on mount, on tab visibility change, and on `ACTIVE_TEAM_CHANGED_EVENT`
-- `playsStore.ts` `savePlay()` / `deletePlay()` fire async cloud upsert/delete (fire-and-forget)
-
-**Plan limits:** Plays should NOT count against `player_limit` or `team_limit`. Plays are unlimited per team for now.
-
-**Player read-only view (deferred):** A future `/player/playbook` route could let players see their team's plays using `can_read_team_data` RLS — no schema changes needed, just a new page and a player-facing route guard.
+A future `/player/playbook` route could let players see their team's plays using `can_read_team_data` RLS — no schema changes needed, just a new page and a player-facing route guard.
 
 ---
 
