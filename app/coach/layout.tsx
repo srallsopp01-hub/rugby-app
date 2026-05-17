@@ -31,6 +31,7 @@ export default async function CoachLayout({
   const isOrgAdminOnly = ctx.isOrgAdminOnly;
   const isClubAdmin = ctx.isClubAdmin;
   const hasNoTeams = ctx.hasNoTeams ?? false;
+  const orgPlan = ctx.orgPlan;
 
   return (
     <TeamProvider>
@@ -38,7 +39,7 @@ export default async function CoachLayout({
       <MatchesProvider>
         <SyncPlaybookPlays />
         <div className="flex h-screen overflow-hidden">
-          <CoachSidebar isOrgAdminOnly={isOrgAdminOnly} isClubAdmin={isClubAdmin} />
+          <CoachSidebar isOrgAdminOnly={isOrgAdminOnly} isClubAdmin={isClubAdmin} orgPlan={orgPlan} />
           <div className="flex-1 flex flex-col overflow-hidden">
             {hasNoTeams && isClubAdmin && (
               <div className="shrink-0 bg-blue-500/10 border-b border-blue-500/30 px-5 py-2 text-sm font-medium text-blue-300">

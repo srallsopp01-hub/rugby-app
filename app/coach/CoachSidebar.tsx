@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import ThemeSchemeToggle from "@/app/components/ThemeSchemeToggle";
 import { FynlMark, FynlLockup } from "@/app/components/FynlLogo";
 import { createClient } from "@/lib/supabase/client";
-import { Clapperboard, Film } from "lucide-react";
+import { Clapperboard, Film, Lock } from "lucide-react";
 import {
   ACTIVE_TEAM_ID_KEY,
   ACTIVE_TEAM_CHANGED_EVENT,
@@ -258,12 +258,16 @@ function TeamSwitcherDropdown({
   );
 }
 
+const SOLO_UNLOCKED_HREFS = ["/coach/playbook", "/coach/settings", "/coach/organisation"];
+
 export default function CoachSidebar({
   isOrgAdminOnly = false,
   isClubAdmin = false,
+  orgPlan,
 }: {
   isOrgAdminOnly?: boolean;
   isClubAdmin?: boolean;
+  orgPlan?: string;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -320,9 +324,15 @@ export default function CoachSidebar({
     window.dispatchEvent(new Event(COACH_SIDEBAR_EVENT));
   };
 
+  const isSolo = orgPlan === "solo";
+
   function isActive(href: string, exact: boolean) {
     if (exact) return pathname === href;
     return pathname === href || pathname.startsWith(href + "/");
+  }
+
+  function isLocked(href: string) {
+    return isSolo && !SOLO_UNLOCKED_HREFS.some((allowed) => href.startsWith(allowed));
   }
 
   async function handleTeamSelect(teamId: string) {
@@ -375,11 +385,12 @@ export default function CoachSidebar({
       <nav className="flex flex-col gap-0.5 p-2 flex-1 overflow-y-auto">
         {navItems.filter((item) => item.href !== "/coach/organisation" || isClubAdmin).map((item) => {
           const active = isActive(item.href, item.exact);
+          const locked = isLocked(item.href);
           return (
             <Link
               key={item.href}
               href={item.href}
-              title={collapsed ? item.label : undefined}
+              title={collapsed ? item.label : locked ? "Start free trial to unlock" : undefined}
               className={`relative flex items-center rounded-lg text-sm font-medium transition-all duration-150 ${
                 collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"
               } ${
@@ -399,6 +410,9 @@ export default function CoachSidebar({
                 {item.icon}
               </span>
               {!collapsed && item.label}
+              {!collapsed && locked && (
+                <Lock size={12} className="ml-auto shrink-0 text-muted-2" aria-hidden="true" />
+              )}
             </Link>
           );
         })}

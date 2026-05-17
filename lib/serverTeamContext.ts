@@ -2,6 +2,19 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { MyTeamContext, TeamRole } from "@/lib/teamContext";
 
+async function fetchOrgPlan(
+  adminClient: ReturnType<typeof createAdminClient>,
+  orgId: string
+): Promise<string | undefined> {
+  if (!adminClient) return undefined;
+  const { data } = await adminClient
+    .from("organisations")
+    .select("plan")
+    .eq("id", orgId)
+    .single();
+  return (data?.plan as string) ?? undefined;
+}
+
 export async function getServerTeamContext(): Promise<MyTeamContext | null> {
   const supabase = await createClient();
   const {
@@ -31,13 +44,12 @@ export async function getServerTeamContext(): Promise<MyTeamContext | null> {
       .maybeSingle();
 
     if (!membershipError && membership) {
-      // Fetch ownerUserId from the team and check if this user is also a club_admin.
-      // Use admin client for the org check to bypass any RLS edge-cases on deployed infra.
+      // Fetch ownerUserId + organisation_id from the team; check if user is club_admin.
       const adminClient = createAdminClient();
       const [{ data: team }, orgCheckResult] = await Promise.all([
         supabase
           .from("teams")
-          .select("created_by_user_id")
+          .select("created_by_user_id, organisation_id")
           .eq("id", teamId)
           .single(),
         adminClient
@@ -51,6 +63,14 @@ export async function getServerTeamContext(): Promise<MyTeamContext | null> {
       ]);
       const orgRow = orgCheckResult.data;
 
+      // Resolve the org ID: prefer the club_admin row, fall back to the team's org.
+      const orgId =
+        (orgRow?.organisation_id as string | null) ??
+        (team?.organisation_id as string | null) ??
+        null;
+
+      const orgPlan = orgId ? await fetchOrgPlan(adminClient, orgId) : undefined;
+
       return {
         role: membership.role as TeamRole,
         userId: user.id,
@@ -61,6 +81,7 @@ export async function getServerTeamContext(): Promise<MyTeamContext | null> {
         isOrgAdminOnly: false,
         isClubAdmin: !!orgRow,
         orgId: orgRow?.organisation_id ?? null,
+        orgPlan,
       };
     }
   }
@@ -79,8 +100,6 @@ export async function getServerTeamContext(): Promise<MyTeamContext | null> {
 
   if (!orgMember) {
     // Authenticated user with no team and no org — standard coach who just signed up.
-    // Return a valid context so the coach layout can guide them to create their first team
-    // instead of trapping them in an infinite redirect to /player.
     return {
       role: "head_coach" as TeamRole,
       userId: user.id,
@@ -94,6 +113,11 @@ export async function getServerTeamContext(): Promise<MyTeamContext | null> {
       hasNoTeams: true,
     };
   }
+
+  const orgPlanForAdmin = await fetchOrgPlan(
+    adminClient2,
+    orgMember.organisation_id as string
+  );
 
   // Prefer the RPC-resolved team if it belongs to this org; otherwise pick the first active team.
   let adminTeamId: string | null = null;
@@ -120,9 +144,6 @@ export async function getServerTeamContext(): Promise<MyTeamContext | null> {
       .maybeSingle();
 
     if (!firstTeam) {
-      // Club admin exists but has no teams yet — return a valid context so the
-      // coach layout doesn't redirect them to /player. They'll land on the org
-      // page where they can create their first team.
       return {
         role: "club_admin" as TeamRole,
         userId: user.id,
@@ -134,6 +155,7 @@ export async function getServerTeamContext(): Promise<MyTeamContext | null> {
         isClubAdmin: true,
         orgId: orgMember.organisation_id,
         hasNoTeams: true,
+        orgPlan: orgPlanForAdmin,
       };
     }
 
@@ -156,5 +178,6 @@ export async function getServerTeamContext(): Promise<MyTeamContext | null> {
     isOrgAdminOnly: true,
     isClubAdmin: true,
     orgId: orgMember.organisation_id,
+    orgPlan: orgPlanForAdmin,
   };
 }

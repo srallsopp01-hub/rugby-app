@@ -1,0 +1,920 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
+import { PageHelp } from "@/app/components/PageHelp";
+import { PageHeader } from "@/app/components/PageHeader";
+import { StatusPill } from "@/app/components/StatusPill";
+import { COACH_PAGE_HELP } from "../help-content";
+import {
+  fetchTeamMembers,
+  fetchNotifyRequests,
+  fetchActiveInviteLinks,
+  revokeTeamMember,
+  approveTeamMember,
+  rejectTeamMember,
+  sendTeamMemberPasswordReset,
+  createInviteLink,
+  deactivateInviteLink,
+  updateMemberPermissions,
+  type TeamMember,
+  type InviteLink,
+} from "@/lib/teamMembersCloud";
+import {
+  saveSquadProfile,
+  type SquadPlayer,
+  type SquadProfile,
+} from "@/app/rugby-tagging/lib/team";
+import { useTeam } from "@/app/providers/TeamContext";
+import { EmptyState } from "@/app/components/EmptyState";
+import { Users } from "lucide-react";
+
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+
+export default function TeamPage() {
+  const { team: liveTeam } = useTeam();
+  const [profile, setProfile] = useState<SquadProfile | null>(liveTeam ?? null);
+  const [teamNameDraft, setTeamNameDraft] = useState(liveTeam?.teamName ?? "");
+  const [savingTeamName, setSavingTeamName] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("Manage your team access");
+  const [loading, setLoading] = useState(true);
+
+  const [reusableLink, setReusableLink] = useState<InviteLink | null>(null);
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [showQR, setShowQR] = useState(false);
+  const [copiedJoinLink, setCopiedJoinLink] = useState(false);
+
+  const [activeInviteSlot, setActiveInviteSlot] = useState<string | null>(null);
+  const [slotInviteEmail, setSlotInviteEmail] = useState("");
+  const [sendingSlotInvite, setSendingSlotInvite] = useState(false);
+  const [copiedSlotId, setCopiedSlotId] = useState<string | null>(null);
+
+  const [linkingSlot, setLinkingSlot] = useState<string | null>(null);
+  const [linkEmail, setLinkEmail] = useState("");
+  const [linkingInProgress, setLinkingInProgress] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  const [coachName, setCoachName] = useState("");
+  const [coachTitle, setCoachTitle] = useState("");
+  const [coachEmail, setCoachEmail] = useState("");
+  const [grantCoachAdmin, setGrantCoachAdmin] = useState(false);
+  const [generatingCoachLink, setGeneratingCoachLink] = useState(false);
+  const [coachLinkUrl, setCoachLinkUrl] = useState<string | null>(null);
+  const [copiedCoachLink, setCopiedCoachLink] = useState(false);
+
+  const [acceptedMembers, setAcceptedMembers] = useState<TeamMember[]>([]);
+  const [notifyRequests, setNotifyRequests] = useState<TeamMember[]>([]);
+  const [mappingRequestId, setMappingRequestId] = useState<string | null>(null);
+  const [mapTargetPlayerId, setMapTargetPlayerId] = useState("");
+
+  // Keep local profile in sync with TeamContext (handles async initial fetch).
+  useEffect(() => {
+    if (liveTeam) {
+      setProfile(liveTeam);
+      setTeamNameDraft((prev) => prev || liveTeam.teamName);
+    }
+  }, [liveTeam]);
+
+  useEffect(() => {
+    void Promise.all([
+      fetchTeamMembers(),
+      fetchNotifyRequests(),
+      fetchActiveInviteLinks(),
+    ]).then(([membersData, requestsData, linksData]) => {
+      setAcceptedMembers(membersData.filter((m) => m.status === "active"));
+      setNotifyRequests(requestsData);
+      const reusable =
+        linksData.find((l) => l.role === "player" && !l.preFillEmail && !l.preFillSquadPlayerId) ??
+        null;
+      setReusableLink(reusable);
+      setLoading(false);
+    });
+  }, []);
+
+  const squadPlayers = (profile?.players ?? []).filter((p) => p.status !== "unavailable");
+  const activeMemberEmails = new Set(
+    acceptedMembers.map((m) => m.email?.toLowerCase()).filter(Boolean) as string[]
+  );
+  const unclaimedSlots = squadPlayers.filter(
+    (p) => !p.linkedUserId && !activeMemberEmails.has((p.email ?? "").toLowerCase())
+  );
+
+  async function handleLinkAccount(playerSquadId: string) {
+    if (!profile || !linkEmail.trim()) return;
+    setLinkingInProgress(true);
+    setLinkError(null);
+    try {
+      const res = await fetch("/api/invite/link-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teamId: profile.id,
+          playerSquadId,
+          email: linkEmail.trim(),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed to link account");
+      // Optimistically mark the slot as claimed in local state
+      setProfile((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          players: prev.players.map((p) =>
+            p.id === playerSquadId ? { ...p, linkedUserId: "__linked__" } : p
+          ),
+        };
+      });
+      setLinkingSlot(null);
+      setLinkEmail("");
+      setStatusMessage(`Account linked to ${squadPlayers.find((p) => p.id === playerSquadId)?.fullName ?? "player"}`);
+    } catch (e) {
+      setLinkError(e instanceof Error ? e.message : "Link failed");
+    } finally {
+      setLinkingInProgress(false);
+    }
+  }
+
+  async function handleGenerateReusableLink() {
+    setGeneratingLink(true);
+    const result = await createInviteLink("player");
+    if (!result) {
+      setStatusMessage("Failed to generate join link");
+      setGeneratingLink(false);
+      return;
+    }
+    const links = await fetchActiveInviteLinks();
+    const reusable =
+      links.find((l) => l.role === "player" && !l.preFillEmail && !l.preFillSquadPlayerId) ?? null;
+    setReusableLink(reusable);
+    setGeneratingLink(false);
+    setShowQR(false);
+  }
+
+  async function handleRevokeAndRegenerate() {
+    if (!reusableLink) return;
+    if (!window.confirm("Revoke the current join link and generate a new one?")) return;
+    setGeneratingLink(true);
+    await deactivateInviteLink(reusableLink.id);
+    const result = await createInviteLink("player");
+    if (!result) {
+      setStatusMessage("Failed to regenerate join link");
+      setGeneratingLink(false);
+      return;
+    }
+    const links = await fetchActiveInviteLinks();
+    const reusable =
+      links.find((l) => l.role === "player" && !l.preFillEmail && !l.preFillSquadPlayerId) ?? null;
+    setReusableLink(reusable);
+    setGeneratingLink(false);
+    setShowQR(false);
+    setStatusMessage("Join link regenerated");
+  }
+
+  function handleCopyJoinLink() {
+    if (!reusableLink) return;
+    const url = `${appUrl}/invite/join?token=${reusableLink.token}`;
+    void navigator.clipboard.writeText(url).then(() => {
+      setCopiedJoinLink(true);
+      setTimeout(() => setCopiedJoinLink(false), 2000);
+    });
+  }
+
+  async function handleSendSlotInvite(e: React.FormEvent, squadPlayerId: string) {
+    e.preventDefault();
+    if (!slotInviteEmail.trim()) return;
+    setSendingSlotInvite(true);
+    const result = await createInviteLink("player", {
+      email: slotInviteEmail.trim(),
+      squadPlayerId,
+    });
+    if (!result) {
+      setStatusMessage("Failed to generate invite link");
+      setSendingSlotInvite(false);
+      return;
+    }
+    void navigator.clipboard.writeText(result.url).then(() => {
+      setCopiedSlotId(squadPlayerId);
+      setTimeout(() => setCopiedSlotId(null), 3000);
+    });
+    setSlotInviteEmail("");
+    setActiveInviteSlot(null);
+    setSendingSlotInvite(false);
+    setStatusMessage(`Invite link for ${slotInviteEmail.trim()} copied to clipboard`);
+  }
+
+  async function handleCreateCoachInvite(e: React.FormEvent) {
+    e.preventDefault();
+    if (!coachName.trim()) return;
+    setGeneratingCoachLink(true);
+    const parts = [coachName.trim(), coachTitle.trim(), grantCoachAdmin ? "admin" : ""];
+    while (parts.length > 1 && !parts[parts.length - 1]) parts.pop();
+    const label = parts.join("|");
+    const result = await createInviteLink("assistant_coach", {
+      label,
+      email: coachEmail.trim() || undefined,
+    });
+    if (!result) {
+      setStatusMessage("Failed to generate coach invite link");
+      setGeneratingCoachLink(false);
+      return;
+    }
+    setCoachLinkUrl(result.url);
+    setGeneratingCoachLink(false);
+  }
+
+  function handleCopyCoachLink() {
+    if (!coachLinkUrl) return;
+    void navigator.clipboard.writeText(coachLinkUrl).then(() => {
+      setCopiedCoachLink(true);
+      setTimeout(() => setCopiedCoachLink(false), 2000);
+    });
+  }
+
+  function handleSaveTeamName() {
+    const nextName = teamNameDraft.trim();
+    if (!nextName) {
+      setStatusMessage("Enter a team name first");
+      return;
+    }
+    setSavingTeamName(true);
+    if (!profile) return;
+    const updatedProfile = {
+      ...profile,
+      teamName: nextName,
+      updatedAt: new Date().toISOString(),
+    };
+    saveSquadProfile(updatedProfile);
+    setProfile(updatedProfile);
+    setStatusMessage("Team name updated");
+    setSavingTeamName(false);
+  }
+
+  async function handleRevoke(memberId: string) {
+    if (!window.confirm("Revoke this team member's access?")) return;
+    await revokeTeamMember(memberId);
+    setAcceptedMembers((prev) => prev.filter((m) => m.id !== memberId));
+    setStatusMessage("Access revoked");
+  }
+
+  async function handlePasswordReset(memberId: string) {
+    setStatusMessage("Sending password reset…");
+    const result = await sendTeamMemberPasswordReset(memberId);
+    setStatusMessage(result.ok ? "Password reset link sent" : (result.error ?? "Failed to send reset link"));
+  }
+
+  async function handleApproveRequest(memberId: string) {
+    await approveTeamMember(memberId);
+    setNotifyRequests((prev) => prev.filter((m) => m.id !== memberId));
+    const updated = await fetchTeamMembers();
+    setAcceptedMembers(updated.filter((m) => m.status === "active"));
+    setStatusMessage("Player added to squad");
+  }
+
+  async function handleDismissRequest(memberId: string) {
+    await rejectTeamMember(memberId);
+    setNotifyRequests((prev) => prev.filter((m) => m.id !== memberId));
+    setStatusMessage("Request dismissed");
+  }
+
+  async function handleMapToExisting(memberId: string, existingPlayerId: string) {
+    const res = await fetch("/api/invite/approve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memberId, existingPlayerId }),
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({})) as { error?: string };
+      setStatusMessage(json.error ?? "Failed to map player");
+      return;
+    }
+    setNotifyRequests((prev) => prev.filter((m) => m.id !== memberId));
+    setMappingRequestId(null);
+    setMapTargetPlayerId("");
+    const updated = await fetchTeamMembers();
+    setAcceptedMembers(updated.filter((m) => m.status === "active"));
+    setStatusMessage("Player mapped to existing squad slot");
+  }
+
+  async function handleTogglePermissions(memberId: string, current: boolean) {
+    const next = !current;
+    const result = await updateMemberPermissions(memberId, next);
+    if (!result.ok) {
+      setStatusMessage(result.error ?? "Failed to update permissions");
+      return;
+    }
+    setAcceptedMembers((prev) =>
+      prev.map((m) => (m.id === memberId ? { ...m, canManageTeam: next } : m))
+    );
+    setStatusMessage(next ? "Head permissions granted" : "Head permissions removed");
+  }
+
+  const joinLinkUrl = reusableLink ? `${appUrl}/invite/join?token=${reusableLink.token}` : null;
+
+  return (
+    <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1500px] space-y-5">
+
+        {/* ── Header ─────────────────────────────────────────────────────── */}
+        <PageHeader
+          title="Team access"
+          subtitle="Share your join link so players can claim their squad slot directly."
+          helpButton={COACH_PAGE_HELP["/coach/team"] ? <PageHelp {...COACH_PAGE_HELP["/coach/team"]} /> : undefined}
+          status={
+            <span className="rounded-xl border border-border bg-panel-2 px-3 py-2 text-xs text-muted">
+              {statusMessage}
+            </span>
+          }
+        />
+
+        {/* ── Team name ──────────────────────────────────────────────────── */}
+        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+          <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">Team</div>
+          <h2 className="mt-2 text-lg font-semibold text-foreground-strong">Team name</h2>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            This name appears on the join page and across player screens.
+          </p>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <input
+              type="text"
+              value={teamNameDraft}
+              onChange={(e) => setTeamNameDraft(e.target.value)}
+              placeholder="Enter team name"
+              className="min-w-0 flex-1 rounded-lg border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground-strong outline-none transition focus:border-border-light"
+            />
+            <button
+              type="button"
+              onClick={handleSaveTeamName}
+              disabled={savingTeamName}
+              className="rounded-xl border border-border bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+            >
+              {savingTeamName ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </section>
+
+        {/* ── Section 1: Team join link ───────────────────────────────────── */}
+        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+          <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">Join link</div>
+          <h2 className="mt-2 text-lg font-semibold text-foreground-strong">Your team join link</h2>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Share this in your team group chat. Players tap the link, pick their squad slot, and join immediately — no approval needed.
+          </p>
+
+          <div className="mt-4">
+            {!reusableLink && (
+              <button
+                type="button"
+                onClick={() => void handleGenerateReusableLink()}
+                disabled={generatingLink}
+                className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+              >
+                {generatingLink ? "Generating…" : "Generate join link"}
+              </button>
+            )}
+
+            {reusableLink && joinLinkUrl && (
+              <div className="space-y-3">
+                <div className="flex flex-col gap-2 rounded-xl border border-border bg-panel-2 px-4 py-3 sm:flex-row sm:items-center">
+                  <input
+                    readOnly
+                    value={joinLinkUrl}
+                    className="min-w-0 flex-1 truncate rounded-lg border border-border bg-panel px-3 py-1.5 text-xs text-muted outline-none"
+                  />
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCopyJoinLink}
+                      className="rounded-lg border border-border bg-panel px-3 py-1.5 text-xs font-semibold text-foreground-strong transition hover:border-border-light"
+                    >
+                      {copiedJoinLink ? "Copied!" : "Copy"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowQR((v) => !v)}
+                      className="rounded-lg border border-border bg-panel px-3 py-1.5 text-xs font-semibold text-foreground-strong transition hover:border-border-light"
+                    >
+                      {showQR ? "Hide QR" : "Show QR"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleRevokeAndRegenerate()}
+                      disabled={generatingLink}
+                      className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-1.5 text-xs font-semibold text-danger transition hover:border-danger/60 disabled:opacity-50"
+                    >
+                      {generatingLink ? "Regenerating…" : "Revoke & regenerate"}
+                    </button>
+                  </div>
+                </div>
+
+                {showQR && (
+                  <div className="flex justify-center rounded-xl border border-border bg-white p-6">
+                    <QRCodeSVG value={joinLinkUrl} size={200} />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ── Section: Invite a coach ──────────────────────────────────────── */}
+        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+          <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">Coaching staff</div>
+          <h2 className="mt-2 text-lg font-semibold text-foreground-strong">Invite a coach</h2>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Generate a single-use link for a coach. Add their name and coaching role so they appear correctly in the members list.
+          </p>
+
+          <form onSubmit={(e) => void handleCreateCoachInvite(e)} className="mt-5 space-y-3">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="flex-1">
+                <label className="mb-1.5 block font-mono text-[11px] font-bold uppercase text-muted-2">
+                  Name <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={coachName}
+                  onChange={(e) => setCoachName(e.target.value)}
+                  placeholder="e.g. Jane Smith"
+                  className="w-full rounded-lg border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground-strong outline-none transition focus:border-border-light"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="mb-1.5 block font-mono text-[11px] font-bold uppercase text-muted-2">
+                  Coaching role <span className="font-normal normal-case text-muted-2">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={coachTitle}
+                  onChange={(e) => setCoachTitle(e.target.value)}
+                  placeholder="e.g. Forwards Coach"
+                  className="w-full rounded-lg border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground-strong outline-none transition focus:border-border-light"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block font-mono text-[11px] font-bold uppercase text-muted-2">
+                Email <span className="font-normal normal-case text-muted-2">(optional — restricts link to this address)</span>
+              </label>
+              <input
+                type="email"
+                value={coachEmail}
+                onChange={(e) => setCoachEmail(e.target.value)}
+                placeholder="coach@example.com"
+                className="w-full rounded-lg border border-border bg-panel-2 px-3 py-2.5 text-sm text-foreground-strong outline-none transition focus:border-border-light"
+              />
+            </div>
+
+            <label className="flex cursor-pointer items-center gap-2.5">
+              <input
+                type="checkbox"
+                checked={grantCoachAdmin}
+                onChange={(e) => setGrantCoachAdmin(e.target.checked)}
+                className="h-4 w-4 rounded border-border accent-foreground-strong"
+              />
+              <span className="text-sm text-foreground-strong">
+                Grant head permissions{" "}
+                <span className="font-normal text-muted">(can invite members, edit games)</span>
+              </span>
+            </label>
+
+            {coachLinkUrl && (
+              <div className="flex items-center gap-2 rounded-xl border border-border bg-panel-2 px-4 py-3">
+                <input
+                  readOnly
+                  value={coachLinkUrl}
+                  className="min-w-0 flex-1 truncate rounded-lg border border-border bg-panel px-3 py-1.5 text-xs text-muted outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleCopyCoachLink}
+                  className="shrink-0 rounded-lg border border-border bg-panel px-3 py-1.5 text-xs font-semibold text-foreground-strong transition hover:border-border-light"
+                >
+                  {copiedCoachLink ? "Copied!" : "Copy"}
+                </button>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={generatingCoachLink || !coachName.trim()}
+              className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+            >
+              {generatingCoachLink ? "Generating…" : coachLinkUrl ? "Generate new link" : "Generate invite link"}
+            </button>
+          </form>
+        </section>
+
+        {/* ── Section 2: Unclaimed squad slots ────────────────────────────── */}
+        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+          <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">Slots</div>
+          <h2 className="mt-2 text-lg font-semibold text-foreground-strong">Unclaimed squad slots</h2>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Send a personal link to a specific player — their slot will be pre-selected and the link is single-use.
+          </p>
+
+          <div className="mt-4">
+            {loading && <p className="text-sm text-muted">Loading…</p>}
+            {!loading && squadPlayers.length === 0 && (
+              <p className="rounded-xl border border-border bg-panel-2 px-4 py-4 text-sm text-muted">
+                No squad players yet. Add players in Team Setup first.
+              </p>
+            )}
+            {!loading && squadPlayers.length > 0 && unclaimedSlots.length === 0 && (
+              <p className="rounded-xl border border-border bg-panel-2 px-4 py-4 text-sm text-muted">
+                All squad players are linked.
+              </p>
+            )}
+            {!loading && unclaimedSlots.length > 0 && (
+              <div className="space-y-2">
+                {unclaimedSlots.map((player) => (
+                  <SlotRow
+                    key={player.id}
+                    player={player}
+                    isActive={activeInviteSlot === player.id}
+                    isCopied={copiedSlotId === player.id}
+                    emailDraft={activeInviteSlot === player.id ? slotInviteEmail : ""}
+                    sending={sendingSlotInvite}
+                    onOpen={() => {
+                      setActiveInviteSlot(player.id);
+                      setSlotInviteEmail("");
+                      setLinkingSlot(null);
+                    }}
+                    onClose={() => setActiveInviteSlot(null)}
+                    onEmailChange={setSlotInviteEmail}
+                    onSubmit={(e) => void handleSendSlotInvite(e, player.id)}
+                    isLinking={linkingSlot === player.id}
+                    linkEmail={linkingSlot === player.id ? linkEmail : ""}
+                    linkError={linkingSlot === player.id ? linkError : null}
+                    linkingInProgress={linkingInProgress}
+                    onOpenLink={() => {
+                      setLinkingSlot(player.id);
+                      setLinkEmail("");
+                      setLinkError(null);
+                      setActiveInviteSlot(null);
+                    }}
+                    onCloseLink={() => { setLinkingSlot(null); setLinkError(null); }}
+                    onLinkEmailChange={setLinkEmail}
+                    onLinkSubmit={(e) => { e.preventDefault(); void handleLinkAccount(player.id); }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ── Section 4: Pending requests (conditional) ───────────────────── */}
+        {notifyRequests.length > 0 && (
+          <section className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5 shadow-[var(--shadow-soft)]">
+            <div className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-400">
+              Pending requests
+            </div>
+            <h2 className="mt-2 text-lg font-semibold text-foreground-strong">
+              Players who couldn&apos;t find themselves
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-muted">
+              These players used your join link but couldn&apos;t find their name on the squad. Approve to add them to your squad, or dismiss.
+            </p>
+
+            <div className="mt-4 space-y-3">
+              {notifyRequests.map((req) => {
+                const isMapping = mappingRequestId === req.id;
+                return (
+                  <div
+                    key={req.id}
+                    className="rounded-xl border border-border bg-panel px-4 py-3"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-foreground-strong">
+                          {req.requestedName ?? req.email}
+                        </p>
+                        {req.email && (
+                          <p className="mt-0.5 text-xs text-muted-2">{req.email}</p>
+                        )}
+                      </div>
+                      {!isMapping && (
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void handleApproveRequest(req.id)}
+                            className="rounded-lg border border-success/30 bg-success/10 px-3 py-1.5 text-xs font-semibold text-success transition hover:border-success/60"
+                          >
+                            Add to squad
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMappingRequestId(req.id);
+                              setMapTargetPlayerId("");
+                            }}
+                            className="rounded-lg border border-border bg-panel-2 px-3 py-1.5 text-xs font-semibold text-foreground-strong transition hover:border-border-light"
+                          >
+                            Map to existing
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDismissRequest(req.id)}
+                            className="rounded-lg border border-border bg-panel-2 px-3 py-1.5 text-xs font-semibold text-muted transition hover:border-border-light"
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {isMapping && (
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <select
+                          value={mapTargetPlayerId}
+                          onChange={(e) => setMapTargetPlayerId(e.target.value)}
+                          className="min-w-0 flex-1 rounded-lg border border-border bg-panel-2 px-3 py-2 text-sm text-foreground-strong outline-none transition focus:border-border-light"
+                        >
+                          <option value="">Select existing player…</option>
+                          {squadPlayers
+                            .filter((p) => !p.linkedUserId)
+                            .map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.fullName}{p.primaryPosition ? ` — ${p.primaryPosition}` : ""}
+                              </option>
+                            ))}
+                        </select>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            disabled={!mapTargetPlayerId}
+                            onClick={() => void handleMapToExisting(req.id, mapTargetPlayerId)}
+                            className="rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-xs font-semibold text-success transition hover:border-success/60 disabled:opacity-50"
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setMappingRequestId(null); setMapTargetPlayerId(""); }}
+                            className="rounded-lg border border-border bg-panel-2 px-3 py-2 text-xs font-semibold text-muted transition hover:border-border-light"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* ── Section 3: Team members ──────────────────────────────────────── */}
+        <section className="rounded-2xl border border-border bg-panel p-5 shadow-[var(--shadow-soft)]">
+          <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-2">Members</div>
+          <h2 className="mt-2 text-lg font-semibold text-foreground-strong">Team members</h2>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Everyone who has joined the team.
+          </p>
+
+          <div className="mt-5 space-y-3">
+            {loading && <p className="text-sm text-muted">Loading…</p>}
+            {!loading && acceptedMembers.length === 0 && (
+              <EmptyState
+                icon={Users}
+                title="No team members yet"
+                description="Share your team join link or send a personal invite to add players and coaches."
+              />
+            )}
+            {acceptedMembers.map((member) => (
+              <MemberRow
+                key={member.id}
+                member={member}
+                squadPlayers={squadPlayers}
+                onRevoke={() => void handleRevoke(member.id)}
+                onPasswordReset={() => void handlePasswordReset(member.id)}
+                onTogglePermissions={() => void handleTogglePermissions(member.id, member.canManageTeam)}
+              />
+            ))}
+          </div>
+        </section>
+
+      </div>
+    </main>
+  );
+}
+
+function SlotRow({
+  player,
+  isActive,
+  isCopied,
+  emailDraft,
+  sending,
+  onOpen,
+  onClose,
+  onEmailChange,
+  onSubmit,
+  isLinking,
+  linkEmail,
+  linkError,
+  linkingInProgress,
+  onOpenLink,
+  onCloseLink,
+  onLinkEmailChange,
+  onLinkSubmit,
+}: {
+  player: SquadPlayer;
+  isActive: boolean;
+  isCopied: boolean;
+  emailDraft: string;
+  sending: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  onEmailChange: (email: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  isLinking: boolean;
+  linkEmail: string;
+  linkError: string | null;
+  linkingInProgress: boolean;
+  onOpenLink: () => void;
+  onCloseLink: () => void;
+  onLinkEmailChange: (email: string) => void;
+  onLinkSubmit: (e: React.FormEvent) => void;
+}) {
+  const isIdle = !isActive && !isLinking;
+
+  return (
+    <div className="rounded-xl border border-border bg-panel-2 px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <span className="text-sm font-semibold text-foreground-strong">{player.fullName}</span>
+          {player.primaryPosition && (
+            <span className="ml-2 text-xs text-muted">{player.primaryPosition}</span>
+          )}
+        </div>
+        {isCopied ? (
+          <span className="text-xs font-semibold text-success">Link copied!</span>
+        ) : isIdle ? (
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={onOpen}
+              className="rounded-lg border border-border bg-panel px-3 py-1.5 text-xs font-semibold text-foreground-strong transition hover:border-border-light"
+            >
+              Send invite
+            </button>
+            <button
+              type="button"
+              onClick={onOpenLink}
+              className="rounded-lg border border-border bg-panel px-3 py-1.5 text-xs font-semibold text-muted transition hover:border-border-light hover:text-foreground"
+            >
+              Link account
+            </button>
+          </div>
+        ) : null}
+      </div>
+
+      {isActive && (
+        <form onSubmit={onSubmit} className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input
+            type="email"
+            required
+            autoFocus
+            value={emailDraft}
+            onChange={(e) => onEmailChange(e.target.value)}
+            placeholder="player@example.com"
+            className="min-w-0 flex-1 rounded-lg border border-border bg-panel px-3 py-2 text-sm text-foreground-strong outline-none transition focus:border-border-light"
+          />
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={sending || !emailDraft.trim()}
+              className="rounded-lg border border-border bg-accent px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+            >
+              {sending ? "Generating…" : "Copy link"}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-border bg-panel px-3 py-2 text-xs font-semibold text-muted transition hover:border-border-light"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {isLinking && (
+        <div className="mt-3">
+          <p className="mb-2 text-xs text-muted">
+            Player already has an account? Enter their email to link it directly.
+          </p>
+          <form onSubmit={onLinkSubmit} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              type="email"
+              required
+              autoFocus
+              value={linkEmail}
+              onChange={(e) => onLinkEmailChange(e.target.value)}
+              placeholder="player@example.com"
+              className="min-w-0 flex-1 rounded-lg border border-border bg-panel px-3 py-2 text-sm text-foreground-strong outline-none transition focus:border-border-light"
+            />
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={linkingInProgress || !linkEmail.trim()}
+                className="rounded-lg border border-border bg-accent px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+              >
+                {linkingInProgress ? "Linking…" : "Link account"}
+              </button>
+              <button
+                type="button"
+                onClick={onCloseLink}
+                className="rounded-lg border border-border bg-panel px-3 py-2 text-xs font-semibold text-muted transition hover:border-border-light"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+          {linkError && <p className="mt-2 text-xs text-red-400">{linkError}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MemberRow({
+  member,
+  squadPlayers,
+  onRevoke,
+  onPasswordReset,
+  onTogglePermissions,
+}: {
+  member: TeamMember;
+  squadPlayers: SquadPlayer[];
+  onRevoke: () => void;
+  onPasswordReset: () => void;
+  onTogglePermissions: () => void;
+}) {
+  const linkedPlayer = member.playerSquadId
+    ? squadPlayers.find((p) => p.id === member.playerSquadId)
+    : null;
+
+  const displayName = linkedPlayer?.fullName ?? member.displayName ?? member.email;
+  const isCoach = member.role !== "player";
+
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-border bg-panel-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-foreground-strong">{displayName}</span>
+          <StatusPill size="sm">
+            {member.role === "player" ? "Player" : "Coach"}
+          </StatusPill>
+          {member.canManageTeam && (
+            <StatusPill variant="success" size="sm">
+              Head permissions
+            </StatusPill>
+          )}
+        </div>
+        {member.coachLabel && (
+          <p className="mt-0.5 text-xs text-muted">{member.coachLabel}</p>
+        )}
+        {displayName !== member.email && member.email && (
+          <p className="mt-0.5 text-xs text-muted-2">{member.email}</p>
+        )}
+        {member.acceptedAt && (
+          <p className="mt-0.5 text-xs text-muted-2">
+            Joined {new Date(member.acceptedAt).toLocaleDateString("en-GB")}
+          </p>
+        )}
+      </div>
+      <div className="flex shrink-0 flex-wrap gap-2">
+        {isCoach && (
+          <button
+            type="button"
+            onClick={onTogglePermissions}
+            className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
+              member.canManageTeam
+                ? "border-success/30 bg-success/10 text-success hover:border-success/60"
+                : "border-border bg-panel text-foreground-strong hover:border-border-light"
+            }`}
+          >
+            {member.canManageTeam ? "Remove admin" : "Grant admin"}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onPasswordReset}
+          className="rounded-lg border border-border bg-panel px-2.5 py-1.5 text-xs font-semibold text-foreground-strong transition hover:border-border-light"
+        >
+          Reset password
+        </button>
+        <button
+          type="button"
+          onClick={onRevoke}
+          className="rounded-lg border border-danger/30 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger transition hover:border-danger/60"
+        >
+          Revoke
+        </button>
+      </div>
+    </div>
+  );
+}

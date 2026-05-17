@@ -1,6 +1,6 @@
 # FYNL Whistle — Project Context File
 
-**Last updated:** 17 May 2026 — WebM video export added to playbook editor. Export button is now a dropdown with "Export PNG" and "Export MP4" options. MP4 exports as `.webm` via MediaRecorder (vp9/vp8), captures the live Konva canvas during playback, appends a 2-second FYNL Whistle outro frame, then downloads. Previous: Batch CA: Clips Module Step 1 (Video Sources).
+**Last updated:** 17 May 2026 — Free animator (solo plan) tier shipped. `solo` enum value is now live as a free, no-Stripe tier giving playbook-only access. Signup via `/signup?plan=animator` creates org+team instantly with `plan: 'solo', status: 'active'` (no trial, no Stripe). All other coach routes show a `LockedFeatureTease` component with upgrade CTA. Sidebar shows lock icons on gated nav items. `orgPlan` is now surfaced in `MyTeamContext` via `serverTeamContext.ts`. Previous: WebM video export added to playbook editor.
 **Purpose:** Paste this at the start of any new chat with Claude to restore full project context instantly.
 
 ---
@@ -135,14 +135,16 @@ Five roles total, split across two membership tables.
 
 ### Plans
 
-Four plan types in the `plan` enum. `solo` is reserved for future use, unreachable in UI. Existing users backfilled as `team_launch`.
+Four plan types in the `plan` enum. `solo` is the **free animator tier** — signup via `/signup?plan=animator`, no Stripe, playbook-only access.
 
-| Plan | Teams | Coach seats | Players (per team) |
-|---|---|---|---|
-| `solo` (reserved) | 1 | 1 | 30 |
-| `team_launch` | 1 | 4 | 50 |
-| `club_5` | 5 | 30 | 50 per team |
-| `org_custom` | unlimited | unlimited | unlimited |
+| Plan | Teams | Coach seats | Players (per team) | Notes |
+|---|---|---|---|---|
+| `solo` | 1 | 1 | 30 | Free animator tier. Playbook access only. All other coach routes show upgrade tease. |
+| `team_launch` | 1 | 4 | 50 | Default paid trial plan |
+| `club_5` | 5 | 30 | 50 per team | |
+| `org_custom` | unlimited | unlimited | unlimited | |
+
+**Solo plan routing:** `orgPlan` is returned by `getServerTeamContext()` and passed to `CoachSidebar` via `app/coach/layout.tsx`. Each locked page (`/coach`, `/coach/capture`, `/coach/insights`, `/coach/review`, `/coach/players`, `/coach/compare`, `/coach/saved-matches`, `/coach/team`, `/coach/team-setup`) is a thin server component wrapper that returns `<LockedFeatureTease>` when `orgPlan === 'solo'`. Allowed routes for solo plan: `/coach/playbook`, `/coach/settings`, `/coach/organisation`.
 
 Plan defaults live in a `PLAN_LIMITS` constant in application code. Per-org overrides via nullable columns (`team_limit`, `seat_limit`, `player_limit`) on the `organisations` table. Move 2 shipped with limits set to NULL — schema in place, enforcement turned on later when ready. Active players only count toward the player limit. Coach seats include `head_coach`, `assistant_coach`, and `club_admin`. Players don't count toward seat limits.
 
@@ -238,7 +240,7 @@ These are decisions consciously not made, with the data model designed not to pr
 - Live player career view — data model supports it, no UI built. Future batch.
 - Per-team merge into Club 5 — viral club adoption case. Manual via admin panel until volume justifies self-serve.
 - Per-team add-on pricing — Club 5 capped at 5 teams. Manual until volume justifies self-serve.
-- `solo` plan as a free tier — enum reserved, no UI. Decision deferred until conversion data is available.
+- ~~`solo` plan as a free tier~~ — **shipped** (17 May 2026). See Plans section above.
 - Per-match `visibility = 'team'` private mode — column reserved, UI not built.
 - Disappeared club admin self-serve recovery — handled manually until volume justifies self-serve.
 - First-class `seasons` table — currently a text field. FK migration possible later.

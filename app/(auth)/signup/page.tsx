@@ -19,6 +19,8 @@ function SignupContent() {
   const inviteToken = searchParams.get("token");
   const joinToken = searchParams.get("join_token");
   const inviteRole = searchParams.get("role");
+  const planParam = searchParams.get("plan");
+  const isAnimatorSignup = planParam === "animator";
   const isPlayerInvite = Boolean(inviteToken && inviteRole === "player");
   const prefillEmail = searchParams.get("email") ?? "";
   const inviteLoginHref = inviteToken
@@ -100,6 +102,34 @@ function SignupContent() {
       return;
     }
 
+    // Free animator signup — create org with solo plan, skip Stripe entirely.
+    if (isAnimatorSignup) {
+      const res = await fetch("/api/auth/signup-animator", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+
+      if (!res.ok || !json.ok) {
+        setError(json.error ?? "Failed to create account. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      const supabase = createClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) {
+        setError(signInError.message);
+        setLoading(false);
+        return;
+      }
+
+      router.push("/coach/playbook");
+      router.refresh();
+      return;
+    }
+
     // Standard coach signup — send email confirmation
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
     const { data, error } = await supabase.auth.signUp({
@@ -170,6 +200,8 @@ function SignupContent() {
             ? "Confirm your email and choose a password. Your player profile is waiting."
             : inviteToken || joinToken
             ? "Create your account to join the team."
+            : isAnimatorSignup
+            ? "Get instant access to the playbook — no card required."
             : "Start your free trial — 2 weeks, 2 games, no card required."}
         </p>
 

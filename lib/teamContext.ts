@@ -19,6 +19,8 @@ export type MyTeamContext = {
   orgId: string | null;
   /** True when user is a club_admin but has no teams yet — org page is the only useful destination. */
   hasNoTeams?: boolean;
+  /** The organisation's plan. 'solo' = free animator tier (playbook-only access). */
+  orgPlan?: string;
 };
 
 export const ACTIVE_TEAM_CHANGED_EVENT = "fynlwhistle-active-team-changed";
@@ -26,7 +28,7 @@ export const ACTIVE_TEAM_CHANGED_EVENT = "fynlwhistle-active-team-changed";
 export const ACTIVE_TEAM_ID_KEY = "fynlwhistle-active-team-id";
 
 // Bump this when the shape changes so stale caches invalidate on deploy.
-const CACHE_VERSION = 4;
+const CACHE_VERSION = 5;
 
 type CachedContext = MyTeamContext & { _v: number; _userId: string };
 let cachedContext: CachedContext | null | undefined = undefined;
