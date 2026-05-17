@@ -939,12 +939,6 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
   }, [videoLoaded, videoSrc, videoStoragePath]);
 
   useEffect(() => {
-    if (playersReady) {
-      setShowTeamSheetModal(false);
-    }
-  }, [playersReady]);
-
-  useEffect(() => {
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
