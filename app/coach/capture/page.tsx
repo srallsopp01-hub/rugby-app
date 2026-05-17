@@ -48,6 +48,7 @@ import {
 import {
   getSquadProfile,
   resolvePlayerName,
+  TEAM_CHANGED_EVENT,
   type SquadProfile,
 } from "@/app/rugby-tagging/lib/team";
 import {
@@ -858,6 +859,10 @@ const [showTranscriptImport, setShowTranscriptImport] = useState(false);
     }
 
     setSquadProfile(getSquadProfile());
+
+    const onTeamChanged = () => setSquadProfile(getSquadProfile());
+    window.addEventListener(TEAM_CHANGED_EVENT, onTeamChanged);
+    return () => window.removeEventListener(TEAM_CHANGED_EVENT, onTeamChanged);
   }, []);
 
   useEffect(() => {
