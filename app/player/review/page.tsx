@@ -19,7 +19,7 @@ import {
   type SetPieceTypeFilter,
 } from "@/app/rugby-tagging/lib/setPieceReview";
 import type { SavedMatchRecord } from "@/app/rugby-tagging/lib/savedMatches";
-import type { ClipAnnotation, ClipPlayerNote, ClipReaction } from "@/app/rugby-tagging/types";
+import type { ClipAnnotation, ClipComment, ClipReaction } from "@/app/rugby-tagging/types";
 import { getMatchVideoSignedUrl, refreshVideoSignedUrl, SIGNED_URL_EXPIRY_SECONDS } from "@/lib/matchVideoCloud";
 import { markReviewAsSeen } from "../lib/reviewSeen";
 import { EmptyState } from "@/app/components/EmptyState";
@@ -52,72 +52,62 @@ function updateClipInSavedMatch(
 
 const NOTE_DEBOUNCE_MS = 600;
 
+function formatCommentTime(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + " " +
+    d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+
 function ClipRow({
   clip,
   idx,
   isActive,
   canSeek,
   playerId,
+  playerName,
   onSeek,
   onSetReaction,
-  onSetNote,
+  onAddComment,
+  onDeleteComment,
 }: {
   clip: ClipAnnotation;
   idx: number;
   isActive: boolean;
   canSeek: boolean;
   playerId: string;
+  playerName: string;
   onSeek: () => void;
-  onSetReaction: (type: ClipReaction["type"] | null, note?: string) => void;
-  onSetNote: (text: string) => void;
+  onSetReaction: (type: ClipReaction["type"] | null) => void;
+  onAddComment: (comment: ClipComment) => void;
+  onDeleteComment: (commentId: string) => void;
 }) {
   const myReaction = clip.reactions?.find((r) => r.playerId === playerId) ?? null;
-  const myNote = clip.playerNotes?.find((n) => n.playerId === playerId)?.text ?? "";
-
-  const [noteDraft, setNoteDraft] = useState(myNote);
-  const [questionDraft, setQuestionDraft] = useState(myReaction?.type === "question" ? myReaction.note ?? "" : "");
-  const noteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const questionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (noteTimeoutRef.current) clearTimeout(noteTimeoutRef.current);
-      if (questionTimeoutRef.current) clearTimeout(questionTimeoutRef.current);
-    };
-  }, []);
-
-  function handleReactionClick(type: ClipReaction["type"]) {
-    if (myReaction?.type === type) {
-      onSetReaction(null);
-      if (type === "question") setQuestionDraft("");
-      return;
-    }
-    if (type === "got_it") {
-      setQuestionDraft("");
-      onSetReaction("got_it");
-    } else {
-      onSetReaction("question", questionDraft.trim() || undefined);
-    }
-  }
-
-  function handleNoteChange(value: string) {
-    setNoteDraft(value);
-    if (noteTimeoutRef.current) clearTimeout(noteTimeoutRef.current);
-    noteTimeoutRef.current = setTimeout(() => {
-      onSetNote(value);
-    }, NOTE_DEBOUNCE_MS);
-  }
-
-  function handleQuestionChange(value: string) {
-    setQuestionDraft(value);
-    if (questionTimeoutRef.current) clearTimeout(questionTimeoutRef.current);
-    questionTimeoutRef.current = setTimeout(() => {
-      onSetReaction("question", value.trim() || undefined);
-    }, NOTE_DEBOUNCE_MS);
-  }
-
   const gotItActive = myReaction?.type === "got_it";
-  const questionActive = myReaction?.type === "question";
+
+  const [commentDraft, setCommentDraft] = useState("");
+  const [coachOnly, setCoachOnly] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+
+  const visibleComments = (clip.comments ?? []).filter(
+    (c) => c.visibility === "team" || c.authorId === playerId
+  );
+  const commentCount = visibleComments.length;
+
+  function handlePostComment() {
+    const text = commentDraft.trim();
+    if (!text) return;
+    const comment: ClipComment = {
+      id: crypto.randomUUID(),
+      authorId: playerId,
+      authorName: playerName,
+      authorRole: "player",
+      content: text,
+      visibility: coachOnly ? "coach_only" : "team",
+      createdAt: new Date().toISOString(),
+    };
+    onAddComment(comment);
+    setCommentDraft("");
+  }
 
   return (
     <div
@@ -142,63 +132,113 @@ function ClipRow({
             <span className="mt-1 text-xs text-muted">{clip.comment}</span>
           )}
         </div>
-        {clip.category && (
-          <span className={`shrink-0 mt-0.5 text-[11px] font-medium border rounded px-1.5 py-0.5 ${categoryClass(clip.category)}`}>
-            {clip.category}
-          </span>
-        )}
-        {isActive && (
-          <span className="shrink-0 mt-2 h-1.5 w-1.5 rounded-full bg-success" />
-        )}
-      </button>
-
-      <div className="mt-3 flex flex-wrap items-start gap-3" onClick={(e) => e.stopPropagation()}>
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => handleReactionClick("got_it")}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                gotItActive
-                  ? "border-success bg-success/10 text-success"
-                  : "border-border bg-panel-2 text-muted hover:text-foreground"
-              }`}
-            >
-              Got it 👍
-            </button>
-            <button
-              type="button"
-              onClick={() => handleReactionClick("question")}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                questionActive
-                  ? "border-warning bg-warning/10 text-warning"
-                  : "border-border bg-panel-2 text-muted hover:text-foreground"
-              }`}
-            >
-              Question 🤔
-            </button>
-          </div>
-          {questionActive && (
-            <textarea
-              value={questionDraft}
-              onChange={(e) => handleQuestionChange(e.target.value)}
-              placeholder="What's your question?"
-              rows={2}
-              className="w-full sm:w-72 rounded-lg border border-border bg-panel px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-2 outline-none focus:border-border-light resize-none"
-            />
+        <div className="shrink-0 flex items-center gap-2">
+          {commentCount > 0 && (
+            <span className="text-[11px] text-muted-2 border border-border rounded px-1.5 py-0.5">
+              💬 {commentCount}
+            </span>
+          )}
+          {clip.category && (
+            <span className={`text-[11px] font-medium border rounded px-1.5 py-0.5 ${categoryClass(clip.category)}`}>
+              {clip.category}
+            </span>
+          )}
+          {isActive && (
+            <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-success" />
           )}
         </div>
+      </button>
 
-        <label className="flex-1 min-w-[200px] flex flex-col gap-1">
-          <span className="text-[10px] uppercase tracking-widest text-muted-2">Your note</span>
-          <textarea
-            value={noteDraft}
-            onChange={(e) => handleNoteChange(e.target.value)}
-            placeholder="Notes for yourself"
-            rows={2}
-            className="w-full rounded-lg border border-border bg-panel px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-2 outline-none focus:border-border-light resize-none"
-          />
-        </label>
+      <div className="mt-3 space-y-3" onClick={(e) => e.stopPropagation()}>
+        {/* Got it acknowledgment */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onSetReaction(gotItActive ? null : "got_it")}
+            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              gotItActive
+                ? "border-success bg-success/10 text-success"
+                : "border-border bg-panel-2 text-muted hover:text-foreground"
+            }`}
+          >
+            Got it 👍
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowComments((v) => !v)}
+            className="rounded-full border border-border bg-panel-2 px-3 py-1 text-xs font-medium text-muted hover:text-foreground transition-colors"
+          >
+            {showComments ? "Hide comments" : `Comments${commentCount > 0 ? ` (${commentCount})` : ""}`}
+          </button>
+        </div>
+
+        {/* Comments section */}
+        {showComments && (
+          <div className="rounded-xl border border-border bg-panel-2 overflow-hidden">
+            {visibleComments.length > 0 && (
+              <div className="divide-y divide-border">
+                {visibleComments.map((c) => (
+                  <div key={c.id} className="px-3 py-2.5 flex gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs font-medium text-foreground-strong">{c.authorName}</span>
+                        {c.authorRole === "coach" && (
+                          <span className="text-[10px] font-medium text-muted-2 border border-border rounded px-1 py-0.5">Coach</span>
+                        )}
+                        {c.visibility === "coach_only" && (
+                          <span className="text-[10px] text-muted-2">🔒 Private</span>
+                        )}
+                        <span className="text-[10px] text-muted-2">{formatCommentTime(c.createdAt)}</span>
+                      </div>
+                      <p className="mt-0.5 text-xs text-foreground leading-relaxed">{c.content}</p>
+                    </div>
+                    {c.authorId === playerId && (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteComment(c.id)}
+                        className="shrink-0 text-muted-2 hover:text-foreground text-xs leading-none mt-0.5"
+                        aria-label="Delete comment"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {visibleComments.length === 0 && (
+              <p className="px-3 py-2.5 text-xs text-muted-2">No comments yet. Be the first.</p>
+            )}
+            <div className="border-t border-border px-3 py-2.5 space-y-2">
+              <textarea
+                value={commentDraft}
+                onChange={(e) => setCommentDraft(e.target.value)}
+                placeholder="Add a comment…"
+                rows={2}
+                className="w-full rounded-lg border border-border bg-panel px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-2 outline-none focus:border-border-light resize-none"
+              />
+              <div className="flex items-center justify-between gap-3">
+                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={coachOnly}
+                    onChange={(e) => setCoachOnly(e.target.checked)}
+                    className="h-3.5 w-3.5 rounded accent-foreground"
+                  />
+                  <span className="text-xs text-muted">🔒 Only share with coach</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={handlePostComment}
+                  disabled={!commentDraft.trim()}
+                  className="rounded-lg border border-border bg-panel-3 px-3 py-1 text-xs font-medium text-foreground transition-colors hover:border-border-light disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Post
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -333,7 +373,7 @@ export default function ReviewPage() {
   }
 
   const setReaction = useCallback(
-    (matchId: string, clipId: number, playerId: string, type: ClipReaction["type"] | null, note?: string) => {
+    (matchId: string, clipId: number, playerId: string, type: ClipReaction["type"] | null) => {
       const match = matches.find((m) => m.id === matchId);
       if (!match) return;
       updateClipInSavedMatch(match, clipId, (clip) => {
@@ -342,7 +382,6 @@ export default function ReviewPage() {
         const next: ClipReaction = {
           playerId,
           type,
-          note: type === "question" ? note : undefined,
           createdAt: new Date().toISOString(),
         };
         return { ...clip, reactions: [...others, next] };
@@ -351,24 +390,26 @@ export default function ReviewPage() {
     [matches]
   );
 
-  const setPlayerNote = useCallback(
-    (matchId: string, clipId: number, playerId: string, text: string) => {
+  const addComment = useCallback(
+    (matchId: string, clipId: number, comment: ClipComment) => {
       const match = matches.find((m) => m.id === matchId);
       if (!match) return;
-      updateClipInSavedMatch(match, clipId, (clip) => {
-        const trimmed = text.trim();
-        const others = (clip.playerNotes ?? []).filter((n) => n.playerId !== playerId);
-        if (!trimmed) return { ...clip, playerNotes: others };
-        const existing = (clip.playerNotes ?? []).find((n) => n.playerId === playerId);
-        const now = new Date().toISOString();
-        const note: ClipPlayerNote = {
-          playerId,
-          text: trimmed,
-          createdAt: existing?.createdAt ?? now,
-          updatedAt: now,
-        };
-        return { ...clip, playerNotes: [...others, note] };
-      });
+      updateClipInSavedMatch(match, clipId, (clip) => ({
+        ...clip,
+        comments: [...(clip.comments ?? []), comment],
+      }));
+    },
+    [matches]
+  );
+
+  const deleteComment = useCallback(
+    (matchId: string, clipId: number, commentId: string) => {
+      const match = matches.find((m) => m.id === matchId);
+      if (!match) return;
+      updateClipInSavedMatch(match, clipId, (clip) => ({
+        ...clip,
+        comments: (clip.comments ?? []).filter((c) => c.id !== commentId),
+      }));
     },
     [matches]
   );
@@ -620,9 +661,11 @@ export default function ReviewPage() {
                           isActive={isActive}
                           canSeek={Boolean(videoUrl)}
                           playerId={currentPlayer.id}
+                          playerName={currentPlayer.preferredName || currentPlayer.fullName}
                           onSeek={() => activateAndSeekToClip(match.id, clips, idx)}
-                          onSetReaction={(type, note) => setReaction(match.id, clip.id, currentPlayer.id, type, note)}
-                          onSetNote={(text) => setPlayerNote(match.id, clip.id, currentPlayer.id, text)}
+                          onSetReaction={(type) => setReaction(match.id, clip.id, currentPlayer.id, type)}
+                          onAddComment={(comment) => addComment(match.id, clip.id, comment)}
+                          onDeleteComment={(commentId) => deleteComment(match.id, clip.id, commentId)}
                         />
                       );
                     })}

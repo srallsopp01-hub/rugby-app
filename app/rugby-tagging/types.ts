@@ -136,6 +136,16 @@ export type ClipPlayerNote = {
   updatedAt: string;
 };
 
+export type ClipComment = {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorRole: "player" | "coach";
+  content: string;
+  visibility: "team" | "coach_only";
+  createdAt: string;
+};
+
 export type ClipAnnotation = {
   id: number;
   startTime: number;
@@ -146,6 +156,7 @@ export type ClipAnnotation = {
   annotations?: VideoAnnotation[];
   reactions?: ClipReaction[];
   playerNotes?: ClipPlayerNote[];
+  comments?: ClipComment[];
   createdAt?: string;
 };
 
